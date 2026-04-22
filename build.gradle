@@ -2,6 +2,9 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '4.0.5'
 	id 'io.spring.dependency-management' version '1.1.7'
+	id 'com.diffplug.spotless' version '8.0.0'
+	id 'checkstyle'
+	id 'pmd'
 }
 
 group = 'dev.gushchin'
@@ -32,6 +35,40 @@ dependencies {
 	testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
+spotless {
+	java {
+		palantirJavaFormat()
+	}
+}
+
+checkstyle {
+	toolVersion = '11.0.1'
+}
+
+tasks.withType(Checkstyle).configureEach {
+	reports {
+		html.required = true
+	}
+}
+
+pmd {
+	ignoreFailures = false
+	consoleOutput = true
+	toolVersion = "7.19.0"
+	threads = 2
+	ruleSetFiles = files("config/pmd/pmd-ruleset.xml")
+	ruleSets = [] // disable default rules
+}
+
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+tasks.named('pmdTest') {
+	ruleSetFiles = files("config/pmd/pmd-test.xml")
+}
+
+tasks.named('build') {
+	dependsOn 'spotlessCheck'
+}
+

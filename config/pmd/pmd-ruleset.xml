@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<ruleset name="custom rules">
+    <description>PMD rules for my CRUD project</description>
+    <rule ref="category/java/bestpractices.xml">
+        <exclude name="UnitTestAssertionsShouldIncludeMessage"/>
+        <exclude name="UnitTestContainsTooManyAsserts"/>
+    </rule>
+    <rule ref="category/java/errorprone.xml">
+    <exclude name="MissingSerialVersionUID"/>
+    </rule>
+    <rule ref="category/java/multithreading.xml"/>
+    <rule ref="category/java/performance.xml"/>
+</ruleset>
