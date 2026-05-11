@@ -1,0 +1,16 @@
+services:
+  db:
+    container_name: task-me-please-postgres
+    image: postgres:17
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+    environment:
+      POSTGRES_DB: task_me_please
+      POSTGRES_USER: postgres_user
+      POSTGRES_PASSWORD: postgres_password
+
+volumes:
+  postgres_data:

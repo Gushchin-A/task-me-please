@@ -8,6 +8,7 @@
     </rule>
     <rule ref="category/java/errorprone.xml">
         <exclude name="MissingSerialVersionUID"/>
+        <exclude name="AvoidDuplicateLiterals"/>
     </rule>
     <rule ref="category/java/multithreading.xml"/>
     <rule ref="category/java/performance.xml"/>

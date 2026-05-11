@@ -6,7 +6,7 @@
         <exclude name="UnitTestContainsTooManyAsserts"/>
     </rule>
     <rule ref="category/java/errorprone.xml">
-    <exclude name="MissingSerialVersionUID"/>
+        <exclude name="MissingSerialVersionUID"/>
     </rule>
     <rule ref="category/java/multithreading.xml"/>
     <rule ref="category/java/performance.xml"/>

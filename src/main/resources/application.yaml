@@ -1,3 +1,19 @@
 spring:
   application:
     name: task-me-please
+
+  datasource:
+    url: jdbc:postgresql://localhost:5434/task_me_please
+    username: postgres_user
+    password: postgres_password
+
+  output:
+    ansi:
+      enabled: always
+
+server:
+  port: 8181
+
+logging:
+  level:
+    root: INFO

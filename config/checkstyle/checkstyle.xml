@@ -333,6 +333,10 @@
             <property name="files" value=".*src/test/java/.*"/>
         </module>
         <module name="SuppressionXpathSingleFilter">
+            <property name="checks" value="MultipleStringLiterals"/>
+            <property name="files" value=".*src/test/java/.*"/>
+        </module>
+        <module name="SuppressionXpathSingleFilter">
             <property name="checks" value="VisibilityModifier"/>
             <property name="files" value=".*src/test/java/.*"/>
         </module>
