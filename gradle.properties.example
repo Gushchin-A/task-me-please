@@ -1,0 +1,3 @@
+jooqDbUrl=jdbc:postgresql://localhost:5434/task_me_please
+jooqDbUser=postgres_user
+jooqDbPassword=postgres_password
