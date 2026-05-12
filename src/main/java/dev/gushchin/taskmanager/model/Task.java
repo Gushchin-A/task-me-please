@@ -1,12 +1,11 @@
 package dev.gushchin.taskmanager.model;
 
+import java.time.Instant;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.time.Instant;
-import java.util.UUID;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -22,8 +21,8 @@ public class Task {
     private Instant deadlineAt;
     private TaskStatus status;
     private TaskCategory category;
-    private boolean archived;
-    private boolean deleted;
     private Instant createdAt;
     private Instant updatedAt;
+    private boolean archived;
+    private boolean deleted;
 }
