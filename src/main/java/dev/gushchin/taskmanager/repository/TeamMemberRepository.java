@@ -1,17 +1,16 @@
 package dev.gushchin.taskmanager.repository;
 
+import static dev.gushchin.taskmanager.jooq.Tables.TEAM_MEMBERS;
+
 import dev.gushchin.taskmanager.jooq.tables.records.TeamMembersRecord;
 import dev.gushchin.taskmanager.mapper.TeamMemberMapper;
 import dev.gushchin.taskmanager.model.TeamMember;
-import lombok.RequiredArgsConstructor;
-import org.jooq.DSLContext;
-import org.springframework.stereotype.Repository;
-
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
-
-import static dev.gushchin.taskmanager.jooq.Tables.TEAM_MEMBERS;
+import lombok.RequiredArgsConstructor;
+import org.jooq.DSLContext;
+import org.springframework.stereotype.Repository;
 
 @Repository
 @RequiredArgsConstructor

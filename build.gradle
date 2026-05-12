@@ -83,6 +83,10 @@ tasks.named('build') {
 	dependsOn 'spotlessCheck'
 }
 
+tasks.named('compileJava') {
+	dependsOn 'jooqCodegen'
+}
+
 jooq {
 	configuration {
 		jdbc {
@@ -101,6 +105,14 @@ jooq {
 				packageName = 'dev.gushchin.taskmanager.jooq'
 				directory = 'build/generated-src/jooq/main'
 			}
+		}
+	}
+}
+
+sourceSets {
+	main {
+		java {
+			srcDir 'build/generated-src/jooq/main'
 		}
 	}
 }
