@@ -5,6 +5,7 @@ plugins {
 	id 'com.diffplug.spotless' version '8.0.0'
 	id 'checkstyle'
 	id 'pmd'
+	id 'org.jooq.jooq-codegen-gradle' version '3.19.29'
 }
 
 group = 'dev.gushchin'
@@ -26,6 +27,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-jdbc'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.flywaydb:flyway-database-postgresql'
+	implementation 'org.springframework.boot:spring-boot-starter-jooq'
+
+	jooqCodegen 'org.postgresql:postgresql:42.7.3'
 
 	compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
@@ -79,3 +83,36 @@ tasks.named('build') {
 	dependsOn 'spotlessCheck'
 }
 
+tasks.named('compileJava') {
+	dependsOn 'jooqCodegen'
+}
+
+jooq {
+	configuration {
+		jdbc {
+			driver = 'org.postgresql.Driver'
+			url = project.findProperty('jooqDbUrl') ?: System.getenv('JOOQ_DB_URL')
+			user = project.findProperty('jooqDbUser') ?: System.getenv('JOOQ_DB_USER')
+			password = project.findProperty('jooqDbPassword') ?: System.getenv('JOOQ_DB_PASSWORD')
+		}
+		generator {
+			database {
+				name = 'org.jooq.meta.postgres.PostgresDatabase'
+				includes = '.*'
+				inputSchema = 'public'
+			}
+			target {
+				packageName = 'dev.gushchin.taskmanager.jooq'
+				directory = 'build/generated-src/jooq/main'
+			}
+		}
+	}
+}
+
+sourceSets {
+	main {
+		java {
+			srcDir 'build/generated-src/jooq/main'
+		}
+	}
+}
