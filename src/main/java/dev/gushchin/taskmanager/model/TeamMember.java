@@ -20,4 +20,21 @@ public class TeamMember {
     private Instant createdAt;
     private Instant updatedAt;
     private boolean deleted;
+
+    public TeamMember(
+            Long teamId,
+            UUID userId,
+            TeamMemberRole role,
+            Instant joinedAt,
+            Instant createdAt,
+            Instant updatedAt,
+            boolean deleted) {
+        this.teamId = teamId;
+        this.userId = userId;
+        this.role = role;
+        this.joinedAt = joinedAt;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.deleted = deleted;
+    }
 }

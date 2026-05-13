@@ -38,4 +38,18 @@ public class TeamRepository {
 
         return TeamMapper.toModel(record);
     }
+
+    public Team update(Team team) {
+        TeamsRecord record = dsl.update(TEAMS)
+                .set(TEAMS.NAME, team.getName())
+                .set(TEAMS.CREATED_BY, team.getCreatedBy())
+                .set(TEAMS.CREATED_AT, team.getCreatedAt().atOffset(ZoneOffset.UTC))
+                .set(TEAMS.UPDATED_AT, team.getUpdatedAt().atOffset(ZoneOffset.UTC))
+                .set(TEAMS.IS_DELETED, team.isDeleted())
+                .where(TEAMS.ID.eq(team.getId()))
+                .returning()
+                .fetchOne();
+
+        return TeamMapper.toModel(record);
+    }
 }

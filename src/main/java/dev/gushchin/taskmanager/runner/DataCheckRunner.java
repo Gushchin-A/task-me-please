@@ -8,7 +8,12 @@ import dev.gushchin.taskmanager.repository.TeamMemberRepository;
 import dev.gushchin.taskmanager.repository.TeamRepository;
 import dev.gushchin.taskmanager.repository.UserRepository;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
+
+import dev.gushchin.taskmanager.service.TeamMemberService;
+import dev.gushchin.taskmanager.service.TeamService;
+import dev.gushchin.taskmanager.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -16,38 +21,37 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class DataCheckRunner implements CommandLineRunner {
-    private final UserRepository userRepository;
-    private final TeamRepository teamRepository;
-    private final TeamMemberRepository teamMemberRepository;
+    private final UserService userService;
+    private final TeamService teamService;
+    private final TeamMemberService teamMemberService;
+
+    private final String EMAIL = "emailTestTest@e.com";
+    private final String PASSWORD = "qwerty";
+    private final String TEAM_NAME = "Chukaripa";
 
     @Override
     public void run(String... args) {
         UUID userId = UUID.randomUUID();
         Instant now = Instant.now();
 
-        User user = new User(
-                userId, "test@example-test12.com", "test@example-test12.com", "hash-password", now, now, false);
+        User user = userService.create(EMAIL, PASSWORD);
+        System.out.println("Created user: " + userService.findById(user.getId()).getId());
+        System.out.println("Is delete? " + userService.findById(user.getId()).isDeleted());
+        userService.deleteById(user.getId());
+        System.out.println("Is delete? " + userService.findById(user.getId()).isDeleted());
 
-        User savedUser = userRepository.save(user);
-        System.out.println("Saved user: " + savedUser.getId());
+        Team team = teamService.create(TEAM_NAME, user.getId());
+        System.out.println("Created team, ID = " + teamService.findById(team.getId()).getId());
+        System.out.println("Owner team " + "\'" + team.getName() + "\'" + " "  + userService.findById(team.getCreatedBy()).getName());
+        TeamMember teamMember = teamMemberService.findById(team.getId(), user.getId());
+        System.out.println("His role = " + teamMember.getRole().name());
 
-        Team team = new Team(null, "My First Team Chukaripa", savedUser.getId(), now, now, false);
+        List<TeamMember> memberList = teamMemberService.findByTeamId(team.getId());
+        System.out.println("Size list members = " + memberList.size());
+        System.out.println("Add 1 new member");
 
-        Team savedTeam = teamRepository.save(team);
-        System.out.println("Saved team: " + savedTeam.getId());
-
-        TeamMember teamMember =
-                new TeamMember(null, savedTeam.getId(), savedUser.getId(), TeamMemberRole.OWNER, now, now, now, false);
-
-        TeamMember savedTeamMember = teamMemberRepository.save(teamMember);
-        System.out.println("Saved team member: " + savedTeamMember.getId());
-
-        User foundUser = userRepository.findById(savedUser.getId());
-        Team foundTeam = teamRepository.findById(savedTeam.getId());
-
-        System.out.println("Found user email: " + foundUser.getEmail());
-        System.out.println("Found team name: " + foundTeam.getName());
-        System.out.println("Team members count: "
-                + teamMemberRepository.findByTeamId(savedTeam.getId()).size());
+        User user2 = userService.create("testTestTest@eee.com", "zxcv");
+        teamMemberService.addMember(team.getId(), user2.getId());
+        System.out.println("Now list members = " + teamMemberService.findByTeamId(team.getId()).size());
     }
 }
