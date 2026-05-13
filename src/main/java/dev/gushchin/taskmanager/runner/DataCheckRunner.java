@@ -2,18 +2,13 @@ package dev.gushchin.taskmanager.runner;
 
 import dev.gushchin.taskmanager.model.Team;
 import dev.gushchin.taskmanager.model.TeamMember;
-import dev.gushchin.taskmanager.model.TeamMemberRole;
 import dev.gushchin.taskmanager.model.User;
-import dev.gushchin.taskmanager.repository.TeamMemberRepository;
-import dev.gushchin.taskmanager.repository.TeamRepository;
-import dev.gushchin.taskmanager.repository.UserRepository;
-import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
-
 import dev.gushchin.taskmanager.service.TeamMemberService;
 import dev.gushchin.taskmanager.service.TeamService;
 import dev.gushchin.taskmanager.service.UserService;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -41,8 +36,10 @@ public class DataCheckRunner implements CommandLineRunner {
         System.out.println("Is delete? " + userService.findById(user.getId()).isDeleted());
 
         Team team = teamService.create(TEAM_NAME, user.getId());
-        System.out.println("Created team, ID = " + teamService.findById(team.getId()).getId());
-        System.out.println("Owner team " + "\'" + team.getName() + "\'" + " "  + userService.findById(team.getCreatedBy()).getName());
+        System.out.println(
+                "Created team, ID = " + teamService.findById(team.getId()).getId());
+        System.out.println("Owner team " + "\'" + team.getName() + "\'" + " "
+                + userService.findById(team.getCreatedBy()).getName());
         TeamMember teamMember = teamMemberService.findById(team.getId(), user.getId());
         System.out.println("His role = " + teamMember.getRole().name());
 
@@ -52,6 +49,7 @@ public class DataCheckRunner implements CommandLineRunner {
 
         User user2 = userService.create("testTestTest@eee.com", "zxcv");
         teamMemberService.addMember(team.getId(), user2.getId());
-        System.out.println("Now list members = " + teamMemberService.findByTeamId(team.getId()).size());
+        System.out.println("Now list members = "
+                + teamMemberService.findByTeamId(team.getId()).size());
     }
 }
