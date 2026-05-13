@@ -18,4 +18,12 @@ public class Team {
     private Instant createdAt;
     private Instant updatedAt;
     private boolean deleted;
+
+    public Team(String name, UUID createdBy, Instant createdAt, Instant updatedAt, boolean deleted) {
+        this.name = name;
+        this.createdBy = createdBy;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.deleted = deleted;
+    }
 }

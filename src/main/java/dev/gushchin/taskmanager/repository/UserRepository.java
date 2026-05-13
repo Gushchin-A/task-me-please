@@ -47,4 +47,19 @@ public class UserRepository {
 
         return UserMapper.toModel(record);
     }
+
+    public User update(User user) {
+        UsersRecord record = dsl.update(USERS)
+                .set(USERS.EMAIL, user.getEmail())
+                .set(USERS.NAME, user.getName())
+                .set(USERS.PASSWORD_HASH, user.getPasswordHash())
+                .set(USERS.CREATED_AT, user.getCreatedAt().atOffset(ZoneOffset.UTC))
+                .set(USERS.UPDATED_AT, user.getUpdatedAt().atOffset(ZoneOffset.UTC))
+                .set(USERS.IS_DELETED, user.isDeleted())
+                .where(USERS.ID.eq(user.getId()))
+                .returning()
+                .fetchOne();
+
+        return UserMapper.toModel(record);
+    }
 }
