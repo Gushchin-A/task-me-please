@@ -5,21 +5,15 @@ import dev.gushchin.taskmanager.model.Team;
 
 public final class TeamResponseMapper {
 
-    private TeamResponseMapper() {
-    }
+    private TeamResponseMapper() {}
 
     public static TeamResponse toResponse(Team team) {
-        if (team == null) {
-            return null;
-        }
-
         return new TeamResponse(
                 team.getId(),
                 team.getName(),
                 team.getCreatedBy(),
                 team.getCreatedAt(),
                 team.getUpdatedAt(),
-                team.isDeleted()
-        );
+                team.isDeleted());
     }
 }

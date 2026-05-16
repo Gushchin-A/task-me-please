@@ -5,21 +5,15 @@ import dev.gushchin.taskmanager.model.User;
 
 public class UserResponseMapper {
 
-    private UserResponseMapper() {
-    }
+    private UserResponseMapper() {}
 
     public static UserResponse toResponse(User user) {
-        if (user == null) {
-            return null;
-        }
-
         return new UserResponse(
                 user.getId(),
                 user.getEmail(),
                 user.getName(),
                 user.getCreatedAt(),
                 user.getUpdatedAt(),
-                user.isDeleted()
-        );
+                user.isDeleted());
     }
 }
