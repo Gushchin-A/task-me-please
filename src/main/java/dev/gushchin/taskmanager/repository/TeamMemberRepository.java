@@ -47,4 +47,8 @@ public class TeamMemberRepository {
 
         return TeamMemberMapper.toModel(record);
     }
+
+    public void deleteAll() {
+        dsl.deleteFrom(TEAM_MEMBERS).execute();
+    }
 }
