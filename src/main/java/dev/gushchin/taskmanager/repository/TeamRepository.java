@@ -52,4 +52,8 @@ public class TeamRepository {
 
         return TeamMapper.toModel(record);
     }
+
+    public void deleteAll() {
+        dsl.deleteFrom(TEAMS).execute();
+    }
 }

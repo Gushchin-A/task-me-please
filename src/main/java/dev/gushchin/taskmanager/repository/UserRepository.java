@@ -62,4 +62,8 @@ public class UserRepository {
 
         return UserMapper.toModel(record);
     }
+
+    public void deleteAll() {
+        dsl.deleteFrom(USERS).execute();
+    }
 }
