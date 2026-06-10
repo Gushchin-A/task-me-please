@@ -36,6 +36,14 @@ public class TeamService {
                 .toList();
     }
 
+    public List<Team> findByUserId(UUID userId) {
+        return teamMemberRepository.findByUserId(userId).stream()
+                .filter(Predicate.not(TeamMember::isDeleted))
+                .map(teamMember -> findById(teamMember.getTeamId()))
+                .filter(Predicate.not(Team::isDeleted))
+                .toList();
+    }
+
     @Transactional
     public Team create(String name, UUID createdBy) {
         userService.findById(createdBy);
