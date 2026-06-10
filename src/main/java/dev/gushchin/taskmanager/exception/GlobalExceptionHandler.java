@@ -1,12 +1,6 @@
-package dev.gushchin.taskmanager.controller;
+package dev.gushchin.taskmanager.exception;
 
 import dev.gushchin.taskmanager.dto.ErrorResponse;
-import dev.gushchin.taskmanager.exception.TeamMemberAlreadyExistsException;
-import dev.gushchin.taskmanager.exception.TeamMemberNotFoundException;
-import dev.gushchin.taskmanager.exception.TeamNotFoundException;
-import dev.gushchin.taskmanager.exception.UserAlreadyExistsException;
-import dev.gushchin.taskmanager.exception.UserNotFoundByEmailException;
-import dev.gushchin.taskmanager.exception.UserNotFoundByIdException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;

@@ -10,12 +10,14 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public User findById(UUID id) {
         User user = userRepository.findById(id);
@@ -41,13 +43,14 @@ public class UserService {
                 .toList();
     }
 
-    public User create(String email, String passwordHash) {
+    public User create(String email, String password) {
         User userExisting = userRepository.findByEmail(email);
         if (userExisting != null) {
             throw new UserAlreadyExistsException(email);
         }
 
         Instant now = Instant.now();
+        String passwordHash = passwordEncoder.encode(password);
 
         User user = new User(UUID.randomUUID(), email, email, passwordHash, now, now, false);
 

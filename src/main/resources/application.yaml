@@ -17,3 +17,7 @@ server:
 logging:
   level:
     root: INFO
+
+gg:
+  jte:
+    development-mode: true

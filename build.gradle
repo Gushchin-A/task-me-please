@@ -6,6 +6,7 @@ plugins {
 	id 'checkstyle'
 	id 'pmd'
 	id 'org.jooq.jooq-codegen-gradle' version '3.19.29'
+	id("gg.jte.gradle") version "3.1.16"
 }
 
 group = 'dev.gushchin'
@@ -28,6 +29,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.flywaydb:flyway-database-postgresql'
 	implementation 'org.springframework.boot:spring-boot-starter-jooq'
+	implementation("gg.jte:jte-spring-boot-starter-3:3.1.16")
+	implementation("gg.jte:jte:3.1.16")
 
 	jooqCodegen 'org.postgresql:postgresql:42.7.3'
 
@@ -47,6 +50,10 @@ dependencies {
 	testCompileOnly 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'
+}
+
+jte {
+	generate()
 }
 
 spotless {

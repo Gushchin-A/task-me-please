@@ -48,6 +48,13 @@ public class TeamMemberRepository {
         return TeamMemberMapper.toModel(record);
     }
 
+    public List<TeamMember> findByUserId(UUID userId) {
+        return dsl.selectFrom(TEAM_MEMBERS)
+                .where(TEAM_MEMBERS.USER_ID.eq(userId))
+                .fetch()
+                .map(TeamMemberMapper::toModel);
+    }
+
     public void deleteAll() {
         dsl.deleteFrom(TEAM_MEMBERS).execute();
     }
