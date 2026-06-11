@@ -2,12 +2,14 @@ package dev.gushchin.taskmanager.service;
 
 import dev.gushchin.taskmanager.model.Task;
 import dev.gushchin.taskmanager.model.TaskCategory;
+import dev.gushchin.taskmanager.model.TaskSort;
 import dev.gushchin.taskmanager.model.TaskStatus;
 import dev.gushchin.taskmanager.repository.TaskRepository;
 import dev.gushchin.taskmanager.view.TeamTasksStats;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -82,5 +84,25 @@ public class TaskService {
         }
 
         return tasks.stream().filter(task -> task.getStatus() == status).toList();
+    }
+
+    public List<Task> sortTasks(List<Task> tasks, TaskSort sort) {
+        if (sort == null) {
+            return tasks;
+        }
+
+        if (sort == TaskSort.DEADLINE) {
+            return tasks.stream()
+                    .sorted(Comparator.comparing(Task::getDeadlineAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                    .toList();
+        }
+
+        if (sort == TaskSort.CATEGORY) {
+            return tasks.stream()
+                    .sorted(Comparator.comparing(task -> task.getCategory().name()))
+                    .toList();
+        }
+
+        return tasks;
     }
 }

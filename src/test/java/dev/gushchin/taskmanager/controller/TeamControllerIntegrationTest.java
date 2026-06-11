@@ -23,7 +23,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 @WithMockUser
 class TeamControllerIntegrationTest extends IntegrationTestBase {
     private static final String USERS_URL = "/users";
-    private static final String TEAMS_URL = "/teams";
+    private static final String TEAMS_URL = "/api/teams";
     private static final String CREATE_USER = "request-json/create-user/create-user.json";
     private static final String CREATE_TEAM = "request-json/create-team/create-team.json";
     private static final String INVALID_CREATED_BY = "request-json/create-team/create-team-invalid-created-by.json";
@@ -99,21 +99,6 @@ class TeamControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.createdBy").value(userId));
     }
 
-    private String createUserAndReturnId() throws Exception {
-        String requestBody = readJson(CREATE_USER);
-
-        String response = mockMvc.perform(post(USERS_URL)
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        return JsonPath.read(response, "$.id");
-    }
-
     @Test
     void getTeamReturnNotFoundWhenTeamNotExist() throws Exception {
         mockMvc.perform(get(TEAMS_URL + "/999999"))
@@ -186,5 +171,20 @@ class TeamControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
                 .andExpect(jsonPath("$.message").exists());
+    }
+
+    private String createUserAndReturnId() throws Exception {
+        String requestBody = readJson(CREATE_USER);
+
+        String response = mockMvc.perform(post(USERS_URL)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        return JsonPath.read(response, "$.id");
     }
 }

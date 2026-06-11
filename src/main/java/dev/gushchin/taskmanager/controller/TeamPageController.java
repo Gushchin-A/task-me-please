@@ -1,11 +1,15 @@
 package dev.gushchin.taskmanager.controller;
 
 import dev.gushchin.taskmanager.model.Task;
+import dev.gushchin.taskmanager.model.TaskSort;
 import dev.gushchin.taskmanager.model.TaskStatus;
 import dev.gushchin.taskmanager.model.Team;
+import dev.gushchin.taskmanager.model.User;
 import dev.gushchin.taskmanager.security.AuthUser;
 import dev.gushchin.taskmanager.service.TaskService;
 import dev.gushchin.taskmanager.service.TeamService;
+import dev.gushchin.taskmanager.service.UserService;
+import dev.gushchin.taskmanager.view.TaskView;
 import dev.gushchin.taskmanager.view.TeamTasksStats;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +27,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class TeamPageController {
     private final TeamService teamService;
     private final TaskService taskService;
+    private final UserService userService;
 
     @GetMapping("/teams")
     public String teamsPage(@AuthenticationPrincipal AuthUser authUser, Model model) {
@@ -40,17 +45,31 @@ public class TeamPageController {
     }
 
     @GetMapping("/teams/{id}")
-    public String showTeam(@PathVariable Long id, @RequestParam(required = false) TaskStatus status, Model model) {
+    public String showTeam(
+            @PathVariable Long id,
+            @RequestParam(required = false) TaskStatus status,
+            @RequestParam(required = false) TaskSort sort,
+            Model model) {
         Team team = teamService.findById(id);
 
         List<Task> allTasks = taskService.findByTeamId(id);
         TeamTasksStats stats = taskService.getStats(allTasks);
+
         List<Task> filteredTasks = taskService.filterByStatus(allTasks, status);
+        List<Task> sortedTasks = taskService.sortTasks(filteredTasks, sort);
+
+        List<TaskView> taskViews = sortedTasks.stream()
+                .map(task -> {
+                    User author = userService.findById(task.getAuthorId());
+                    return TaskView.from(task, author.getName());
+                })
+                .toList();
 
         model.addAttribute("team", team);
-        model.addAttribute("tasks", filteredTasks);
+        model.addAttribute("tasks", taskViews);
         model.addAttribute("stats", stats);
         model.addAttribute("selectedStatus", status);
+        model.addAttribute("selectedSort", sort);
 
         return "teams/show";
     }

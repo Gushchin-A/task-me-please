@@ -43,7 +43,7 @@ public class UserService {
                 .toList();
     }
 
-    public User create(String email, String password) {
+    public User create(String email, String name, String password) {
         User userExisting = userRepository.findByEmail(email);
         if (userExisting != null) {
             throw new UserAlreadyExistsException(email);
@@ -51,10 +51,15 @@ public class UserService {
 
         Instant now = Instant.now();
         String passwordHash = passwordEncoder.encode(password);
+        String userName = name == null || name.isBlank() ? email : name;
 
-        User user = new User(UUID.randomUUID(), email, email, passwordHash, now, now, false);
+        User user = new User(UUID.randomUUID(), email, userName, passwordHash, now, now, false);
 
         return userRepository.save(user);
+    }
+
+    public User create(String email, String password) {
+        return create(email, null, password);
     }
 
     public void deleteById(UUID id) {

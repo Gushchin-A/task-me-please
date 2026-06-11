@@ -52,8 +52,13 @@
             <div>ЛОГО</div>
 
             <nav>
-                <a href="/tasks">Задачи</a>
-                <a href="/teams">Команды</a>
+                <div>
+                    <a href="/tasks">Задачи</a>
+                </div>
+
+                <div>
+                    <a href="/teams">Команды</a>
+                </div>
             </nav>
         </aside>
 

@@ -15,6 +15,11 @@
         <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
 
         <div>
+            <label>Имя</label>
+            <input type="text" name="name">
+        </div>
+
+        <div>
             <label>Email</label>
             <input type="email" name="email" required>
         </div>
