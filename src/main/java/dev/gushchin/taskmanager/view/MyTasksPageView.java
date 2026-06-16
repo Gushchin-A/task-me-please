@@ -12,45 +12,64 @@ public record MyTasksPageView(
         List<Team> teams,
         int totalTasksCount,
         TeamTasksStats stats,
-        TaskStatus selectedStatus,
-        Long selectedTeamId,
-        TaskRoleFilter selectedRole,
-        TaskSort selectedSort,
-        int authorTasksCount,
-        int assigneeTasksCount) {
+        MyTasksPageFilters filters,
+        MyTasksRoleCounts roleCounts) {
+    private static final long VISIBLE_TEAMS_LIMIT = 5L;
 
     public List<Team> visibleTeams() {
-        return teams.stream()
-                .limit(5) // пока в фильтре показываем первые 5 команд
-                .toList();
+        return teams.stream().limit(VISIBLE_TEAMS_LIMIT).toList();
+    }
+
+    public TaskStatus selectedStatus() {
+        return filters.selectedStatus();
+    }
+
+    public Long selectedTeamId() {
+        return filters.selectedTeamId();
+    }
+
+    public TaskRoleFilter selectedRole() {
+        return filters.selectedRole();
+    }
+
+    public TaskSort selectedSort() {
+        return filters.selectedSort();
+    }
+
+    public int authorTasksCount() {
+        return roleCounts.authorTasksCount();
+    }
+
+    public int assigneeTasksCount() {
+        return roleCounts.assigneeTasksCount();
     }
 
     public String allStatusesUrl() {
-        return buildUrl(null, selectedTeamId, selectedRole, selectedSort);
+        return buildUrl(null, selectedTeamId(), selectedRole(), selectedSort());
     }
 
     public String statusUrl(TaskStatus status) {
-        return buildUrl(status, selectedTeamId, selectedRole, selectedSort);
+        return buildUrl(status, selectedTeamId(), selectedRole(), selectedSort());
     }
 
     public String allTeamsUrl() {
-        return buildUrl(selectedStatus, null, selectedRole, selectedSort);
+        return buildUrl(selectedStatus(), null, selectedRole(), selectedSort());
     }
 
     public String teamUrl(Long teamId) {
-        return buildUrl(selectedStatus, teamId, selectedRole, selectedSort);
+        return buildUrl(selectedStatus(), teamId, selectedRole(), selectedSort());
     }
 
     public String allRolesUrl() {
-        return buildUrl(selectedStatus, selectedTeamId, null, selectedSort);
+        return buildUrl(selectedStatus(), selectedTeamId(), null, selectedSort());
     }
 
     public String roleUrl(TaskRoleFilter role) {
-        return buildUrl(selectedStatus, selectedTeamId, role, selectedSort);
+        return buildUrl(selectedStatus(), selectedTeamId(), role, selectedSort());
     }
 
     public String sortUrl(TaskSort sort) {
-        return buildUrl(selectedStatus, selectedTeamId, selectedRole, sort);
+        return buildUrl(selectedStatus(), selectedTeamId(), selectedRole(), sort);
     }
 
     private String buildUrl(TaskStatus status, Long teamId, TaskRoleFilter role, TaskSort sort) {
@@ -80,4 +99,9 @@ public record MyTasksPageView(
 
         return "/tasks?" + queryString;
     }
+
+    public record MyTasksPageFilters(
+            TaskStatus selectedStatus, Long selectedTeamId, TaskRoleFilter selectedRole, TaskSort selectedSort) {}
+
+    public record MyTasksRoleCounts(int authorTasksCount, int assigneeTasksCount) {}
 }

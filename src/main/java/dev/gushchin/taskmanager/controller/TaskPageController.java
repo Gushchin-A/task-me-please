@@ -16,6 +16,8 @@ import dev.gushchin.taskmanager.service.TeamService;
 import dev.gushchin.taskmanager.service.UserService;
 import dev.gushchin.taskmanager.view.CommentView;
 import dev.gushchin.taskmanager.view.MyTasksPageView;
+import dev.gushchin.taskmanager.view.MyTasksPageView.MyTasksPageFilters;
+import dev.gushchin.taskmanager.view.MyTasksPageView.MyTasksRoleCounts;
 import dev.gushchin.taskmanager.view.TaskView;
 import dev.gushchin.taskmanager.view.TaskWithTeamView;
 import dev.gushchin.taskmanager.view.TeamTasksStats;
@@ -36,8 +38,17 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Controller
 @RequiredArgsConstructor
 public class TaskPageController {
+    private static final String CATEGORIES_ATTRIBUTE = "categories";
+    private static final String CSRF_ATTRIBUTE = "_csrf";
+    private static final String MEMBERS_ATTRIBUTE = "members";
     private static final String REDIRECT_TEAMS_PREFIX = "redirect:/teams/";
+    private static final String REDIRECT_TASKS = "redirect:/tasks";
     private static final String REDIRECT_TASKS_PREFIX = "redirect:/tasks/";
+    private static final String RETURN_TO_TASK = "task";
+    private static final String RETURN_TO_TASKS = "tasks";
+    private static final String SORT_QUERY_PARAM = "sort=";
+    private static final String TASK_ATTRIBUTE = RETURN_TO_TASK;
+    private static final String TEAM_ATTRIBUTE = "team";
 
     private final TeamService teamService;
     private final TaskService taskService;
@@ -82,15 +93,11 @@ public class TaskPageController {
                 teams,
                 roleFilteredTasks.size(),
                 stats,
-                status,
-                teamId,
-                role,
-                sort,
-                authorTasksCount,
-                assigneeTasksCount);
+                new MyTasksPageFilters(status, teamId, role, sort),
+                new MyTasksRoleCounts(authorTasksCount, assigneeTasksCount));
 
         model.addAttribute("page", page);
-        model.addAttribute("_csrf", csrfToken);
+        model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
 
         return "tasks/index";
     }
@@ -117,9 +124,9 @@ public class TaskPageController {
 
         model.addAttribute("teams", teams);
         model.addAttribute("selectedTeamId", selectedTeamId);
-        model.addAttribute("members", members);
-        model.addAttribute("_csrf", csrfToken);
-        model.addAttribute("categories", TaskCategory.values());
+        model.addAttribute(MEMBERS_ATTRIBUTE, members);
+        model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
+        model.addAttribute(CATEGORIES_ATTRIBUTE, TaskCategory.values());
 
         return "tasks/new";
     }
@@ -150,12 +157,12 @@ public class TaskPageController {
                 })
                 .toList();
 
-        model.addAttribute("task", TaskView.from(task, author.getName(), assignee.getName()));
-        model.addAttribute("team", team);
-        model.addAttribute("members", members);
-        model.addAttribute("categories", TaskCategory.values());
+        model.addAttribute(TASK_ATTRIBUTE, TaskView.from(task, author.getName(), assignee.getName()));
+        model.addAttribute(TEAM_ATTRIBUTE, team);
+        model.addAttribute(MEMBERS_ATTRIBUTE, members);
+        model.addAttribute(CATEGORIES_ATTRIBUTE, TaskCategory.values());
         model.addAttribute("comments", comments);
-        model.addAttribute("_csrf", csrfToken);
+        model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
 
         return "tasks/show";
     }
@@ -173,11 +180,11 @@ public class TaskPageController {
 
         List<User> members = getTeamUsers(task.getTeamId());
 
-        model.addAttribute("task", TaskView.from(task, author.getName(), assignee.getName()));
-        model.addAttribute("team", team);
-        model.addAttribute("members", members);
-        model.addAttribute("categories", TaskCategory.values());
-        model.addAttribute("_csrf", csrfToken);
+        model.addAttribute(TASK_ATTRIBUTE, TaskView.from(task, author.getName(), assignee.getName()));
+        model.addAttribute(TEAM_ATTRIBUTE, team);
+        model.addAttribute(MEMBERS_ATTRIBUTE, members);
+        model.addAttribute(CATEGORIES_ATTRIBUTE, TaskCategory.values());
+        model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
 
         return "tasks/edit";
     }
@@ -262,18 +269,14 @@ public class TaskPageController {
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long id,
             @RequestParam TaskStatus status,
-            @RequestParam(required = false) TaskStatus selectedStatus,
-            @RequestParam(required = false) TaskSort selectedSort,
-            @RequestParam(required = false) Long selectedTeamId,
-            @RequestParam(required = false) TaskRoleFilter selectedRole,
+            InlineTaskUpdateRequest request,
             @RequestParam(required = false) String returnTo) {
         Task task = taskService.findById(id);
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
         taskService.updateStatus(id, status);
 
-        return buildRedirectAfterInlineUpdate(
-                task, selectedStatus, selectedSort, selectedTeamId, selectedRole, returnTo);
+        return buildRedirectAfterInlineUpdate(task, request, returnTo);
     }
 
     @PostMapping("/tasks/{id}/category")
@@ -281,18 +284,14 @@ public class TaskPageController {
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long id,
             @RequestParam TaskCategory category,
-            @RequestParam(required = false) TaskStatus selectedStatus,
-            @RequestParam(required = false) TaskSort selectedSort,
-            @RequestParam(required = false) Long selectedTeamId,
-            @RequestParam(required = false) TaskRoleFilter selectedRole,
+            InlineTaskUpdateRequest request,
             @RequestParam(required = false) String returnTo) {
         Task task = taskService.findById(id);
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
         taskService.updateCategory(id, category);
 
-        return buildRedirectAfterInlineUpdate(
-                task, selectedStatus, selectedSort, selectedTeamId, selectedRole, returnTo);
+        return buildRedirectAfterInlineUpdate(task, request, returnTo);
     }
 
     @PostMapping("/tasks/{id}/author")
@@ -300,10 +299,7 @@ public class TaskPageController {
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long id,
             @RequestParam UUID authorId,
-            @RequestParam(required = false) TaskStatus selectedStatus,
-            @RequestParam(required = false) TaskSort selectedSort,
-            @RequestParam(required = false) Long selectedTeamId,
-            @RequestParam(required = false) TaskRoleFilter selectedRole,
+            InlineTaskUpdateRequest request,
             @RequestParam(required = false) String returnTo) {
         Task task = taskService.findById(id);
 
@@ -311,8 +307,7 @@ public class TaskPageController {
         teamMemberService.findById(task.getTeamId(), authorId);
         taskService.updateAuthor(id, authorId);
 
-        return buildRedirectAfterInlineUpdate(
-                task, selectedStatus, selectedSort, selectedTeamId, selectedRole, returnTo);
+        return buildRedirectAfterInlineUpdate(task, request, returnTo);
     }
 
     @PostMapping("/tasks/{id}/assignee")
@@ -320,10 +315,7 @@ public class TaskPageController {
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long id,
             @RequestParam UUID assigneeId,
-            @RequestParam(required = false) TaskStatus selectedStatus,
-            @RequestParam(required = false) TaskSort selectedSort,
-            @RequestParam(required = false) Long selectedTeamId,
-            @RequestParam(required = false) TaskRoleFilter selectedRole,
+            InlineTaskUpdateRequest request,
             @RequestParam(required = false) String returnTo) {
         Task task = taskService.findById(id);
 
@@ -331,8 +323,7 @@ public class TaskPageController {
         teamMemberService.findById(task.getTeamId(), assigneeId);
         taskService.updateAssignee(id, assigneeId);
 
-        return buildRedirectAfterInlineUpdate(
-                task, selectedStatus, selectedSort, selectedTeamId, selectedRole, returnTo);
+        return buildRedirectAfterInlineUpdate(task, request, returnTo);
     }
 
     @PostMapping("/tasks/{id}/deadline")
@@ -340,18 +331,14 @@ public class TaskPageController {
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long id,
             @RequestParam(required = false) LocalDate deadlineDate,
-            @RequestParam(required = false) TaskStatus selectedStatus,
-            @RequestParam(required = false) TaskSort selectedSort,
-            @RequestParam(required = false) Long selectedTeamId,
-            @RequestParam(required = false) TaskRoleFilter selectedRole,
+            InlineTaskUpdateRequest request,
             @RequestParam(required = false) String returnTo) {
         Task task = taskService.findById(id);
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
         taskService.updateDeadline(id, deadlineDate);
 
-        return buildRedirectAfterInlineUpdate(
-                task, selectedStatus, selectedSort, selectedTeamId, selectedRole, returnTo);
+        return buildRedirectAfterInlineUpdate(task, request, returnTo);
     }
 
     @PostMapping("/tasks/{id}/archive")
@@ -364,7 +351,7 @@ public class TaskPageController {
         teamMemberService.findById(task.getTeamId(), authUser.getId());
         taskService.archive(id);
 
-        if ("task".equals(returnTo)) {
+        if (RETURN_TO_TASK.equals(returnTo)) {
             return REDIRECT_TASKS_PREFIX + id;
         }
 
@@ -381,7 +368,7 @@ public class TaskPageController {
         teamMemberService.findById(task.getTeamId(), authUser.getId());
         taskService.restoreFromArchive(id);
 
-        if ("task".equals(returnTo)) {
+        if (RETURN_TO_TASK.equals(returnTo)) {
             return REDIRECT_TASKS_PREFIX + id;
         }
 
@@ -414,8 +401,7 @@ public class TaskPageController {
         }
 
         if (selectedSort != null) {
-            redirect.append(hasQueryParams ? "&" : "?");
-            redirect.append("sort=").append(selectedSort.name());
+            redirect.append(hasQueryParams ? "&" : "?").append(SORT_QUERY_PARAM).append(selectedSort.name());
         }
 
         return redirect.toString();
@@ -438,34 +424,32 @@ public class TaskPageController {
         }
 
         if (selectedSort != null) {
-            query.add("sort=" + selectedSort.name());
+            query.add(SORT_QUERY_PARAM + selectedSort.name());
         }
 
         String queryString = query.toString();
 
         if (queryString.isBlank()) {
-            return "redirect:/tasks";
+            return REDIRECT_TASKS;
         }
 
-        return "redirect:/tasks?" + queryString;
+        return REDIRECT_TASKS + "?" + queryString;
     }
 
-    private String buildRedirectAfterInlineUpdate(
-            Task task,
-            TaskStatus selectedStatus,
-            TaskSort selectedSort,
-            Long selectedTeamId,
-            TaskRoleFilter selectedRole,
-            String returnTo) {
-        if ("task".equals(returnTo)) {
+    private String buildRedirectAfterInlineUpdate(Task task, InlineTaskUpdateRequest request, String returnTo) {
+        if (RETURN_TO_TASK.equals(returnTo)) {
             return REDIRECT_TASKS_PREFIX + task.getId();
         }
 
-        if ("tasks".equals(returnTo)) {
-            return buildTasksRedirect(selectedStatus, selectedSort, selectedTeamId, selectedRole);
+        if (RETURN_TO_TASKS.equals(returnTo)) {
+            return buildTasksRedirect(
+                    request.getSelectedStatus(),
+                    request.getSelectedSort(),
+                    request.getSelectedTeamId(),
+                    request.getSelectedRole());
         }
 
-        return buildTeamRedirect(task.getTeamId(), selectedStatus, selectedSort);
+        return buildTeamRedirect(task.getTeamId(), request.getSelectedStatus(), request.getSelectedSort());
     }
 
     private void checkCommentBelongsToTask(Task task, Comment comment) {

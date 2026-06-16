@@ -112,23 +112,21 @@ public class TaskService {
     }
 
     public List<Task> filterByRole(List<Task> tasks, TaskRoleFilter role, UUID userId) {
-        if (role == null) {
-            return tasks;
-        }
+        List<Task> result = tasks;
 
-        if (role == TaskRoleFilter.AUTHOR) {
-            return tasks.stream()
+        if (role == null) {
+            result = tasks;
+        } else if (role == TaskRoleFilter.AUTHOR) {
+            result = tasks.stream()
                     .filter(task -> task.getAuthorId().equals(userId))
                     .toList();
-        }
-
-        if (role == TaskRoleFilter.ASSIGNEE) {
-            return tasks.stream()
+        } else if (role == TaskRoleFilter.ASSIGNEE) {
+            result = tasks.stream()
                     .filter(task -> task.getAssigneeId().equals(userId))
                     .toList();
         }
 
-        return tasks;
+        return result;
     }
 
     public List<Task> sortTasks(List<Task> tasks, TaskSort sort) {
@@ -155,35 +153,24 @@ public class TaskService {
     }
 
     public List<TaskWithTeamView> sortTaskCards(List<TaskWithTeamView> taskCards, TaskSort sort) {
+        Comparator<TaskWithTeamView> order = getDefaultTaskCardOrder();
+
         if (sort == null) {
-            return taskCards.stream().sorted(getDefaultTaskCardOrder()).toList();
+            order = getDefaultTaskCardOrder();
+        } else if (sort == TaskSort.DEADLINE) {
+            order = Comparator.comparing(
+                            (TaskWithTeamView taskCard) -> taskCard.task().deadlineAt(),
+                            Comparator.nullsLast(Comparator.naturalOrder()))
+                    .thenComparing(getDefaultTaskCardOrder());
+        } else if (sort == TaskSort.CATEGORY) {
+            order = Comparator.comparing((TaskWithTeamView taskCard) ->
+                            taskCard.task().category().name())
+                    .thenComparing(getDefaultTaskCardOrder());
+        } else if (sort == TaskSort.TEAM) {
+            order = Comparator.comparing(TaskWithTeamView::teamName).thenComparing(getDefaultTaskCardOrder());
         }
 
-        if (sort == TaskSort.DEADLINE) {
-            return taskCards.stream()
-                    .sorted(Comparator.comparing(
-                                    (TaskWithTeamView taskCard) ->
-                                            taskCard.task().deadlineAt(),
-                                    Comparator.nullsLast(Comparator.naturalOrder()))
-                            .thenComparing(getDefaultTaskCardOrder()))
-                    .toList();
-        }
-
-        if (sort == TaskSort.CATEGORY) {
-            return taskCards.stream()
-                    .sorted(Comparator.comparing((TaskWithTeamView taskCard) ->
-                                    taskCard.task().category().name())
-                            .thenComparing(getDefaultTaskCardOrder()))
-                    .toList();
-        }
-
-        if (sort == TaskSort.TEAM) {
-            return taskCards.stream()
-                    .sorted(Comparator.comparing(TaskWithTeamView::teamName).thenComparing(getDefaultTaskCardOrder()))
-                    .toList();
-        }
-
-        return taskCards.stream().sorted(getDefaultTaskCardOrder()).toList();
+        return taskCards.stream().sorted(order).toList();
     }
 
     private Comparator<Task> getDefaultTaskOrder() {

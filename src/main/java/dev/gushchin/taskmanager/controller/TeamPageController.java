@@ -18,6 +18,8 @@ import dev.gushchin.taskmanager.service.UserService;
 import dev.gushchin.taskmanager.view.TaskView;
 import dev.gushchin.taskmanager.view.TeamMemberView;
 import dev.gushchin.taskmanager.view.TeamPageView;
+import dev.gushchin.taskmanager.view.TeamPageView.TeamPageCounts;
+import dev.gushchin.taskmanager.view.TeamPageView.TeamPageFilters;
 import dev.gushchin.taskmanager.view.TeamTasksStats;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +36,20 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Controller
 @RequiredArgsConstructor
 public class TeamPageController {
+    private static final String CAN_INVITE_ATTRIBUTE = "canInvite";
+    private static final String CSRF_ATTRIBUTE = "_csrf";
+    private static final String ERROR_MESSAGE_ATTRIBUTE = "errorMessage";
+    private static final String INVITE_PATH_SUFFIX = "/invite";
+    private static final String NOT_FOUND_VIEW = "teams/not-found";
+    private static final String OWNER_INVITE_REQUIRED_MESSAGE_PREFIX =
+            "Только owner команды может приглашать новых участников. ";
+    private static final String OWNER_INVITE_REQUIRED_MESSAGE_SUFFIX = "Вы можете пока только просматривать команду.";
+    private static final String OWNER_INVITE_REQUIRED_MESSAGE =
+            OWNER_INVITE_REQUIRED_MESSAGE_PREFIX + OWNER_INVITE_REQUIRED_MESSAGE_SUFFIX;
+    private static final String REDIRECT_TEAMS_PREFIX = "redirect:/teams/";
+    private static final String SUCCESS_MESSAGE_ATTRIBUTE = "successMessage";
+    private static final String TEAM_ATTRIBUTE = "team";
+
     private final TeamService teamService;
     private final TaskService taskService;
     private final UserService userService;
@@ -44,14 +60,14 @@ public class TeamPageController {
         List<Team> teams = teamService.findByUserId(authUser.getId());
 
         model.addAttribute("teams", teams);
-        model.addAttribute("errorMessage", null);
+        model.addAttribute(ERROR_MESSAGE_ATTRIBUTE, null);
 
         return "teams/index";
     }
 
     @GetMapping("/teams/new")
     public String newTeamPage(Model model, CsrfToken csrfToken) {
-        model.addAttribute("_csrf", csrfToken);
+        model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
 
         return "teams/new";
     }
@@ -69,7 +85,7 @@ public class TeamPageController {
         try {
             currentMember = teamMemberService.findById(id, authUser.getId());
         } catch (TeamMemberNotFoundException ex) {
-            return "teams/not-found";
+            return NOT_FOUND_VIEW;
         }
 
         Team team = teamService.findById(id);
@@ -96,10 +112,16 @@ public class TeamPageController {
         boolean canInvite = currentMember.getRole() == TeamMemberRole.OWNER;
 
         TeamPageView page = new TeamPageView(
-                team, taskViews, members, allTasks.size(), teamMembers.size(), stats, status, sort, canInvite);
+                team,
+                taskViews,
+                members,
+                new TeamPageCounts(allTasks.size(), teamMembers.size()),
+                stats,
+                new TeamPageFilters(status, sort),
+                canInvite);
 
         model.addAttribute("page", page);
-        model.addAttribute("_csrf", csrfToken);
+        model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
 
         return "teams/show";
     }
@@ -111,7 +133,7 @@ public class TeamPageController {
         try {
             currentMember = teamMemberService.findById(id, authUser.getId());
         } catch (TeamMemberNotFoundException ex) {
-            return "teams/not-found";
+            return NOT_FOUND_VIEW;
         }
 
         Team team = teamService.findById(id);
@@ -141,12 +163,12 @@ public class TeamPageController {
 
         boolean canInvite = currentMember.getRole() == TeamMemberRole.OWNER;
 
-        model.addAttribute("team", team);
+        model.addAttribute(TEAM_ATTRIBUTE, team);
         model.addAttribute("totalTasksCount", tasks.size());
         model.addAttribute("membersCount", members.size());
         model.addAttribute("members", memberViews);
         model.addAttribute("onlyCurrentOwnerInTeam", onlyCurrentOwnerInTeam);
-        model.addAttribute("canInvite", canInvite);
+        model.addAttribute(CAN_INVITE_ATTRIBUTE, canInvite);
 
         return "teams/members";
     }
@@ -159,29 +181,26 @@ public class TeamPageController {
         try {
             currentMember = teamMemberService.findById(id, authUser.getId());
         } catch (TeamMemberNotFoundException ex) {
-            return "teams/not-found";
+            return NOT_FOUND_VIEW;
         }
 
         Team team = teamService.findById(id);
         boolean canInvite = currentMember.getRole() == TeamMemberRole.OWNER;
 
-        model.addAttribute("team", team);
-        model.addAttribute("_csrf", csrfToken);
-        model.addAttribute("canInvite", canInvite);
+        model.addAttribute(TEAM_ATTRIBUTE, team);
+        model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
+        model.addAttribute(CAN_INVITE_ATTRIBUTE, canInvite);
 
-        if (!model.containsAttribute("successMessage")) {
-            model.addAttribute("successMessage", null);
+        if (!model.containsAttribute(SUCCESS_MESSAGE_ATTRIBUTE)) {
+            model.addAttribute(SUCCESS_MESSAGE_ATTRIBUTE, null);
         }
 
-        if (!model.containsAttribute("errorMessage")) {
-            model.addAttribute("errorMessage", null);
+        if (!model.containsAttribute(ERROR_MESSAGE_ATTRIBUTE)) {
+            model.addAttribute(ERROR_MESSAGE_ATTRIBUTE, null);
         }
 
         if (!canInvite) {
-            model.addAttribute(
-                    "errorMessage",
-                    "Только owner команды может приглашать новых участников. "
-                            + "Вы можете пока только просматривать команду.");
+            model.addAttribute(ERROR_MESSAGE_ATTRIBUTE, OWNER_INVITE_REQUIRED_MESSAGE);
         }
 
         return "teams/invite";
@@ -198,31 +217,18 @@ public class TeamPageController {
         try {
             currentMember = teamMemberService.findById(id, authUser.getId());
         } catch (TeamMemberNotFoundException ex) {
-            return "teams/not-found";
+            return NOT_FOUND_VIEW;
         }
+
+        String redirect = REDIRECT_TEAMS_PREFIX + id + INVITE_PATH_SUFFIX;
 
         if (currentMember.getRole() != TeamMemberRole.OWNER) {
-            redirectAttributes.addFlashAttribute(
-                    "errorMessage",
-                    "Только owner команды может приглашать новых участников. "
-                            + "Вы можете пока только просматривать команду.");
-
-            return "redirect:/teams/" + id + "/invite";
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, OWNER_INVITE_REQUIRED_MESSAGE);
+        } else {
+            addMemberByEmail(id, email, redirectAttributes);
         }
 
-        try {
-            User user = userService.findByEmail(email);
-            teamMemberService.addMember(id, user.getId());
-            redirectAttributes.addFlashAttribute("successMessage", "Пользователь добавлен в команду.");
-            return "redirect:/teams/" + id + "/invite";
-        } catch (UserNotFoundByEmailException ex) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Пользователь с такой почтой не найден.");
-
-            return "redirect:/teams/" + id + "/invite";
-        } catch (TeamMemberAlreadyExistsException ex) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Пользователь уже состоит в этой команде.");
-            return "redirect:/teams/" + id + "/invite";
-        }
+        return redirect;
     }
 
     @PostMapping("/teams")
@@ -230,5 +236,17 @@ public class TeamPageController {
         teamService.create(name, authUser.getId());
 
         return "redirect:/teams";
+    }
+
+    private void addMemberByEmail(Long teamId, String email, RedirectAttributes redirectAttributes) {
+        try {
+            User user = userService.findByEmail(email);
+            teamMemberService.addMember(teamId, user.getId());
+            redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Пользователь добавлен в команду.");
+        } catch (UserNotFoundByEmailException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, "Пользователь с такой почтой не найден.");
+        } catch (TeamMemberAlreadyExistsException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, "Пользователь уже состоит в этой команде.");
+        }
     }
 }

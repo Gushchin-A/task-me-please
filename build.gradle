@@ -98,6 +98,10 @@ tasks.named('pmdTest') {
 	ruleSetFiles = files("config/pmd/pmd-test.xml")
 }
 
+tasks.named('pmdMain') {
+	source = fileTree('src/main/java')
+}
+
 tasks.named('build') {
 	dependsOn 'spotlessCheck'
 }

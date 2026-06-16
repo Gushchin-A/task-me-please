@@ -14,14 +14,10 @@ public record TaskView(
         Long id,
         String title,
         String description,
-        Instant deadlineAt,
-        Instant createdAt,
+        TaskTimeline timeline,
         TaskStatus status,
         TaskCategory category,
-        UUID authorId,
-        String authorName,
-        UUID assigneeId,
-        String assigneeName,
+        TaskParticipants participants,
         boolean archived) {
     private static final DateTimeFormatter DEADLINE_FORMATTER =
             DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.forLanguageTag("ru"));
@@ -31,42 +27,51 @@ public record TaskView(
                 task.getId(),
                 task.getTitle(),
                 task.getDescription(),
-                task.getDeadlineAt(),
-                task.getCreatedAt(),
+                new TaskTimeline(task.getDeadlineAt(), task.getCreatedAt()),
                 task.getStatus(),
                 task.getCategory(),
-                task.getAuthorId(),
-                authorName,
-                task.getAssigneeId(),
-                assigneeName,
+                new TaskParticipants(task.getAuthorId(), authorName, task.getAssigneeId(), assigneeName),
                 task.isArchived());
     }
 
+    public Instant deadlineAt() {
+        return timeline.deadlineAt();
+    }
+
+    public Instant createdAt() {
+        return timeline.createdAt();
+    }
+
+    public UUID authorId() {
+        return participants.authorId();
+    }
+
+    public String authorName() {
+        return participants.authorName();
+    }
+
+    public UUID assigneeId() {
+        return participants.assigneeId();
+    }
+
+    public String assigneeName() {
+        return participants.assigneeName();
+    }
+
     public String deadlineText() {
-        if (deadlineAt == null) {
-            return "не указан";
+        String deadlineText;
+
+        if (deadlineAt() == null) {
+            deadlineText = "не указан";
+        } else {
+            deadlineText = formatDeadlineDate();
         }
 
-        LocalDate deadlineDate = getDeadlineDate();
-        LocalDate today = LocalDate.now(ZoneOffset.UTC);
-
-        if (deadlineDate.equals(today)) {
-            return "сегодня";
-        }
-
-        if (deadlineDate.equals(today.plusDays(1))) {
-            return "завтра";
-        }
-
-        if (deadlineDate.equals(today.minusDays(1))) {
-            return "вчера";
-        }
-
-        return deadlineDate.format(DEADLINE_FORMATTER);
+        return deadlineText;
     }
 
     public boolean deadlineOverdue() {
-        if (deadlineAt == null) {
+        if (deadlineAt() == null) {
             return false;
         }
 
@@ -77,6 +82,26 @@ public record TaskView(
     }
 
     private LocalDate getDeadlineDate() {
-        return deadlineAt.atZone(ZoneOffset.UTC).toLocalDate();
+        return deadlineAt().atZone(ZoneOffset.UTC).toLocalDate();
     }
+
+    private String formatDeadlineDate() {
+        LocalDate deadlineDate = getDeadlineDate();
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        String deadlineText = deadlineDate.format(DEADLINE_FORMATTER);
+
+        if (deadlineDate.equals(today)) {
+            deadlineText = "сегодня";
+        } else if (deadlineDate.equals(today.plusDays(1))) {
+            deadlineText = "завтра";
+        } else if (deadlineDate.equals(today.minusDays(1))) {
+            deadlineText = "вчера";
+        }
+
+        return deadlineText;
+    }
+
+    public record TaskTimeline(Instant deadlineAt, Instant createdAt) {}
+
+    public record TaskParticipants(UUID authorId, String authorName, UUID assigneeId, String assigneeName) {}
 }

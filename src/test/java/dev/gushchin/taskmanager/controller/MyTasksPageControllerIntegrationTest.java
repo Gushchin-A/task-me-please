@@ -32,7 +32,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 @SuppressWarnings("PMD.UnitTestShouldIncludeAssert")
-public class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
+class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
     @Autowired
     private DSLContext dsl;
 
@@ -52,7 +52,6 @@ public class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
     private User secondUser;
     private Team firstTeam;
     private Team secondTeam;
-    private Task authorTask;
     private Task assigneeTask;
 
     @BeforeEach
@@ -68,7 +67,7 @@ public class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
         teamMemberService.addMember(firstTeam.getId(), secondUser.getId());
         teamMemberService.addMember(secondTeam.getId(), secondUser.getId());
 
-        authorTask = taskService.create(
+        taskService.create(
                 firstTeam.getId(),
                 owner.getId(),
                 secondUser.getId(),

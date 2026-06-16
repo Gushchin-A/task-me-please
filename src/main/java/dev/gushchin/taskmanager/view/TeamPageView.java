@@ -10,9 +10,27 @@ public record TeamPageView(
         Team team,
         List<TaskView> tasks,
         List<User> members,
-        int totalTasksCount,
-        int membersCount,
+        TeamPageCounts counts,
         TeamTasksStats stats,
-        TaskStatus selectedStatus,
-        TaskSort selectedSort,
-        boolean canInvite) {}
+        TeamPageFilters filters,
+        boolean canInvite) {
+    public int totalTasksCount() {
+        return counts.totalTasksCount();
+    }
+
+    public int membersCount() {
+        return counts.membersCount();
+    }
+
+    public TaskStatus selectedStatus() {
+        return filters.selectedStatus();
+    }
+
+    public TaskSort selectedSort() {
+        return filters.selectedSort();
+    }
+
+    public record TeamPageCounts(int totalTasksCount, int membersCount) {}
+
+    public record TeamPageFilters(TaskStatus selectedStatus, TaskSort selectedSort) {}
+}
