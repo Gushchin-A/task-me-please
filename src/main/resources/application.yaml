@@ -3,16 +3,16 @@ spring:
     name: task-me-please
 
   datasource:
-    url: jdbc:postgresql://localhost:5434/task_me_please
-    username: postgres_user
-    password: postgres_password
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5434/task_me_please}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres_password}
 
   output:
     ansi:
       enabled: always
 
 server:
-  port: 8181
+  port: ${PORT:8181}
 
 logging:
   level:
@@ -20,4 +20,4 @@ logging:
 
 gg:
   jte:
-    development-mode: true
+    development-mode: ${JTE_DEVELOPMENT_MODE:true}

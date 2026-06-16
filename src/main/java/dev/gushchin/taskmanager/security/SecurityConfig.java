@@ -13,14 +13,16 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfig {
+    private static final String REGISTRATION_PATH = "/registration";
+
     private final CustomUserDetailsService userDetailsService;
     private final PasswordEncoder passwordEncoder;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http.authorizeHttpRequests(auth -> auth.requestMatchers("/", "/registration", "/error")
+        return http.authorizeHttpRequests(auth -> auth.requestMatchers("/", REGISTRATION_PATH, "/error")
                         .permitAll()
-                        .requestMatchers(HttpMethod.POST, "/registration")
+                        .requestMatchers(HttpMethod.POST, REGISTRATION_PATH)
                         .permitAll()
                         .anyRequest()
                         .authenticated())

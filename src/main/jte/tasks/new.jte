@@ -1,9 +1,11 @@
 @import dev.gushchin.taskmanager.model.Team
 @import dev.gushchin.taskmanager.model.TaskCategory
+@import dev.gushchin.taskmanager.model.User
 @import java.util.List
 @import org.springframework.security.web.csrf.CsrfToken
 
 @param List<Team> teams
+@param List<User> members
 @param Long selectedTeamId
 @param TaskCategory[] categories
 @param CsrfToken _csrf
@@ -14,51 +16,75 @@
         <section>
             <h1>Создать задачу</h1>
 
-            <form method="post" action="/tasks">
-                <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+            @if(teams.isEmpty())
+                <p>Сначала создайте команду.</p>
 
-                <div>
-                    <label>Команда</label>
+                <a href="/teams/new">
+                    Создать команду
+                </a>
+            @else
+                <form method="post" action="/tasks">
+                    <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
 
-                    <select name="teamId" required>
-                        @for(var team : teams)
-                            <option
-                                value="${team.getId()}"
-                                selected="${selectedTeamId != null && selectedTeamId.equals(team.getId())}"
-                            >
-                                ${team.getName()}
-                            </option>
-                        @endfor
-                    </select>
-                </div>
+                    <div>
+                        <label>Команда</label>
 
-                <div>
-                    <label>Название задачи</label>
-                    <input type="text" name="title" required>
-                </div>
+                        <select
+                            name="teamId"
+                            required
+                            onchange="window.location.href = '/tasks/new?teamId=' + this.value"
+                        >
+                            @for(Team team : teams)
+                                <option
+                                    value="${team.getId()}"
+                                    selected="${selectedTeamId != null && selectedTeamId.equals(team.getId())}"
+                                >
+                                    ${team.getName()}
+                                </option>
+                            @endfor
+                        </select>
+                    </div>
 
-                <div>
-                    <label>Описание</label>
-                    <textarea name="description"></textarea>
-                </div>
+                    <div>
+                        <label>Исполнитель</label>
 
-                <div>
-                    <label>Дедлайн</label>
-                    <input type="date" name="deadlineDate">
-                </div>
+                        <select name="assigneeId" required>
+                            @for(User member : members)
+                                <option value="${member.getId().toString()}">
+                                    ${member.getName()}
+                                </option>
+                            @endfor
+                        </select>
+                    </div>
 
-                <div>
-                    <label>Категория</label>
+                    <div>
+                        <label>Название задачи</label>
+                        <input type="text" name="title" required>
+                    </div>
 
-                    <select name="category" required>
-                        @for(var category : categories)
-                            <option value="${category.name()}">${category.name()}</option>
-                        @endfor
-                    </select>
-                </div>
+                    <div>
+                        <label>Описание</label>
+                        <textarea name="description"></textarea>
+                    </div>
 
-                <button type="submit">Создать задачу</button>
-            </form>
+                    <div>
+                        <label>Дедлайн</label>
+                        <input type="date" name="deadlineDate">
+                    </div>
+
+                    <div>
+                        <label>Категория</label>
+
+                        <select name="category" required>
+                            @for(TaskCategory category : categories)
+                                <option value="${category.name()}">${category.name()}</option>
+                            @endfor
+                        </select>
+                    </div>
+
+                    <button type="submit">Создать задачу</button>
+                </form>
+            @endif
         </section>
     `
 )

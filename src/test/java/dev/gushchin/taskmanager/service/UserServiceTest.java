@@ -18,26 +18,81 @@ import dev.gushchin.taskmanager.repository.UserRepository;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 class UserServiceTest {
     private final UserRepository userRepository = mock(UserRepository.class);
-    private final UserService userService = new UserService(userRepository);
+    private final PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
+    private final UserService userService = new UserService(userRepository, passwordEncoder);
 
     @Test
     void createShouldReturnSavedUser() {
         // given
         String email = "user@test.com";
+        String name = "Mike";
         String password = "qwerty";
 
         when(userRepository.findByEmail(email)).thenReturn(null);
+        when(passwordEncoder.encode(password)).thenReturn(password);
         when(userRepository.save(any(User.class))).thenAnswer(invocationOnMock -> invocationOnMock.getArgument(0));
 
         // when
-        User createdUser = userService.create(email, password);
+        User createdUser = userService.create(email, name, password);
 
         // then
         assertNotNull(createdUser.getId());
         assertEquals(email, createdUser.getEmail());
+        assertEquals(name, createdUser.getName());
+        assertEquals(password, createdUser.getPasswordHash());
+        assertFalse(createdUser.isDeleted());
+
+        verify(userRepository).findByEmail(email);
+        verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    void createUserWithNameNullShouldReturnSavedUser() {
+        // given
+        String email = "user@test.com";
+        String name = null;
+        String password = "qwerty";
+
+        when(userRepository.findByEmail(email)).thenReturn(null);
+        when(passwordEncoder.encode(password)).thenReturn(password);
+        when(userRepository.save(any(User.class))).thenAnswer(invocationOnMock -> invocationOnMock.getArgument(0));
+
+        // when
+        User createdUser = userService.create(email, name, password);
+
+        // then
+        assertNotNull(createdUser.getId());
+        assertEquals(email, createdUser.getEmail());
+        assertEquals(email, createdUser.getName());
+        assertEquals(password, createdUser.getPasswordHash());
+        assertFalse(createdUser.isDeleted());
+
+        verify(userRepository).findByEmail(email);
+        verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    void createUserWithNameIsBlankShouldReturnSavedUser() {
+        // given
+        String email = "user@test.com";
+        String name = "    ";
+        String password = "qwerty";
+
+        when(userRepository.findByEmail(email)).thenReturn(null);
+        when(passwordEncoder.encode(password)).thenReturn(password);
+        when(userRepository.save(any(User.class))).thenAnswer(invocationOnMock -> invocationOnMock.getArgument(0));
+
+        // when
+        User createdUser = userService.create(email, name, password);
+
+        // then
+        assertNotNull(createdUser.getId());
+        assertEquals(email, createdUser.getEmail());
+        assertEquals(email, createdUser.getName());
         assertEquals(password, createdUser.getPasswordHash());
         assertFalse(createdUser.isDeleted());
 
@@ -48,11 +103,12 @@ class UserServiceTest {
     @Test
     void createShouldThrowUserAlreadyExists() {
         String email = "user23@test.com";
+        String name = "Mike";
         String password = "qwerty01";
 
         when(userRepository.findByEmail(email)).thenReturn(new User());
 
-        assertThrows(UserAlreadyExistsException.class, () -> userService.create(email, password));
+        assertThrows(UserAlreadyExistsException.class, () -> userService.create(email, name, password));
         verify(userRepository).findByEmail(email);
     }
 
@@ -62,7 +118,7 @@ class UserServiceTest {
         User expectedUser = new User();
         expectedUser.setId(id);
         expectedUser.setEmail("user@test.com");
-        expectedUser.setName("user@test.com");
+        expectedUser.setName("Mike");
         expectedUser.setPasswordHash("qwerty");
         expectedUser.setDeleted(false);
 
