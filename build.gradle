@@ -33,6 +33,7 @@ dependencies {
 	implementation("gg.jte:jte:3.1.16")
 
 	jooqCodegen 'org.postgresql:postgresql:42.7.3'
+	jooqCodegen 'org.jooq:jooq-meta-extensions:3.19.29'
 
 	compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
@@ -112,18 +113,27 @@ tasks.named('compileJava') {
 
 jooq {
 	configuration {
-		jdbc {
-			driver = 'org.postgresql.Driver'
-			url = project.findProperty('jooqDbUrl') ?: System.getenv('JOOQ_DB_URL')
-			user = project.findProperty('jooqDbUser') ?: System.getenv('JOOQ_DB_USER')
-			password = project.findProperty('jooqDbPassword') ?: System.getenv('JOOQ_DB_PASSWORD')
-		}
 		generator {
 			database {
-				name = 'org.jooq.meta.postgres.PostgresDatabase'
+				name = 'org.jooq.meta.extensions.ddl.DDLDatabase'
 				includes = '.*'
-				inputSchema = 'public'
+
+				properties {
+					property {
+						key = 'scripts'
+						value = 'src/main/resources/db/migration/*.sql'
+					}
+					property {
+						key = 'sort'
+						value = 'semantic'
+					}
+					property {
+						key = 'defaultNameCase'
+						value = 'lower'
+					}
+				}
 			}
+
 			target {
 				packageName = 'dev.gushchin.taskmanager.jooq'
 				directory = 'build/generated-src/jooq/main'

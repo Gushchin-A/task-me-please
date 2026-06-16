@@ -1,64 +1,29 @@
-  name: Build
+name: Build
 
-  on:
-    push:
-      branches: [ "main" ]
+on:
+  push:
+    branches: [ "main" ]
 
-    pull_request:
-      branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
 
-  jobs:
-    build:
-      runs-on: ubuntu-latest
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-      services:
-        postgres:
-          image: postgres:17
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-          env:
-            POSTGRES_DB: task_me_please
-            POSTGRES_USER: postgres_user
-            POSTGRES_PASSWORD: postgres_password
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
 
-          ports:
-            - 5434:5432
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
 
-          options: >-
-            --health-cmd "pg_isready -U postgres_user -d task_me_please"
-            --health-interval 10s
-            --health-timeout 5s
-            --health-retries 5
-
-      steps:
-        - name: Checkout repository
-          uses: actions/checkout@v4
-
-        - name: Set up JDK
-          uses: actions/setup-java@v4
-          with:
-            distribution: temurin
-            java-version: "21"
-            cache: gradle
-
-        - name: Make gradlew executable
-          run: chmod +x ./gradlew
-
-        - name: Install PostgreSQL client
-          run: |
-            sudo apt-get update
-            sudo apt-get install -y postgresql-client
-
-        - name: Apply database migrations for jOOQ
-          env:
-            PGPASSWORD: postgres_password
-          run: |
-            for file in $(ls src/main/resources/db/migration/*.sql | sort -V); do
-              psql -v ON_ERROR_STOP=1 -h localhost -p 5434 -U postgres_user -d task_me_please -f "$file"
-            done
-
-        - name: Build project
-          env:
-            JOOQ_DB_URL: jdbc:postgresql://localhost:5434/task_me_please
-            JOOQ_DB_USER: postgres_user
-            JOOQ_DB_PASSWORD: postgres_password
-          run: ./gradlew build
+      - name: Build project
+        run: ./gradlew build
