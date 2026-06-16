@@ -1,5 +1,5 @@
-@import java.util.List
 @import dev.gushchin.taskmanager.model.Team
+@import java.util.List
 
 @param List<Team> teams
 
@@ -11,13 +11,11 @@
 
             <p>Здесь отображаются команды, в которых вы состоите.</p>
 
-            <a href="/teams/new">Создать команду</a>
-
             @if(teams.isEmpty())
                 <p>У вас пока нет команд.</p>
             @else
                 <ul>
-                    @for(var team : teams)
+                    @for(Team team : teams)
                         <li>
                             <a href="/teams/${team.getId()}">
                                 ${team.getName()}
@@ -26,6 +24,10 @@
                     @endfor
                 </ul>
             @endif
+
+            <a href="/teams/new">
+                Создать команду
+            </a>
         </section>
     `
 )

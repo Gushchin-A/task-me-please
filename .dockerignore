@@ -1,0 +1,16 @@
+.git
+.github
+
+.gradle
+build
+out
+
+.idea
+*.iml
+.DS_Store
+
+.env
+.env.*
+!.env.example
+
+gradle.properties

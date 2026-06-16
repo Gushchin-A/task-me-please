@@ -1,15 +1,23 @@
 package dev.gushchin.taskmanager.controller;
 
+import dev.gushchin.taskmanager.exception.TeamMemberAlreadyExistsException;
+import dev.gushchin.taskmanager.exception.TeamMemberNotFoundException;
+import dev.gushchin.taskmanager.exception.UserNotFoundByEmailException;
 import dev.gushchin.taskmanager.model.Task;
 import dev.gushchin.taskmanager.model.TaskSort;
 import dev.gushchin.taskmanager.model.TaskStatus;
 import dev.gushchin.taskmanager.model.Team;
+import dev.gushchin.taskmanager.model.TeamMember;
+import dev.gushchin.taskmanager.model.TeamMemberRole;
 import dev.gushchin.taskmanager.model.User;
 import dev.gushchin.taskmanager.security.AuthUser;
 import dev.gushchin.taskmanager.service.TaskService;
+import dev.gushchin.taskmanager.service.TeamMemberService;
 import dev.gushchin.taskmanager.service.TeamService;
 import dev.gushchin.taskmanager.service.UserService;
 import dev.gushchin.taskmanager.view.TaskView;
+import dev.gushchin.taskmanager.view.TeamMemberView;
+import dev.gushchin.taskmanager.view.TeamPageView;
 import dev.gushchin.taskmanager.view.TeamTasksStats;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +29,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequiredArgsConstructor
@@ -28,11 +37,14 @@ public class TeamPageController {
     private final TeamService teamService;
     private final TaskService taskService;
     private final UserService userService;
+    private final TeamMemberService teamMemberService;
 
     @GetMapping("/teams")
     public String teamsPage(@AuthenticationPrincipal AuthUser authUser, Model model) {
         List<Team> teams = teamService.findByUserId(authUser.getId());
+
         model.addAttribute("teams", teams);
+        model.addAttribute("errorMessage", null);
 
         return "teams/index";
     }
@@ -46,32 +58,171 @@ public class TeamPageController {
 
     @GetMapping("/teams/{id}")
     public String showTeam(
+            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long id,
             @RequestParam(required = false) TaskStatus status,
             @RequestParam(required = false) TaskSort sort,
-            Model model) {
+            Model model,
+            CsrfToken csrfToken) {
+        TeamMember currentMember;
+
+        try {
+            currentMember = teamMemberService.findById(id, authUser.getId());
+        } catch (TeamMemberNotFoundException ex) {
+            return "teams/not-found";
+        }
+
         Team team = teamService.findById(id);
-
         List<Task> allTasks = taskService.findByTeamId(id);
-        TeamTasksStats stats = taskService.getStats(allTasks);
+        List<TeamMember> teamMembers = teamMemberService.findByTeamId(id);
 
+        List<User> members = teamMembers.stream()
+                .map(teamMember -> userService.findById(teamMember.getUserId()))
+                .toList();
+
+        TeamTasksStats stats = taskService.getStats(allTasks);
         List<Task> filteredTasks = taskService.filterByStatus(allTasks, status);
         List<Task> sortedTasks = taskService.sortTasks(filteredTasks, sort);
 
         List<TaskView> taskViews = sortedTasks.stream()
                 .map(task -> {
                     User author = userService.findById(task.getAuthorId());
-                    return TaskView.from(task, author.getName());
+                    User assignee = userService.findById(task.getAssigneeId());
+
+                    return TaskView.from(task, author.getName(), assignee.getName());
                 })
                 .toList();
 
-        model.addAttribute("team", team);
-        model.addAttribute("tasks", taskViews);
-        model.addAttribute("stats", stats);
-        model.addAttribute("selectedStatus", status);
-        model.addAttribute("selectedSort", sort);
+        boolean canInvite = currentMember.getRole() == TeamMemberRole.OWNER;
+
+        TeamPageView page = new TeamPageView(
+                team, taskViews, members, allTasks.size(), teamMembers.size(), stats, status, sort, canInvite);
+
+        model.addAttribute("page", page);
+        model.addAttribute("_csrf", csrfToken);
 
         return "teams/show";
+    }
+
+    @GetMapping("/teams/{id}/members")
+    public String showTeamMembers(@AuthenticationPrincipal AuthUser authUser, @PathVariable Long id, Model model) {
+        TeamMember currentMember;
+
+        try {
+            currentMember = teamMemberService.findById(id, authUser.getId());
+        } catch (TeamMemberNotFoundException ex) {
+            return "teams/not-found";
+        }
+
+        Team team = teamService.findById(id);
+        List<Task> tasks = taskService.findByTeamId(id);
+        List<TeamMember> members = teamMemberService.findByTeamId(id);
+
+        List<TeamMemberView> memberViews = members.stream()
+                .map(member -> {
+                    User user = userService.findById(member.getUserId());
+
+                    long authorTasksCount = tasks.stream()
+                            .filter(task -> task.getAuthorId().equals(user.getId()))
+                            .count();
+
+                    long assigneeTasksCount = tasks.stream()
+                            .filter(task -> task.getAssigneeId().equals(user.getId()))
+                            .count();
+
+                    return new TeamMemberView(
+                            user.getName(), user.getEmail(), member.getRole(), authorTasksCount, assigneeTasksCount);
+                })
+                .toList();
+
+        boolean onlyCurrentOwnerInTeam = members.size() == 1
+                && currentMember.getRole() == TeamMemberRole.OWNER
+                && currentMember.getUserId().equals(authUser.getId());
+
+        boolean canInvite = currentMember.getRole() == TeamMemberRole.OWNER;
+
+        model.addAttribute("team", team);
+        model.addAttribute("totalTasksCount", tasks.size());
+        model.addAttribute("membersCount", members.size());
+        model.addAttribute("members", memberViews);
+        model.addAttribute("onlyCurrentOwnerInTeam", onlyCurrentOwnerInTeam);
+        model.addAttribute("canInvite", canInvite);
+
+        return "teams/members";
+    }
+
+    @GetMapping("/teams/{id}/invite")
+    public String inviteMemberPage(
+            @AuthenticationPrincipal AuthUser authUser, @PathVariable Long id, Model model, CsrfToken csrfToken) {
+        TeamMember currentMember;
+
+        try {
+            currentMember = teamMemberService.findById(id, authUser.getId());
+        } catch (TeamMemberNotFoundException ex) {
+            return "teams/not-found";
+        }
+
+        Team team = teamService.findById(id);
+        boolean canInvite = currentMember.getRole() == TeamMemberRole.OWNER;
+
+        model.addAttribute("team", team);
+        model.addAttribute("_csrf", csrfToken);
+        model.addAttribute("canInvite", canInvite);
+
+        if (!model.containsAttribute("successMessage")) {
+            model.addAttribute("successMessage", null);
+        }
+
+        if (!model.containsAttribute("errorMessage")) {
+            model.addAttribute("errorMessage", null);
+        }
+
+        if (!canInvite) {
+            model.addAttribute(
+                    "errorMessage",
+                    "Только owner команды может приглашать новых участников. "
+                            + "Вы можете пока только просматривать команду.");
+        }
+
+        return "teams/invite";
+    }
+
+    @PostMapping("/teams/{id}/members")
+    public String addMember(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long id,
+            @RequestParam String email,
+            RedirectAttributes redirectAttributes) {
+        TeamMember currentMember;
+
+        try {
+            currentMember = teamMemberService.findById(id, authUser.getId());
+        } catch (TeamMemberNotFoundException ex) {
+            return "teams/not-found";
+        }
+
+        if (currentMember.getRole() != TeamMemberRole.OWNER) {
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage",
+                    "Только owner команды может приглашать новых участников. "
+                            + "Вы можете пока только просматривать команду.");
+
+            return "redirect:/teams/" + id + "/invite";
+        }
+
+        try {
+            User user = userService.findByEmail(email);
+            teamMemberService.addMember(id, user.getId());
+            redirectAttributes.addFlashAttribute("successMessage", "Пользователь добавлен в команду.");
+            return "redirect:/teams/" + id + "/invite";
+        } catch (UserNotFoundByEmailException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Пользователь с такой почтой не найден.");
+
+            return "redirect:/teams/" + id + "/invite";
+        } catch (TeamMemberAlreadyExistsException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Пользователь уже состоит в этой команде.");
+            return "redirect:/teams/" + id + "/invite";
+        }
     }
 
     @PostMapping("/teams")
