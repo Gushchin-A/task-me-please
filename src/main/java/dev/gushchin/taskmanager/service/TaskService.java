@@ -113,6 +113,10 @@ public class TaskService {
         return tasks.stream().filter(task -> task.getTeamId().equals(teamId)).toList();
     }
 
+    public List<Task> filterByArchived(List<Task> tasks, boolean archived) {
+        return tasks.stream().filter(task -> task.isArchived() == archived).toList();
+    }
+
     public List<Task> filterByRole(List<Task> tasks, TaskRoleFilter role, UUID userId) {
         List<Task> result = tasks;
 

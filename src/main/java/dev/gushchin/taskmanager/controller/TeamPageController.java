@@ -49,6 +49,8 @@ public class TeamPageController {
     private static final String REDIRECT_TEAMS_PREFIX = "redirect:/teams/";
     private static final String SUCCESS_MESSAGE_ATTRIBUTE = "successMessage";
     private static final String TEAM_ATTRIBUTE = "team";
+    private static final String PAGE_ATTRIBUTE = "page";
+    private static final String TEAMS_SHOW_VIEW = "teams/show";
 
     private final TeamService teamService;
     private final TaskService taskService;
@@ -90,14 +92,15 @@ public class TeamPageController {
 
         Team team = teamService.findById(id);
         List<Task> allTasks = taskService.findByTeamId(id);
+        List<Task> modeFilteredTasks = taskService.filterByArchived(allTasks, false);
         List<TeamMember> teamMembers = teamMemberService.findByTeamId(id);
 
         List<User> members = teamMembers.stream()
                 .map(teamMember -> userService.findById(teamMember.getUserId()))
                 .toList();
 
-        TeamTasksStats stats = taskService.getStats(allTasks);
-        List<Task> filteredTasks = taskService.filterByStatus(allTasks, status);
+        TeamTasksStats stats = taskService.getStats(modeFilteredTasks);
+        List<Task> filteredTasks = taskService.filterByStatus(modeFilteredTasks, status);
         List<Task> sortedTasks = taskService.sortTasks(filteredTasks, sort);
 
         List<TaskView> taskViews = sortedTasks.stream()
@@ -115,15 +118,70 @@ public class TeamPageController {
                 team,
                 taskViews,
                 members,
-                new TeamPageCounts(allTasks.size(), teamMembers.size()),
+                new TeamPageCounts(modeFilteredTasks.size(), teamMembers.size()),
                 stats,
                 new TeamPageFilters(status, sort),
                 canInvite);
 
-        model.addAttribute("page", page);
+        model.addAttribute(PAGE_ATTRIBUTE, page);
         model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
 
-        return "teams/show";
+        return TEAMS_SHOW_VIEW;
+    }
+
+    @GetMapping("/teams/{id}/archive")
+    public String showTeamArchive(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long id,
+            @RequestParam(required = false) TaskStatus status,
+            @RequestParam(required = false) TaskSort sort,
+            Model model,
+            CsrfToken csrfToken) {
+        TeamMember currentMember;
+
+        try {
+            currentMember = teamMemberService.findById(id, authUser.getId());
+        } catch (TeamMemberNotFoundException ex) {
+            return NOT_FOUND_VIEW;
+        }
+
+        Team team = teamService.findById(id);
+        List<Task> allTasks = taskService.findByTeamId(id);
+        List<Task> modeFilteredTasks = taskService.filterByArchived(allTasks, true);
+        List<TeamMember> teamMembers = teamMemberService.findByTeamId(id);
+
+        List<User> members = teamMembers.stream()
+                .map(teamMember -> userService.findById(teamMember.getUserId()))
+                .toList();
+
+        TeamTasksStats stats = taskService.getStats(modeFilteredTasks);
+        List<Task> filteredTasks = taskService.filterByStatus(modeFilteredTasks, status);
+        List<Task> sortedTasks = taskService.sortTasks(filteredTasks, sort);
+
+        List<TaskView> taskViews = sortedTasks.stream()
+                .map(task -> {
+                    User author = userService.findById(task.getAuthorId());
+                    User assignee = userService.findById(task.getAssigneeId());
+
+                    return TaskView.from(task, author.getName(), assignee.getName());
+                })
+                .toList();
+
+        boolean canInvite = currentMember.getRole() == TeamMemberRole.OWNER;
+
+        TeamPageView page = new TeamPageView(
+                team,
+                taskViews,
+                members,
+                new TeamPageCounts(modeFilteredTasks.size(), members.size()),
+                stats,
+                new TeamPageFilters(status, sort),
+                canInvite);
+
+        model.addAttribute(PAGE_ATTRIBUTE, page);
+        model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
+
+        return TEAMS_SHOW_VIEW;
     }
 
     @GetMapping("/teams/{id}/members")

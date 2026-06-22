@@ -17,6 +17,24 @@
         <section>
             <h1>Мои задачи</h1>
 
+            <div>
+                <a href="/tasks">
+                    @if(page.activeMode())
+                        <strong>Задачи</strong>
+                    @else
+                        Задачи
+                    @endif
+                </a>
+
+                <a href="/tasks/archive">
+                    @if(page.archiveMode())
+                        <strong>Архив</strong>
+                    @else
+                        Архив
+                    @endif
+                </a>
+            </div>
+
             <p>Здесь отображаются все ваши задачи.</p>
 
             <div>

@@ -24,6 +24,10 @@
                     Участники (${page.membersCount()})
                 </a>
 
+                <a href="/teams/${page.team().getId()}/archive">
+                    Архив
+                </a>
+
                 @if(page.canInvite())
                     <a href="/teams/${page.team().getId()}/invite">
                         Пригласить в команду

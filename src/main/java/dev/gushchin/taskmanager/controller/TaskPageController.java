@@ -3,6 +3,7 @@ package dev.gushchin.taskmanager.controller;
 import dev.gushchin.taskmanager.model.Comment;
 import dev.gushchin.taskmanager.model.Task;
 import dev.gushchin.taskmanager.model.TaskCategory;
+import dev.gushchin.taskmanager.model.TaskListMode;
 import dev.gushchin.taskmanager.model.TaskRoleFilter;
 import dev.gushchin.taskmanager.model.TaskSort;
 import dev.gushchin.taskmanager.model.TaskStatus;
@@ -49,6 +50,8 @@ public class TaskPageController {
     private static final String SORT_QUERY_PARAM = "sort=";
     private static final String TASK_ATTRIBUTE = RETURN_TO_TASK;
     private static final String TEAM_ATTRIBUTE = "team";
+    private static final String PAGE_ATTRIBUTE = "page";
+    private static final String TASKS_INDEX_VIEW = "tasks/index";
 
     private final TeamService teamService;
     private final TaskService taskService;
@@ -69,7 +72,8 @@ public class TaskPageController {
         List<Long> teamIds = teams.stream().map(Team::getId).toList();
 
         List<Task> allTasks = taskService.findByTeamIds(teamIds);
-        List<Task> teamFilteredTasks = taskService.filterByTeamId(allTasks, teamId);
+        List<Task> modeFilteredTasks = taskService.filterByArchived(allTasks, false);
+        List<Task> teamFilteredTasks = taskService.filterByTeamId(modeFilteredTasks, teamId);
         List<Task> roleFilteredTasks = taskService.filterByRole(teamFilteredTasks, role, authUser.getId());
         List<Task> statusFilteredTasks = taskService.filterByStatus(roleFilteredTasks, status);
 
@@ -94,12 +98,61 @@ public class TaskPageController {
                 roleFilteredTasks.size(),
                 stats,
                 new MyTasksPageFilters(status, teamId, role, sort),
-                new MyTasksRoleCounts(authorTasksCount, assigneeTasksCount));
+                new MyTasksRoleCounts(authorTasksCount, assigneeTasksCount),
+                TaskListMode.ACTIVE);
 
-        model.addAttribute("page", page);
+        model.addAttribute(PAGE_ATTRIBUTE, page);
         model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
 
-        return "tasks/index";
+        return TASKS_INDEX_VIEW;
+    }
+
+    @GetMapping("/tasks/archive")
+    public String archivedTasksPage(
+            @AuthenticationPrincipal AuthUser authUser,
+            @RequestParam(required = false) TaskStatus status,
+            @RequestParam(required = false) Long teamId,
+            @RequestParam(required = false) TaskRoleFilter role,
+            @RequestParam(required = false) TaskSort sort,
+            Model model,
+            CsrfToken csrfToken) {
+        List<Team> teams = teamService.findByUserId(authUser.getId());
+        List<Long> teamIds = teams.stream().map(Team::getId).toList();
+
+        List<Task> allTasks = taskService.findByTeamIds(teamIds);
+        List<Task> modeFilteredTasks = taskService.filterByArchived(allTasks, true);
+        List<Task> teamFilteredTasks = taskService.filterByTeamId(modeFilteredTasks, teamId);
+        List<Task> roleFilteredTasks = taskService.filterByRole(teamFilteredTasks, role, authUser.getId());
+        List<Task> statusFilteredTasks = taskService.filterByStatus(roleFilteredTasks, status);
+
+        List<Task> statusScopedTasks = taskService.filterByStatus(teamFilteredTasks, status);
+        int authorTasksCount = taskService
+                .filterByRole(statusScopedTasks, TaskRoleFilter.AUTHOR, authUser.getId())
+                .size();
+        int assigneeTasksCount = taskService
+                .filterByRole(statusScopedTasks, TaskRoleFilter.ASSIGNEE, authUser.getId())
+                .size();
+
+        TeamTasksStats stats = taskService.getStats(roleFilteredTasks);
+
+        List<TaskWithTeamView> taskCards =
+                statusFilteredTasks.stream().map(this::toTaskWithTeamView).toList();
+
+        List<TaskWithTeamView> sortedTaskCards = taskService.sortTaskCards(taskCards, sort);
+
+        MyTasksPageView page = new MyTasksPageView(
+                sortedTaskCards,
+                teams,
+                roleFilteredTasks.size(),
+                stats,
+                new MyTasksPageFilters(status, teamId, role, sort),
+                new MyTasksRoleCounts(authorTasksCount, assigneeTasksCount),
+                TaskListMode.ARCHIVE);
+
+        model.addAttribute(PAGE_ATTRIBUTE, page);
+        model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
+
+        return TASKS_INDEX_VIEW;
     }
 
     @GetMapping("/tasks/new")
