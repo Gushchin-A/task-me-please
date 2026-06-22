@@ -4,6 +4,7 @@ import dev.gushchin.taskmanager.exception.TeamNotFoundException;
 import dev.gushchin.taskmanager.model.Team;
 import dev.gushchin.taskmanager.model.TeamMember;
 import dev.gushchin.taskmanager.model.TeamMemberRole;
+import dev.gushchin.taskmanager.model.TeamTaskVisibility;
 import dev.gushchin.taskmanager.repository.TeamMemberRepository;
 import dev.gushchin.taskmanager.repository.TeamRepository;
 import java.time.Instant;
@@ -53,7 +54,8 @@ public class TeamService {
         Team team = new Team(name, createdBy, now, now, false);
         Team savedTeam = teamRepository.save(team);
 
-        TeamMember owner = new TeamMember(savedTeam.getId(), createdBy, TeamMemberRole.OWNER, now, now, now, false);
+        TeamMember owner =
+                new TeamMember(savedTeam.getId(), createdBy, TeamMemberRole.OWNER, TeamTaskVisibility.ALL_TASKS, now);
         teamMemberRepository.save(owner);
 
         return savedTeam;

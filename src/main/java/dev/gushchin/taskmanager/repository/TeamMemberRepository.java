@@ -38,6 +38,9 @@ public class TeamMemberRepository {
                 .set(TEAM_MEMBERS.TEAM_ID, teamMember.getTeamId())
                 .set(TEAM_MEMBERS.USER_ID, teamMember.getUserId())
                 .set(TEAM_MEMBERS.ROLE, teamMember.getRole().name())
+                .set(
+                        TEAM_MEMBERS.TASK_VISIBILITY,
+                        teamMember.getTaskVisibility().name())
                 .set(TEAM_MEMBERS.JOINED_AT, teamMember.getJoinedAt().atOffset(ZoneOffset.UTC))
                 .set(TEAM_MEMBERS.CREATED_AT, teamMember.getCreatedAt().atOffset(ZoneOffset.UTC))
                 .set(TEAM_MEMBERS.UPDATED_AT, teamMember.getUpdatedAt().atOffset(ZoneOffset.UTC))
