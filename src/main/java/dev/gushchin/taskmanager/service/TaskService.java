@@ -1,5 +1,6 @@
 package dev.gushchin.taskmanager.service;
 
+import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
 import dev.gushchin.taskmanager.exception.TaskNotFoundException;
 import dev.gushchin.taskmanager.model.Task;
 import dev.gushchin.taskmanager.model.TaskCategory;
@@ -23,6 +24,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class TaskService {
     private final TaskRepository taskRepository;
+    private final TaskPermissionService taskPermissionService;
 
     public List<Task> findByTeamId(Long teamId) {
         return taskRepository.findByTeamId(teamId).stream()
@@ -239,15 +241,27 @@ public class TaskService {
                 task.getId(), title, description, deadlineAt, category, assigneeId, Instant.now());
     }
 
-    public Task archive(Long id) {
+    public Task archive(Long id, UUID userId) {
         Task task = findById(id);
+
+        if (!taskPermissionService.canArchiveTask(task, userId)) {
+            throw new AccessDeniedForTaskException();
+        }
 
         return taskRepository.archive(task.getId(), Instant.now());
     }
 
-    public Task restoreFromArchive(Long id) {
+    public Task restoreFromArchive(Long id, UUID userId) {
         Task task = findById(id);
 
+        if (!taskPermissionService.canRestoreTask(task, userId)) {
+            throw new AccessDeniedForTaskException();
+        }
+
         return taskRepository.restoreFromArchive(task.getId(), Instant.now());
+    }
+
+    public boolean canBeArchived(Task task) {
+        return taskPermissionService.canBeArchived(task);
     }
 }

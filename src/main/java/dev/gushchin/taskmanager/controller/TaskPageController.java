@@ -349,7 +349,7 @@ public class TaskPageController {
         Task task = taskService.findById(id);
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
-        taskService.archive(id);
+        taskService.archive(id, authUser.getId());
 
         if (RETURN_TO_TASK.equals(returnTo)) {
             return REDIRECT_TASKS_PREFIX + id;
@@ -366,7 +366,7 @@ public class TaskPageController {
         Task task = taskService.findById(id);
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
-        taskService.restoreFromArchive(id);
+        taskService.restoreFromArchive(id, authUser.getId());
 
         if (RETURN_TO_TASK.equals(returnTo)) {
             return REDIRECT_TASKS_PREFIX + id;

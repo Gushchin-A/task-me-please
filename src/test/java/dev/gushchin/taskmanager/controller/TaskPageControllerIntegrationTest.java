@@ -93,7 +93,8 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
     @Test
     void showTaskPageReturnOkAndContent() throws Exception {
         // given
-        taskService.archive(task.getId());
+        taskService.updateStatus(task.getId(), TaskStatus.DONE);
+        taskService.archive(task.getId(), owner.getId());
 
         Comment comment = new Comment(
                 null, task.getId(), owner.getId(), "Initial comment", COMMENT_CREATED_AT, COMMENT_CREATED_AT, false);
@@ -182,6 +183,7 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
     void commentsAndArchiveShouldWork() throws Exception {
         // given
         Long taskId = task.getId();
+        taskService.updateStatus(taskId, TaskStatus.DONE);
 
         // when
         mockMvc.perform(post("/tasks/" + taskId + "/comments")

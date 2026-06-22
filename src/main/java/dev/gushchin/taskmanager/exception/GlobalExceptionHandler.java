@@ -16,6 +16,7 @@ public class GlobalExceptionHandler {
     private static final String TEAM_MEMBER_NOT_FOUND = "TEAM_MEMBER_NOT_FOUND";
     private static final String TEAM_MEMBER_ALREADY_EXISTS = "TEAM_MEMBER_ALREADY_EXISTS";
     private static final String BAD_REQUEST = "BAD_REQUEST";
+    private static final String ACCESS_DENIED = "ACCESS_DENIED";
 
     @ExceptionHandler(UserNotFoundByIdException.class)
     public ResponseEntity<ErrorResponse> handlerUserNotFoundById(UserNotFoundByIdException ex) {
@@ -63,5 +64,10 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse(BAD_REQUEST, "Malformed request body"));
+    }
+
+    @ExceptionHandler(AccessDeniedForTaskException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDeniedForTaskException(AccessDeniedForTaskException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse(ACCESS_DENIED, ex.getMessage()));
     }
 }
