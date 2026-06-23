@@ -85,7 +85,7 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 LocalDate.of(2035, 2, 20),
                 TaskCategory.PLUS);
 
-        taskService.updateStatus(assigneeTask.getId(), TaskStatus.DONE);
+        taskService.updateStatus(assigneeTask.getId(), TaskStatus.DONE, secondUser.getId());
     }
 
     @AfterEach

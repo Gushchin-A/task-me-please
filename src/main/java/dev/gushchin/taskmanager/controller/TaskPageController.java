@@ -257,7 +257,7 @@ public class TaskPageController {
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
         teamMemberService.findById(task.getTeamId(), assigneeId);
-        taskService.updateDetails(id, title, description, deadlineDate, category, assigneeId);
+        taskService.updateDetails(id, title, description, deadlineDate, category, assigneeId, authUser.getId());
 
         return REDIRECT_TASKS_PREFIX + id;
     }
@@ -329,7 +329,7 @@ public class TaskPageController {
         Task task = taskService.findById(id);
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
-        taskService.updateStatus(id, status);
+        taskService.updateStatus(id, status, authUser.getId());
 
         return buildRedirectAfterInlineUpdate(task, request, returnTo);
     }
@@ -344,7 +344,7 @@ public class TaskPageController {
         Task task = taskService.findById(id);
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
-        taskService.updateCategory(id, category);
+        taskService.updateCategory(id, category, authUser.getId());
 
         return buildRedirectAfterInlineUpdate(task, request, returnTo);
     }
@@ -360,7 +360,7 @@ public class TaskPageController {
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
         teamMemberService.findById(task.getTeamId(), authorId);
-        taskService.updateAuthor(id, authorId);
+        taskService.updateAuthor(id, authorId, authUser.getId());
 
         return buildRedirectAfterInlineUpdate(task, request, returnTo);
     }
@@ -376,7 +376,7 @@ public class TaskPageController {
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
         teamMemberService.findById(task.getTeamId(), assigneeId);
-        taskService.updateAssignee(id, assigneeId);
+        taskService.updateAssignee(id, assigneeId, authUser.getId());
 
         return buildRedirectAfterInlineUpdate(task, request, returnTo);
     }
@@ -391,7 +391,7 @@ public class TaskPageController {
         Task task = taskService.findById(id);
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
-        taskService.updateDeadline(id, deadlineDate);
+        taskService.updateDeadline(id, deadlineDate, authUser.getId());
 
         return buildRedirectAfterInlineUpdate(task, request, returnTo);
     }

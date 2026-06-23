@@ -217,32 +217,42 @@ public class TaskService {
         return Comparator.comparing(taskCard -> taskCard.task().id(), Comparator.nullsLast(Comparator.reverseOrder()));
     }
 
-    public Task updateStatus(Long id, TaskStatus status) {
-        Task task = findById(id);
+    public Task updateStatus(Long id, TaskStatus status, UUID userId) {
+        Task task = findByIdForUser(id, userId);
+
+        checkCanUpdateStatus(task, userId);
 
         return taskRepository.updateStatus(task.getId(), status, Instant.now());
     }
 
-    public Task updateCategory(Long id, TaskCategory category) {
-        Task task = findById(id);
+    public Task updateCategory(Long id, TaskCategory category, UUID userId) {
+        Task task = findByIdForUser(id, userId);
+
+        checkCanUpdateTask(task, userId);
 
         return taskRepository.updateCategory(task.getId(), category, Instant.now());
     }
 
-    public Task updateAuthor(Long id, UUID authorId) {
-        Task task = findById(id);
+    public Task updateAuthor(Long id, UUID authorId, UUID userId) {
+        Task task = findByIdForUser(id, userId);
+
+        checkCanUpdateTask(task, userId);
 
         return taskRepository.updateAuthor(task.getId(), authorId, Instant.now());
     }
 
-    public Task updateAssignee(Long id, UUID assigneeId) {
-        Task task = findById(id);
+    public Task updateAssignee(Long id, UUID assigneeId, UUID userId) {
+        Task task = findByIdForUser(id, userId);
+
+        checkCanUpdateTask(task, userId);
 
         return taskRepository.updateAssignee(task.getId(), assigneeId, Instant.now());
     }
 
-    public Task updateDeadline(Long id, LocalDate deadlineDate) {
-        Task task = findById(id);
+    public Task updateDeadline(Long id, LocalDate deadlineDate, UUID userId) {
+        Task task = findByIdForUser(id, userId);
+
+        checkCanUpdateTask(task, userId);
 
         Instant deadlineAt =
                 deadlineDate == null ? null : deadlineDate.atStartOfDay().toInstant(ZoneOffset.UTC);
@@ -251,8 +261,16 @@ public class TaskService {
     }
 
     public Task updateDetails(
-            Long id, String title, String description, LocalDate deadlineDate, TaskCategory category, UUID assigneeId) {
-        Task task = findById(id);
+            Long id,
+            String title,
+            String description,
+            LocalDate deadlineDate,
+            TaskCategory category,
+            UUID assigneeId,
+            UUID userId) {
+        Task task = findByIdForUser(id, userId);
+
+        checkCanUpdateTask(task, userId);
 
         Instant deadlineAt =
                 deadlineDate == null ? null : deadlineDate.atStartOfDay().toInstant(ZoneOffset.UTC);
@@ -279,6 +297,18 @@ public class TaskService {
         }
 
         return taskRepository.restoreFromArchive(task.getId(), Instant.now());
+    }
+
+    private void checkCanUpdateTask(Task task, UUID userId) {
+        if (!taskPermissionService.canUpdateTask(task, userId)) {
+            throw new AccessDeniedForTaskException();
+        }
+    }
+
+    private void checkCanUpdateStatus(Task task, UUID userId) {
+        if (!taskPermissionService.canUpdateStatus(task, userId)) {
+            throw new AccessDeniedForTaskException();
+        }
     }
 
     public boolean canBeArchived(Task task) {
