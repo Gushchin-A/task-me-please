@@ -92,7 +92,8 @@ public class TeamPageController {
 
         Team team = teamService.findById(id);
         List<Task> allTasks = taskService.findByTeamId(id);
-        List<Task> modeFilteredTasks = taskService.filterByArchived(allTasks, false);
+        List<Task> visibleTasks = taskService.filterByVisibility(allTasks, authUser.getId());
+        List<Task> modeFilteredTasks = taskService.filterByArchived(visibleTasks, false);
         List<TeamMember> teamMembers = teamMemberService.findByTeamId(id);
 
         List<User> members = teamMembers.stream()
@@ -147,7 +148,8 @@ public class TeamPageController {
 
         Team team = teamService.findById(id);
         List<Task> allTasks = taskService.findByTeamId(id);
-        List<Task> modeFilteredTasks = taskService.filterByArchived(allTasks, true);
+        List<Task> visibleTasks = taskService.filterByVisibility(allTasks, authUser.getId());
+        List<Task> modeFilteredTasks = taskService.filterByArchived(visibleTasks, true);
         List<TeamMember> teamMembers = teamMemberService.findByTeamId(id);
 
         List<User> members = teamMembers.stream()

@@ -72,7 +72,8 @@ public class TaskPageController {
         List<Long> teamIds = teams.stream().map(Team::getId).toList();
 
         List<Task> allTasks = taskService.findByTeamIds(teamIds);
-        List<Task> modeFilteredTasks = taskService.filterByArchived(allTasks, false);
+        List<Task> visibleTasks = taskService.filterByVisibility(allTasks, authUser.getId());
+        List<Task> modeFilteredTasks = taskService.filterByArchived(visibleTasks, false);
         List<Task> teamFilteredTasks = taskService.filterByTeamId(modeFilteredTasks, teamId);
         List<Task> roleFilteredTasks = taskService.filterByRole(teamFilteredTasks, role, authUser.getId());
         List<Task> statusFilteredTasks = taskService.filterByStatus(roleFilteredTasks, status);
@@ -120,7 +121,8 @@ public class TaskPageController {
         List<Long> teamIds = teams.stream().map(Team::getId).toList();
 
         List<Task> allTasks = taskService.findByTeamIds(teamIds);
-        List<Task> modeFilteredTasks = taskService.filterByArchived(allTasks, true);
+        List<Task> visibleTasks = taskService.filterByVisibility(allTasks, authUser.getId());
+        List<Task> modeFilteredTasks = taskService.filterByArchived(visibleTasks, true);
         List<Task> teamFilteredTasks = taskService.filterByTeamId(modeFilteredTasks, teamId);
         List<Task> roleFilteredTasks = taskService.filterByRole(teamFilteredTasks, role, authUser.getId());
         List<Task> statusFilteredTasks = taskService.filterByStatus(roleFilteredTasks, status);
@@ -187,7 +189,7 @@ public class TaskPageController {
     @GetMapping("/tasks/{id}")
     public String showTask(
             @AuthenticationPrincipal AuthUser authUser, @PathVariable Long id, Model model, CsrfToken csrfToken) {
-        Task task = taskService.findById(id);
+        Task task = taskService.findByIdForUser(id, authUser.getId());
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
 
@@ -223,7 +225,7 @@ public class TaskPageController {
     @GetMapping("/tasks/{id}/edit")
     public String editTaskPage(
             @AuthenticationPrincipal AuthUser authUser, @PathVariable Long id, Model model, CsrfToken csrfToken) {
-        Task task = taskService.findById(id);
+        Task task = taskService.findByIdForUser(id, authUser.getId());
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
 

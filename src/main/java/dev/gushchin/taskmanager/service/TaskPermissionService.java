@@ -4,6 +4,7 @@ import dev.gushchin.taskmanager.model.Task;
 import dev.gushchin.taskmanager.model.TaskStatus;
 import dev.gushchin.taskmanager.model.TeamMember;
 import dev.gushchin.taskmanager.model.TeamMemberRole;
+import dev.gushchin.taskmanager.model.TeamTaskVisibility;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -12,6 +13,20 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class TaskPermissionService {
     private final TeamMemberService teamMemberService;
+
+    public boolean canViewTask(Task task, UUID userId) {
+        TeamMember teamMember = teamMemberService.findById(task.getTeamId(), userId);
+
+        if (teamMember.getRole() == TeamMemberRole.OWNER) {
+            return true;
+        }
+
+        if (teamMember.getTaskVisibility() == TeamTaskVisibility.ALL_TASKS) {
+            return true;
+        }
+
+        return isTaskAuthor(task, userId) || isTaskAssignee(task, userId);
+    }
 
     public boolean canUpdateTask(Task task, UUID userId) {
         return isTeamOwner(task, userId) || isTaskAuthor(task, userId);
@@ -40,10 +55,10 @@ public class TaskPermissionService {
     }
 
     public boolean isTaskAuthor(Task task, UUID userId) {
-        return task.getAuthorId().equals(userId);
+        return userId.equals(task.getAuthorId());
     }
 
     public boolean isTaskAssignee(Task task, UUID userId) {
-        return task.getAssigneeId().equals(userId);
+        return userId.equals(task.getAssigneeId());
     }
 }

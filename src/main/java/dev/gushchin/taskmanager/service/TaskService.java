@@ -46,6 +46,16 @@ public class TaskService {
         return task;
     }
 
+    public Task findByIdForUser(Long id, UUID userId) {
+        Task task = findById(id);
+
+        if (!taskPermissionService.canViewTask(task, userId)) {
+            throw new AccessDeniedForTaskException();
+        }
+
+        return task;
+    }
+
     public Task create(
             Long teamId,
             UUID authorId,
@@ -115,6 +125,12 @@ public class TaskService {
 
     public List<Task> filterByArchived(List<Task> tasks, boolean archived) {
         return tasks.stream().filter(task -> task.isArchived() == archived).toList();
+    }
+
+    public List<Task> filterByVisibility(List<Task> tasks, UUID userId) {
+        return tasks.stream()
+                .filter(task -> taskPermissionService.canViewTask(task, userId))
+                .toList();
     }
 
     public List<Task> filterByRole(List<Task> tasks, TaskRoleFilter role, UUID userId) {
