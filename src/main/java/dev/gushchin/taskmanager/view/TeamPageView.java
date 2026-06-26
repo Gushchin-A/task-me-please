@@ -18,6 +18,8 @@ public record TeamPageView(
         boolean canInvite,
         TaskListMode mode) {
     private static final String TEAMS_PATH_PREFIX = "/teams/";
+    private static final String TEAM_COUNT_TEXT_PREFIX = "Всего задач в команде ";
+    private static final String ARCHIVE_COUNT_TEXT_PREFIX = "Задач в архиве ";
 
     public int totalTasksCount() {
         return counts.totalTasksCount();
@@ -51,6 +53,14 @@ public record TeamPageView(
         }
 
         return teamUrl + "/archive";
+    }
+
+    public String taskCountText() {
+        if (archiveMode()) {
+            return ARCHIVE_COUNT_TEXT_PREFIX + totalTasksCount();
+        }
+
+        return TEAM_COUNT_TEXT_PREFIX + totalTasksCount();
     }
 
     public String allStatusesUrl() {

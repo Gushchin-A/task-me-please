@@ -114,6 +114,8 @@
                 </a>
             </div>
 
+            <p>${page.taskCountText()}</p>
+
             @if(page.tasks().isEmpty())
                 @if(page.totalTasksCount() > 0 && page.selectedStatus() != null)
                     <p>Задачи по выбранному фильтру отсутствуют.</p>
