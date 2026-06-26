@@ -265,7 +265,7 @@ public class TaskPageController {
     @PostMapping("/tasks/{id}/comments")
     public String createComment(
             @AuthenticationPrincipal AuthUser authUser, @PathVariable Long id, @RequestParam String message) {
-        Task task = taskService.findById(id);
+        Task task = taskService.findByIdForUser(id, authUser.getId());
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
         commentService.create(id, authUser.getId(), message);
@@ -279,12 +279,12 @@ public class TaskPageController {
             @PathVariable Long taskId,
             @PathVariable Long commentId,
             @RequestParam String message) {
-        Task task = taskService.findById(taskId);
+        Task task = taskService.findByIdForUser(taskId, authUser.getId());
         Comment comment = commentService.findById(commentId);
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
         checkCommentBelongsToTask(task, comment);
-        commentService.updateMessage(commentId, message);
+        commentService.updateMessage(commentId, message, authUser.getId());
 
         return REDIRECT_TASKS_PREFIX + taskId;
     }
@@ -292,12 +292,12 @@ public class TaskPageController {
     @PostMapping("/tasks/{taskId}/comments/{commentId}/delete")
     public String deleteComment(
             @AuthenticationPrincipal AuthUser authUser, @PathVariable Long taskId, @PathVariable Long commentId) {
-        Task task = taskService.findById(taskId);
+        Task task = taskService.findByIdForUser(taskId, authUser.getId());
         Comment comment = commentService.findById(commentId);
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
         checkCommentBelongsToTask(task, comment);
-        commentService.deleteById(commentId);
+        commentService.deleteById(commentId, authUser.getId());
 
         return REDIRECT_TASKS_PREFIX + taskId;
     }
