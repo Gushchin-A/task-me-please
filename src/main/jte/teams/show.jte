@@ -17,7 +17,11 @@
 
             <div>
                 <a href="/teams/${page.team().getId()}">
-                    <strong>Задачи (${page.totalTasksCount()})</strong>
+                    @if(page.activeMode())
+                        <strong>Задачи (${page.totalTasksCount()})</strong>
+                    @else
+                        Задачи
+                    @endif
                 </a>
 
                 <a href="/teams/${page.team().getId()}/members">
@@ -25,7 +29,11 @@
                 </a>
 
                 <a href="/teams/${page.team().getId()}/archive">
-                    Архив
+                    @if(page.archiveMode())
+                        <strong>Архив</strong>
+                    @else
+                        Архив
+                    @endif
                 </a>
 
                 @if(page.canInvite())
@@ -45,7 +53,7 @@
             <div>
                 <span>Фильтр:</span>
 
-                <a href="/teams/${page.team().getId()}@if(page.selectedSort() != null)?sort=${page.selectedSort().name()}@endif">
+                <a href="${page.allStatusesUrl()}">
                     @if(page.selectedStatus() == null)
                         <strong>Все</strong>
                     @else
@@ -53,7 +61,7 @@
                     @endif
                 </a>
 
-                <a href="/teams/${page.team().getId()}?status=OPEN@if(page.selectedSort() != null)&sort=${page.selectedSort().name()}@endif">
+                <a href="${page.statusUrl(TaskStatus.OPEN)}">
                     @if(page.selectedStatus() == TaskStatus.OPEN)
                         <strong>Открыто (${page.stats().openCount()})</strong>
                     @else
@@ -61,7 +69,7 @@
                     @endif
                 </a>
 
-                <a href="/teams/${page.team().getId()}?status=IN_PROGRESS@if(page.selectedSort() != null)&sort=${page.selectedSort().name()}@endif">
+                <a href="${page.statusUrl(TaskStatus.IN_PROGRESS)}">
                     @if(page.selectedStatus() == TaskStatus.IN_PROGRESS)
                         <strong>В работе (${page.stats().inProgressCount()})</strong>
                     @else
@@ -69,7 +77,7 @@
                     @endif
                 </a>
 
-                <a href="/teams/${page.team().getId()}?status=DONE@if(page.selectedSort() != null)&sort=${page.selectedSort().name()}@endif">
+                <a href="${page.statusUrl(TaskStatus.DONE)}">
                     @if(page.selectedStatus() == TaskStatus.DONE)
                         <strong>Готово (${page.stats().doneCount()})</strong>
                     @else
@@ -77,7 +85,7 @@
                     @endif
                 </a>
 
-                <a href="/teams/${page.team().getId()}?status=NOT_RELEVANT@if(page.selectedSort() != null)&sort=${page.selectedSort().name()}@endif">
+                <a href="${page.statusUrl(TaskStatus.NOT_RELEVANT)}">
                     @if(page.selectedStatus() == TaskStatus.NOT_RELEVANT)
                         <strong>Не актуально (${page.stats().notRelevantCount()})</strong>
                     @else
@@ -89,7 +97,7 @@
             <div>
                 <span>Сортировка:</span>
 
-                <a href="/teams/${page.team().getId()}?sort=DEADLINE@if(page.selectedStatus() != null)&status=${page.selectedStatus().name()}@endif">
+                <a href="${page.sortUrl(TaskSort.DEADLINE)}">
                     @if(page.selectedSort() == TaskSort.DEADLINE)
                         <strong>Дедлайн</strong>
                     @else
@@ -97,7 +105,7 @@
                     @endif
                 </a>
 
-                <a href="/teams/${page.team().getId()}?sort=CATEGORY@if(page.selectedStatus() != null)&status=${page.selectedStatus().name()}@endif">
+                <a href="${page.sortUrl(TaskSort.CATEGORY)}">
                     @if(page.selectedSort() == TaskSort.CATEGORY)
                         <strong>Сервис</strong>
                     @else

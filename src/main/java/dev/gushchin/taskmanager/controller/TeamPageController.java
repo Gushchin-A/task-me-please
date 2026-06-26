@@ -4,6 +4,7 @@ import dev.gushchin.taskmanager.exception.TeamMemberAlreadyExistsException;
 import dev.gushchin.taskmanager.exception.TeamMemberNotFoundException;
 import dev.gushchin.taskmanager.exception.UserNotFoundByEmailException;
 import dev.gushchin.taskmanager.model.Task;
+import dev.gushchin.taskmanager.model.TaskListMode;
 import dev.gushchin.taskmanager.model.TaskSort;
 import dev.gushchin.taskmanager.model.TaskStatus;
 import dev.gushchin.taskmanager.model.Team;
@@ -122,7 +123,8 @@ public class TeamPageController {
                 new TeamPageCounts(modeFilteredTasks.size(), teamMembers.size()),
                 stats,
                 new TeamPageFilters(status, sort),
-                canInvite);
+                canInvite,
+                TaskListMode.ACTIVE);
 
         model.addAttribute(PAGE_ATTRIBUTE, page);
         model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
@@ -178,7 +180,8 @@ public class TeamPageController {
                 new TeamPageCounts(modeFilteredTasks.size(), members.size()),
                 stats,
                 new TeamPageFilters(status, sort),
-                canInvite);
+                canInvite,
+                TaskListMode.ARCHIVE);
 
         model.addAttribute(PAGE_ATTRIBUTE, page);
         model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
