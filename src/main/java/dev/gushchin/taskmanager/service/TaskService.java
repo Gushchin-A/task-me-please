@@ -151,6 +151,26 @@ public class TaskService {
         return result;
     }
 
+    public List<Task> filterByAuthorId(List<Task> tasks, UUID authorId) {
+        if (authorId == null) {
+            return tasks;
+        }
+
+        return tasks.stream()
+                .filter(task -> task.getAuthorId().equals(authorId))
+                .toList();
+    }
+
+    public List<Task> filterByAssigneeId(List<Task> tasks, UUID assigneeId) {
+        if (assigneeId == null) {
+            return tasks;
+        }
+
+        return tasks.stream()
+                .filter(task -> task.getAssigneeId().equals(assigneeId))
+                .toList();
+    }
+
     public List<Task> sortTasks(List<Task> tasks, TaskSort sort) {
         if (sort == null) {
             return tasks.stream().sorted(getDefaultTaskOrder()).toList();

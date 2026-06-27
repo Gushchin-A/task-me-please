@@ -92,6 +92,47 @@
                         Не актуально (${page.stats().notRelevantCount()})
                     @endif
                 </a>
+
+                <span>По исполнителю:</span>
+
+                <a href="${page.allAssigneesUrl()}">
+                    @if(page.selectedAssigneeId() == null)
+                        <strong>Все</strong>
+                    @else
+                        Все
+                    @endif
+                </a>
+
+                @for(User member : page.members())
+                    <a href="${page.assigneeUrl(member.getId())}">
+                        @if(page.selectedAssigneeId() != null && page.selectedAssigneeId().equals(member.getId()))
+                            <strong>${member.getName()}</strong>
+                        @else
+                            ${member.getName()}
+                        @endif
+                    </a>
+                @endfor
+
+                <span>По автору:</span>
+
+                <a href="${page.allAuthorsUrl()}">
+                    @if(page.selectedAuthorId() == null)
+                        <strong>Все</strong>
+                    @else
+                        Все
+                    @endif
+                </a>
+
+                @for(User member : page.members())
+                    <a href="${page.authorUrl(member.getId())}">
+                        @if(page.selectedAuthorId() != null && page.selectedAuthorId().equals(member.getId()))
+                            <strong>${member.getName()}</strong>
+                        @else
+                            ${member.getName()}
+                        @endif
+                    </a>
+                @endfor
+
             </div>
 
             <div>

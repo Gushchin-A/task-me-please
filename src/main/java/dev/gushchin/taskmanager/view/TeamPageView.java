@@ -7,6 +7,7 @@ import dev.gushchin.taskmanager.model.Team;
 import dev.gushchin.taskmanager.model.User;
 import java.util.List;
 import java.util.StringJoiner;
+import java.util.UUID;
 
 public record TeamPageView(
         Team team,
@@ -37,6 +38,14 @@ public record TeamPageView(
         return filters.selectedSort();
     }
 
+    public UUID selectedAuthorId() {
+        return filters.selectedAuthorId();
+    }
+
+    public UUID selectedAssigneeId() {
+        return filters.selectedAssigneeId();
+    }
+
     public boolean activeMode() {
         return mode == TaskListMode.ACTIVE;
     }
@@ -64,18 +73,34 @@ public record TeamPageView(
     }
 
     public String allStatusesUrl() {
-        return buildUrl(null, selectedSort());
+        return buildUrl(null, selectedSort(), selectedAuthorId(), selectedAssigneeId());
     }
 
     public String statusUrl(TaskStatus status) {
-        return buildUrl(status, selectedSort());
+        return buildUrl(status, selectedSort(), selectedAuthorId(), selectedAssigneeId());
     }
 
     public String sortUrl(TaskSort sort) {
-        return buildUrl(selectedStatus(), sort);
+        return buildUrl(selectedStatus(), sort, selectedAuthorId(), selectedAssigneeId());
     }
 
-    private String buildUrl(TaskStatus status, TaskSort sort) {
+    public String allAuthorsUrl() {
+        return buildUrl(selectedStatus(), selectedSort(), null, selectedAssigneeId());
+    }
+
+    public String authorUrl(UUID authorId) {
+        return buildUrl(selectedStatus(), selectedSort(), authorId, selectedAssigneeId());
+    }
+
+    public String allAssigneesUrl() {
+        return buildUrl(selectedStatus(), selectedSort(), selectedAuthorId(), null);
+    }
+
+    public String assigneeUrl(UUID assigneeId) {
+        return buildUrl(selectedStatus(), selectedSort(), selectedAuthorId(), assigneeId);
+    }
+
+    private String buildUrl(TaskStatus status, TaskSort sort, UUID authorId, UUID assigneeId) {
         StringJoiner query = new StringJoiner("&");
 
         if (status != null) {
@@ -84,6 +109,14 @@ public record TeamPageView(
 
         if (sort != null) {
             query.add("sort=" + sort.name());
+        }
+
+        if (authorId != null) {
+            query.add("authorId=" + authorId);
+        }
+
+        if (assigneeId != null) {
+            query.add("assigneeId=" + assigneeId);
         }
 
         String queryString = query.toString();
@@ -97,5 +130,6 @@ public record TeamPageView(
 
     public record TeamPageCounts(int totalTasksCount, int membersCount) {}
 
-    public record TeamPageFilters(TaskStatus selectedStatus, TaskSort selectedSort) {}
+    public record TeamPageFilters(
+            TaskStatus selectedStatus, TaskSort selectedSort, UUID selectedAuthorId, UUID selectedAssigneeId) {}
 }

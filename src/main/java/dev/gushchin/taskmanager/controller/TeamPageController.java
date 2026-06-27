@@ -23,6 +23,7 @@ import dev.gushchin.taskmanager.view.TeamPageView.TeamPageCounts;
 import dev.gushchin.taskmanager.view.TeamPageView.TeamPageFilters;
 import dev.gushchin.taskmanager.view.TeamTasksStats;
 import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.web.csrf.CsrfToken;
@@ -79,8 +80,7 @@ public class TeamPageController {
     public String showTeam(
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long id,
-            @RequestParam(required = false) TaskStatus status,
-            @RequestParam(required = false) TaskSort sort,
+            TeamTaskFilterRequest request,
             Model model,
             CsrfToken csrfToken) {
         TeamMember currentMember;
@@ -90,6 +90,11 @@ public class TeamPageController {
         } catch (TeamMemberNotFoundException ex) {
             return NOT_FOUND_VIEW;
         }
+
+        TaskStatus status = request.getStatus();
+        TaskSort sort = request.getSort();
+        UUID authorId = request.getAuthorId();
+        UUID assigneeId = request.getAssigneeId();
 
         Team team = teamService.findById(id);
         List<Task> allTasks = taskService.findByTeamId(id);
@@ -102,8 +107,11 @@ public class TeamPageController {
                 .toList();
 
         TeamTasksStats stats = taskService.getStats(modeFilteredTasks);
-        List<Task> filteredTasks = taskService.filterByStatus(modeFilteredTasks, status);
-        List<Task> sortedTasks = taskService.sortTasks(filteredTasks, sort);
+
+        List<Task> statusFilteredTasks = taskService.filterByStatus(modeFilteredTasks, status);
+        List<Task> authorFilteredTasks = taskService.filterByAuthorId(statusFilteredTasks, authorId);
+        List<Task> assigneeFilteredTasks = taskService.filterByAssigneeId(authorFilteredTasks, assigneeId);
+        List<Task> sortedTasks = taskService.sortTasks(assigneeFilteredTasks, sort);
 
         List<TaskView> taskViews = sortedTasks.stream()
                 .map(task -> {
@@ -122,7 +130,7 @@ public class TeamPageController {
                 members,
                 new TeamPageCounts(modeFilteredTasks.size(), teamMembers.size()),
                 stats,
-                new TeamPageFilters(status, sort),
+                new TeamPageFilters(status, sort, authorId, assigneeId),
                 canInvite,
                 TaskListMode.ACTIVE);
 
@@ -136,8 +144,7 @@ public class TeamPageController {
     public String showTeamArchive(
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long id,
-            @RequestParam(required = false) TaskStatus status,
-            @RequestParam(required = false) TaskSort sort,
+            TeamTaskFilterRequest request,
             Model model,
             CsrfToken csrfToken) {
         TeamMember currentMember;
@@ -147,6 +154,11 @@ public class TeamPageController {
         } catch (TeamMemberNotFoundException ex) {
             return NOT_FOUND_VIEW;
         }
+
+        TaskStatus status = request.getStatus();
+        TaskSort sort = request.getSort();
+        UUID authorId = request.getAuthorId();
+        UUID assigneeId = request.getAssigneeId();
 
         Team team = teamService.findById(id);
         List<Task> allTasks = taskService.findByTeamId(id);
@@ -159,8 +171,11 @@ public class TeamPageController {
                 .toList();
 
         TeamTasksStats stats = taskService.getStats(modeFilteredTasks);
-        List<Task> filteredTasks = taskService.filterByStatus(modeFilteredTasks, status);
-        List<Task> sortedTasks = taskService.sortTasks(filteredTasks, sort);
+
+        List<Task> statusFilteredTasks = taskService.filterByStatus(modeFilteredTasks, status);
+        List<Task> authorFilteredTasks = taskService.filterByAuthorId(statusFilteredTasks, authorId);
+        List<Task> assigneeFilteredTasks = taskService.filterByAssigneeId(authorFilteredTasks, assigneeId);
+        List<Task> sortedTasks = taskService.sortTasks(assigneeFilteredTasks, sort);
 
         List<TaskView> taskViews = sortedTasks.stream()
                 .map(task -> {
@@ -179,7 +194,7 @@ public class TeamPageController {
                 members,
                 new TeamPageCounts(modeFilteredTasks.size(), members.size()),
                 stats,
-                new TeamPageFilters(status, sort),
+                new TeamPageFilters(status, sort, authorId, assigneeId),
                 canInvite,
                 TaskListMode.ARCHIVE);
 
