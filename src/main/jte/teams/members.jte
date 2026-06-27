@@ -1,6 +1,10 @@
 @import dev.gushchin.taskmanager.model.Team
+@import dev.gushchin.taskmanager.model.TeamTaskVisibility
 @import dev.gushchin.taskmanager.view.TeamMemberView
 @import java.util.List
+@import java.util.UUID
+@import org.springframework.security.web.csrf.CsrfToken
+
 
 @param Team team
 @param int totalTasksCount
@@ -8,6 +12,12 @@
 @param List<TeamMemberView> members
 @param boolean onlyCurrentOwnerInTeam
 @param boolean canInvite
+@param boolean canManageVisibility
+@param boolean canSeeMemberDetails
+@param boolean canSeeMemberPrivateData
+@param UUID currentUserId
+@param TeamTaskVisibility[] taskVisibilities
+@param CsrfToken _csrf
 
 @template.layout.page(
     title = team.getName() + " — участники",
@@ -75,24 +85,75 @@
                     </div>
                 @else
                     <table>
-                        <thead>
-                            <tr>
-                                <th>Имя</th>
-                                <th>Почта</th>
-                                <th>Роль в команде</th>
-                                <th>Кол-во задач, где автор</th>
-                                <th>Кол-во задач, где исполнитель</th>
-                            </tr>
-                        </thead>
+						<thead>
+							<tr>
+								<th>Имя</th>
 
-                        <tbody>
+								@if(canSeeMemberPrivateData)
+									<th>Почта</th>
+									<th>Роль в команде</th>
+								@endif
+
+								@if(canSeeMemberDetails)
+									<th>Кол-во задач, где автор</th>
+									<th>Кол-во задач, где исполнитель</th>
+								@endif
+
+								@if(canManageVisibility)
+									<th>Видимость задач</th>
+								@endif
+							</tr>
+						</thead>
+
+						<tbody>
                             @for(TeamMemberView member : members)
                                 <tr>
                                     <td>${member.name()}</td>
-                                    <td>${member.email()}</td>
-                                    <td>${member.role().name()}</td>
-                                    <td>${member.authorTasksCount()}</td>
-                                    <td>${member.assigneeTasksCount()}</td>
+
+                                    @if(canSeeMemberPrivateData)
+                                        <td>${member.email()}</td>
+                                        <td>${member.role().name()}</td>
+                                    @endif
+
+                                    @if(canSeeMemberDetails)
+                                        <td>${member.authorTasksCount()}</td>
+                                        <td>${member.assigneeTasksCount()}</td>
+                                    @endif
+
+                                    @if(canManageVisibility)
+                                        <td>
+                                            @if(member.userId().equals(currentUserId))
+                                                <span>Видит все задачи</span>
+                                            @else
+                                                <form
+                                                    method="post"
+                                                    action="/teams/${team.getId()}/members/${member.userId().toString()}/visibility"
+                                                    style="display: inline;"
+                                                >
+                                                    <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+
+                                                    <select name="taskVisibility">
+                                                        @for(TeamTaskVisibility taskVisibility : taskVisibilities)
+                                                            <option
+                                                                value="${taskVisibility.name()}"
+                                                                selected="${taskVisibility == member.taskVisibility()}"
+                                                            >
+                                                                @if(taskVisibility == TeamTaskVisibility.ALL_TASKS)
+                                                                    Видит все задачи
+                                                                @else
+                                                                    Видит только свои задачи
+                                                                @endif
+                                                            </option>
+                                                        @endfor
+                                                    </select>
+
+                                                    <button type="submit">
+                                                        Сохранить
+                                                    </button>
+                                                </form>
+                                            @endif
+                                        </td>
+                                    @endif
                                 </tr>
                             @endfor
                         </tbody>

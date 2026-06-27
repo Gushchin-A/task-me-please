@@ -1,5 +1,6 @@
 package dev.gushchin.taskmanager.service;
 
+import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
 import dev.gushchin.taskmanager.exception.TeamMemberAlreadyExistsException;
 import dev.gushchin.taskmanager.exception.TeamMemberNotFoundException;
 import dev.gushchin.taskmanager.model.TeamMember;
@@ -55,5 +56,22 @@ public class TeamMemberService {
                 new TeamMember(teamId, userId, TeamMemberRole.MEMBER, TeamTaskVisibility.OWN_TASKS, now);
 
         return teamMemberRepository.save(teamMember);
+    }
+
+    public TeamMember updateTaskVisibility(
+            Long teamId, UUID userId, TeamTaskVisibility taskVisibility, UUID currentUserId) {
+        TeamMember currentMember = findById(teamId, currentUserId);
+
+        if (currentMember.getRole() != TeamMemberRole.OWNER) {
+            throw new AccessDeniedForTaskException();
+        }
+
+        TeamMember targetMember = findById(teamId, userId);
+
+        if (targetMember.getRole() == TeamMemberRole.OWNER) {
+            throw new AccessDeniedForTaskException();
+        }
+
+        return teamMemberRepository.updateTaskVisibility(teamId, userId, taskVisibility);
     }
 }

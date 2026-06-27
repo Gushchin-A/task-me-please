@@ -10,6 +10,7 @@ import dev.gushchin.taskmanager.model.TaskStatus;
 import dev.gushchin.taskmanager.model.Team;
 import dev.gushchin.taskmanager.model.TeamMember;
 import dev.gushchin.taskmanager.model.TeamMemberRole;
+import dev.gushchin.taskmanager.model.TeamTaskVisibility;
 import dev.gushchin.taskmanager.model.User;
 import dev.gushchin.taskmanager.security.AuthUser;
 import dev.gushchin.taskmanager.service.TaskService;
@@ -205,7 +206,8 @@ public class TeamPageController {
     }
 
     @GetMapping("/teams/{id}/members")
-    public String showTeamMembers(@AuthenticationPrincipal AuthUser authUser, @PathVariable Long id, Model model) {
+    public String showTeamMembers(
+            @AuthenticationPrincipal AuthUser authUser, @PathVariable Long id, Model model, CsrfToken csrfToken) {
         TeamMember currentMember;
 
         try {
@@ -217,6 +219,11 @@ public class TeamPageController {
         Team team = teamService.findById(id);
         List<Task> tasks = taskService.findByTeamId(id);
         List<TeamMember> members = teamMemberService.findByTeamId(id);
+
+        boolean canManageVisibility = currentMember.getRole() == TeamMemberRole.OWNER;
+        boolean canSeeMemberDetails = currentMember.getRole() == TeamMemberRole.OWNER
+                || currentMember.getTaskVisibility() == TeamTaskVisibility.ALL_TASKS;
+        boolean canSeeMemberPrivateData = currentMember.getRole() == TeamMemberRole.OWNER;
 
         List<TeamMemberView> memberViews = members.stream()
                 .map(member -> {
@@ -231,7 +238,13 @@ public class TeamPageController {
                             .count();
 
                     return new TeamMemberView(
-                            user.getName(), user.getEmail(), member.getRole(), authorTasksCount, assigneeTasksCount);
+                            user.getId(),
+                            user.getName(),
+                            user.getEmail(),
+                            member.getRole(),
+                            authorTasksCount,
+                            assigneeTasksCount,
+                            member.getTaskVisibility());
                 })
                 .toList();
 
@@ -247,6 +260,12 @@ public class TeamPageController {
         model.addAttribute("members", memberViews);
         model.addAttribute("onlyCurrentOwnerInTeam", onlyCurrentOwnerInTeam);
         model.addAttribute(CAN_INVITE_ATTRIBUTE, canInvite);
+        model.addAttribute("currentUserId", authUser.getId());
+        model.addAttribute("canManageVisibility", canManageVisibility);
+        model.addAttribute("canSeeMemberDetails", canSeeMemberDetails);
+        model.addAttribute("canSeeMemberPrivateData", canSeeMemberPrivateData);
+        model.addAttribute("taskVisibilities", TeamTaskVisibility.values());
+        model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
 
         return "teams/members";
     }
@@ -282,6 +301,17 @@ public class TeamPageController {
         }
 
         return "teams/invite";
+    }
+
+    @PostMapping("/teams/{teamId}/members/{userId}/visibility")
+    public String updateMemberTaskVisibility(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long teamId,
+            @PathVariable UUID userId,
+            @RequestParam TeamTaskVisibility taskVisibility) {
+        teamMemberService.updateTaskVisibility(teamId, userId, taskVisibility, authUser.getId());
+
+        return REDIRECT_TEAMS_PREFIX + teamId + "/members";
     }
 
     @PostMapping("/teams/{id}/members")
