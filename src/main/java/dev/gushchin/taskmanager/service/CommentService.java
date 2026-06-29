@@ -1,5 +1,6 @@
 package dev.gushchin.taskmanager.service;
 
+import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
 import dev.gushchin.taskmanager.model.Comment;
 import dev.gushchin.taskmanager.repository.CommentRepository;
 import java.time.Instant;
@@ -45,15 +46,25 @@ public class CommentService {
         return commentRepository.save(comment);
     }
 
-    public Comment updateMessage(Long id, String message) {
+    public Comment updateMessage(Long id, String message, UUID userId) {
         Comment comment = findById(id);
+
+        checkCanUpdateComment(comment, userId);
 
         return commentRepository.updateMessage(comment.getId(), message, Instant.now());
     }
 
-    public Comment deleteById(Long id) {
+    public Comment deleteById(Long id, UUID userId) {
         Comment comment = findById(id);
 
+        checkCanUpdateComment(comment, userId);
+
         return commentRepository.markAsDeleted(comment.getId(), Instant.now());
+    }
+
+    private void checkCanUpdateComment(Comment comment, UUID userId) {
+        if (!comment.getUserId().equals(userId)) {
+            throw new AccessDeniedForTaskException();
+        }
     }
 }

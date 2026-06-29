@@ -18,11 +18,15 @@ public record TaskView(
         TaskStatus status,
         TaskCategory category,
         TaskParticipants participants,
-        boolean archived) {
+        TaskState state) {
     private static final DateTimeFormatter DEADLINE_FORMATTER =
             DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.forLanguageTag("ru"));
 
     public static TaskView from(Task task, String authorName, String assigneeName) {
+        return from(task, authorName, assigneeName, new TaskState(task.isArchived(), true, true, true, true, false));
+    }
+
+    public static TaskView from(Task task, String authorName, String assigneeName, TaskState state) {
         return new TaskView(
                 task.getId(),
                 task.getTitle(),
@@ -31,7 +35,7 @@ public record TaskView(
                 task.getStatus(),
                 task.getCategory(),
                 new TaskParticipants(task.getAuthorId(), authorName, task.getAssigneeId(), assigneeName),
-                task.isArchived());
+                state);
     }
 
     public Instant deadlineAt() {
@@ -56,6 +60,30 @@ public record TaskView(
 
     public String assigneeName() {
         return participants.assigneeName();
+    }
+
+    public boolean archived() {
+        return state.archived();
+    }
+
+    public boolean canUpdateTask() {
+        return state.canUpdateTask();
+    }
+
+    public boolean canUpdateStatus() {
+        return state.canUpdateStatus();
+    }
+
+    public boolean canArchive() {
+        return state.canArchive();
+    }
+
+    public boolean canRestore() {
+        return state.canRestore();
+    }
+
+    public boolean showAuthorChangeWarning() {
+        return state.showAuthorChangeWarning();
     }
 
     public String deadlineText() {
@@ -104,4 +132,12 @@ public record TaskView(
     public record TaskTimeline(Instant deadlineAt, Instant createdAt) {}
 
     public record TaskParticipants(UUID authorId, String authorName, UUID assigneeId, String assigneeName) {}
+
+    public record TaskState(
+            boolean archived,
+            boolean canUpdateTask,
+            boolean canUpdateStatus,
+            boolean canArchive,
+            boolean canRestore,
+            boolean showAuthorChangeWarning) {}
 }

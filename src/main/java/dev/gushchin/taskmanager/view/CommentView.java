@@ -5,7 +5,8 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
-public record CommentView(Long id, String userName, String message, Instant createdAt, Instant updatedAt) {
+public record CommentView(
+        Long id, String userName, String message, Instant createdAt, Instant updatedAt, boolean canEdit) {
     private static final DateTimeFormatter COMMENT_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("d MMMM yyyy HH:mm", Locale.forLanguageTag("ru"));
 

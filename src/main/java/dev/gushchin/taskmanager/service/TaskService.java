@@ -1,5 +1,6 @@
 package dev.gushchin.taskmanager.service;
 
+import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
 import dev.gushchin.taskmanager.exception.TaskNotFoundException;
 import dev.gushchin.taskmanager.model.Task;
 import dev.gushchin.taskmanager.model.TaskCategory;
@@ -23,6 +24,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class TaskService {
     private final TaskRepository taskRepository;
+    private final TaskPermissionService taskPermissionService;
 
     public List<Task> findByTeamId(Long teamId) {
         return taskRepository.findByTeamId(teamId).stream()
@@ -39,6 +41,16 @@ public class TaskService {
 
         if (task == null || task.isDeleted()) {
             throw new TaskNotFoundException(id);
+        }
+
+        return task;
+    }
+
+    public Task findByIdForUser(Long id, UUID userId) {
+        Task task = findById(id);
+
+        if (!taskPermissionService.canViewTask(task, userId)) {
+            throw new AccessDeniedForTaskException();
         }
 
         return task;
@@ -111,6 +123,16 @@ public class TaskService {
         return tasks.stream().filter(task -> task.getTeamId().equals(teamId)).toList();
     }
 
+    public List<Task> filterByArchived(List<Task> tasks, boolean archived) {
+        return tasks.stream().filter(task -> task.isArchived() == archived).toList();
+    }
+
+    public List<Task> filterByVisibility(List<Task> tasks, UUID userId) {
+        return tasks.stream()
+                .filter(task -> taskPermissionService.canViewTask(task, userId))
+                .toList();
+    }
+
     public List<Task> filterByRole(List<Task> tasks, TaskRoleFilter role, UUID userId) {
         List<Task> result = tasks;
 
@@ -127,6 +149,26 @@ public class TaskService {
         }
 
         return result;
+    }
+
+    public List<Task> filterByAuthorId(List<Task> tasks, UUID authorId) {
+        if (authorId == null) {
+            return tasks;
+        }
+
+        return tasks.stream()
+                .filter(task -> task.getAuthorId().equals(authorId))
+                .toList();
+    }
+
+    public List<Task> filterByAssigneeId(List<Task> tasks, UUID assigneeId) {
+        if (assigneeId == null) {
+            return tasks;
+        }
+
+        return tasks.stream()
+                .filter(task -> task.getAssigneeId().equals(assigneeId))
+                .toList();
     }
 
     public List<Task> sortTasks(List<Task> tasks, TaskSort sort) {
@@ -195,32 +237,42 @@ public class TaskService {
         return Comparator.comparing(taskCard -> taskCard.task().id(), Comparator.nullsLast(Comparator.reverseOrder()));
     }
 
-    public Task updateStatus(Long id, TaskStatus status) {
-        Task task = findById(id);
+    public Task updateStatus(Long id, TaskStatus status, UUID userId) {
+        Task task = findByIdForUser(id, userId);
+
+        checkCanUpdateStatus(task, userId);
 
         return taskRepository.updateStatus(task.getId(), status, Instant.now());
     }
 
-    public Task updateCategory(Long id, TaskCategory category) {
-        Task task = findById(id);
+    public Task updateCategory(Long id, TaskCategory category, UUID userId) {
+        Task task = findByIdForUser(id, userId);
+
+        checkCanUpdateTask(task, userId);
 
         return taskRepository.updateCategory(task.getId(), category, Instant.now());
     }
 
-    public Task updateAuthor(Long id, UUID authorId) {
-        Task task = findById(id);
+    public Task updateAuthor(Long id, UUID authorId, UUID userId) {
+        Task task = findByIdForUser(id, userId);
+
+        checkCanUpdateTask(task, userId);
 
         return taskRepository.updateAuthor(task.getId(), authorId, Instant.now());
     }
 
-    public Task updateAssignee(Long id, UUID assigneeId) {
-        Task task = findById(id);
+    public Task updateAssignee(Long id, UUID assigneeId, UUID userId) {
+        Task task = findByIdForUser(id, userId);
+
+        checkCanUpdateTask(task, userId);
 
         return taskRepository.updateAssignee(task.getId(), assigneeId, Instant.now());
     }
 
-    public Task updateDeadline(Long id, LocalDate deadlineDate) {
-        Task task = findById(id);
+    public Task updateDeadline(Long id, LocalDate deadlineDate, UUID userId) {
+        Task task = findByIdForUser(id, userId);
+
+        checkCanUpdateTask(task, userId);
 
         Instant deadlineAt =
                 deadlineDate == null ? null : deadlineDate.atStartOfDay().toInstant(ZoneOffset.UTC);
@@ -229,8 +281,16 @@ public class TaskService {
     }
 
     public Task updateDetails(
-            Long id, String title, String description, LocalDate deadlineDate, TaskCategory category, UUID assigneeId) {
-        Task task = findById(id);
+            Long id,
+            String title,
+            String description,
+            LocalDate deadlineDate,
+            TaskCategory category,
+            UUID assigneeId,
+            UUID userId) {
+        Task task = findByIdForUser(id, userId);
+
+        checkCanUpdateTask(task, userId);
 
         Instant deadlineAt =
                 deadlineDate == null ? null : deadlineDate.atStartOfDay().toInstant(ZoneOffset.UTC);
@@ -239,15 +299,59 @@ public class TaskService {
                 task.getId(), title, description, deadlineAt, category, assigneeId, Instant.now());
     }
 
-    public Task archive(Long id) {
+    public Task archive(Long id, UUID userId) {
         Task task = findById(id);
+
+        if (!taskPermissionService.canArchiveTask(task, userId)) {
+            throw new AccessDeniedForTaskException();
+        }
 
         return taskRepository.archive(task.getId(), Instant.now());
     }
 
-    public Task restoreFromArchive(Long id) {
+    public Task restoreFromArchive(Long id, UUID userId) {
         Task task = findById(id);
 
+        if (!taskPermissionService.canRestoreTask(task, userId)) {
+            throw new AccessDeniedForTaskException();
+        }
+
         return taskRepository.restoreFromArchive(task.getId(), Instant.now());
+    }
+
+    private void checkCanUpdateTask(Task task, UUID userId) {
+        if (!taskPermissionService.canUpdateTask(task, userId)) {
+            throw new AccessDeniedForTaskException();
+        }
+    }
+
+    private void checkCanUpdateStatus(Task task, UUID userId) {
+        if (!taskPermissionService.canUpdateStatus(task, userId)) {
+            throw new AccessDeniedForTaskException();
+        }
+    }
+
+    public boolean canUpdateTask(Task task, UUID userId) {
+        return taskPermissionService.canUpdateTask(task, userId);
+    }
+
+    public boolean canUpdateStatus(Task task, UUID userId) {
+        return taskPermissionService.canUpdateStatus(task, userId);
+    }
+
+    public boolean canArchiveTask(Task task, UUID userId) {
+        return taskPermissionService.canArchiveTask(task, userId);
+    }
+
+    public boolean canRestoreTask(Task task, UUID userId) {
+        return taskPermissionService.canRestoreTask(task, userId);
+    }
+
+    public boolean isTeamOwner(Task task, UUID userId) {
+        return taskPermissionService.isTeamOwner(task, userId);
+    }
+
+    public boolean canBeArchived(Task task) {
+        return taskPermissionService.canBeArchived(task);
     }
 }

@@ -1,9 +1,11 @@
 package dev.gushchin.taskmanager.service;
 
+import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
 import dev.gushchin.taskmanager.exception.TeamMemberAlreadyExistsException;
 import dev.gushchin.taskmanager.exception.TeamMemberNotFoundException;
 import dev.gushchin.taskmanager.model.TeamMember;
 import dev.gushchin.taskmanager.model.TeamMemberRole;
+import dev.gushchin.taskmanager.model.TeamTaskVisibility;
 import dev.gushchin.taskmanager.repository.TeamMemberRepository;
 import java.time.Instant;
 import java.util.List;
@@ -50,8 +52,26 @@ public class TeamMemberService {
 
         Instant now = Instant.now();
 
-        TeamMember teamMember = new TeamMember(teamId, userId, TeamMemberRole.MEMBER, now, now, now, false);
+        TeamMember teamMember =
+                new TeamMember(teamId, userId, TeamMemberRole.MEMBER, TeamTaskVisibility.OWN_TASKS, now);
 
         return teamMemberRepository.save(teamMember);
+    }
+
+    public TeamMember updateTaskVisibility(
+            Long teamId, UUID userId, TeamTaskVisibility taskVisibility, UUID currentUserId) {
+        TeamMember currentMember = findById(teamId, currentUserId);
+
+        if (currentMember.getRole() != TeamMemberRole.OWNER) {
+            throw new AccessDeniedForTaskException();
+        }
+
+        TeamMember targetMember = findById(teamId, userId);
+
+        if (targetMember.getRole() == TeamMemberRole.OWNER) {
+            throw new AccessDeniedForTaskException();
+        }
+
+        return teamMemberRepository.updateTaskVisibility(teamId, userId, taskVisibility);
     }
 }

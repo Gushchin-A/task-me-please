@@ -5,5 +5,10 @@ public enum TaskCategory {
     MUSIC,
     KNIGI,
     PLUS,
-    SPORT
+    SPORT,
+    RADIO,
+    AFISHA,
+    GAMING,
+    COMBO_SERVICES,
+    NO_SERVICES
 }

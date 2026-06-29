@@ -1,5 +1,6 @@
 package dev.gushchin.taskmanager.view;
 
+import dev.gushchin.taskmanager.model.TaskListMode;
 import dev.gushchin.taskmanager.model.TaskRoleFilter;
 import dev.gushchin.taskmanager.model.TaskSort;
 import dev.gushchin.taskmanager.model.TaskStatus;
@@ -13,7 +14,8 @@ public record MyTasksPageView(
         int totalTasksCount,
         TeamTasksStats stats,
         MyTasksPageFilters filters,
-        MyTasksRoleCounts roleCounts) {
+        MyTasksRoleCounts roleCounts,
+        TaskListMode mode) {
     private static final long VISIBLE_TEAMS_LIMIT = 5L;
 
     public List<Team> visibleTeams() {
@@ -68,6 +70,14 @@ public record MyTasksPageView(
         return buildUrl(selectedStatus(), selectedTeamId(), role, selectedSort());
     }
 
+    public boolean archiveMode() {
+        return mode == TaskListMode.ARCHIVE;
+    }
+
+    public boolean activeMode() {
+        return mode == TaskListMode.ACTIVE;
+    }
+
     public String sortUrl(TaskSort sort) {
         return buildUrl(selectedStatus(), selectedTeamId(), selectedRole(), sort);
     }
@@ -92,12 +102,13 @@ public record MyTasksPageView(
         }
 
         String queryString = query.toString();
+        String baseUrl = activeMode() ? "/tasks" : "/tasks/archive";
 
         if (queryString.isBlank()) {
-            return "/tasks";
+            return baseUrl;
         }
 
-        return "/tasks?" + queryString;
+        return baseUrl + "?" + queryString;
     }
 
     public record MyTasksPageFilters(
