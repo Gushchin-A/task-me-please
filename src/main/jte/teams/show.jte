@@ -157,8 +157,8 @@
             <p>${page.taskCountText()}</p>
 
             @if(page.tasks().isEmpty())
-                @if(page.totalTasksCount() > 0 && page.selectedStatus() != null)
-                    <p>Задачи по выбранному фильтру отсутствуют.</p>
+                @if(page.totalTasksCount() > 0 && page.hasSelectedFilters())
+                    <p>Задачи по выбранным фильтрам отсутствуют.</p>
                 @else
                     <p>Пока в этой команде нет задач.</p>
 
@@ -264,29 +264,66 @@
                                             <input type="hidden" name="selectedSort" value="${page.selectedSort().name()}">
                                         @endif
 
-                                        <select
-                                            name="authorId"
-                                            data-inline-control
-                                            data-original-value="${task.authorId().toString()}"
-                                            onchange="showInlineSavePanel(this)"
-                                        >
-                                            <option value="${task.authorId().toString()}" selected>
-                                                ${task.authorName()}
-                                            </option>
-
-                                            @for(User member : page.members())
-                                                @if(!member.getId().equals(task.authorId()))
-                                                    <option value="${member.getId().toString()}">
-                                                        ${member.getName()}
-                                                    </option>
-                                                @endif
-                                            @endfor
-                                        </select>
-
                                         @if(task.showAuthorChangeWarning())
-                                            <p style="color: #9a6700; margin: 4px 0 0 0;">
-                                                После смены автора предыдущий автор потеряет право редактировать задачу.
-                                            </p>
+                                            <span style="position: relative; display: inline-block;">
+                                                <select
+                                                    name="authorId"
+                                                    data-inline-control
+                                                    data-original-value="${task.authorId().toString()}"
+                                                    onchange="showInlineSavePanel(this)"
+                                                    onmouseenter="document.getElementById('author-warning-${task.id()}').style.display = 'block';"
+                                                    onmouseleave="document.getElementById('author-warning-${task.id()}').style.display = 'none';"
+                                                >
+                                                    <option value="${task.authorId().toString()}" selected>
+                                                        ${task.authorName()}
+                                                    </option>
+
+                                                    @for(User member : page.members())
+                                                        @if(!member.getId().equals(task.authorId()))
+                                                            <option value="${member.getId().toString()}">
+                                                                ${member.getName()}
+                                                            </option>
+                                                        @endif
+                                                    @endfor
+                                                </select>
+
+                                                <span
+                                                    id="author-warning-${task.id()}"
+                                                    style="
+                                                        display: none;
+                                                        position: absolute;
+                                                        top: 28px;
+                                                        left: 0;
+                                                        width: 320px;
+                                                        padding: 8px;
+                                                        border: 1px solid #d0d7de;
+                                                        background: white;
+                                                        color: #9a6700;
+                                                        z-index: 10;
+                                                    "
+                                                >
+                                                    После смены автора предыдущий автор потеряет право редактировать задачу.
+                                                </span>
+                                            </span>
+                                        @else
+                                            <select
+                                                name="authorId"
+                                                data-inline-control
+                                                data-original-value="${task.authorId().toString()}"
+                                                onchange="showInlineSavePanel(this)"
+                                            >
+                                                <option value="${task.authorId().toString()}" selected>
+                                                    ${task.authorName()}
+                                                </option>
+
+                                                @for(User member : page.members())
+                                                    @if(!member.getId().equals(task.authorId()))
+                                                        <option value="${member.getId().toString()}">
+                                                            ${member.getName()}
+                                                        </option>
+                                                    @endif
+                                                @endfor
+                                            </select>
                                         @endif
 
                                         <span data-inline-actions style="display: none;">

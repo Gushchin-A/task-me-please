@@ -21,9 +21,7 @@ public record TeamPageView(
     private static final String TEAMS_PATH_PREFIX = "/teams/";
     private static final String TEAM_COUNT_TEXT_PREFIX = "Всего задач в команде ";
     private static final String ARCHIVE_COUNT_TEXT_PREFIX = "Задач в архиве ";
-    private static final String AUTHOR_COUNT_TEXT_PREFIX = "Всего задач у автора ";
-    private static final String ASSIGNEE_COUNT_TEXT_PREFIX = "Всего задач у исполнителя ";
-    private static final String FALLBACK_USER_NAME = "пользователя";
+    private static final String FILTERED_COUNT_TEXT_PREFIX = "Задач по выбранным фильтрам ";
 
     public int totalTasksCount() {
         return counts.totalTasksCount();
@@ -68,12 +66,8 @@ public record TeamPageView(
     }
 
     public String taskCountText() {
-        if (selectedAssigneeId() != null) {
-            return ASSIGNEE_COUNT_TEXT_PREFIX + selectedAssigneeName() + " " + totalTasksCount();
-        }
-
-        if (selectedAuthorId() != null) {
-            return AUTHOR_COUNT_TEXT_PREFIX + selectedAuthorName() + " " + totalTasksCount();
+        if (hasSelectedFilters()) {
+            return FILTERED_COUNT_TEXT_PREFIX + filteredTasksCount();
         }
 
         if (archiveMode()) {
@@ -83,20 +77,12 @@ public record TeamPageView(
         return TEAM_COUNT_TEXT_PREFIX + totalTasksCount();
     }
 
-    private String selectedAuthorName() {
-        return members.stream()
-                .filter(member -> member.getId().equals(selectedAuthorId()))
-                .findFirst()
-                .map(User::getName)
-                .orElse(FALLBACK_USER_NAME);
+    public int filteredTasksCount() {
+        return counts.filteredTasksCount();
     }
 
-    private String selectedAssigneeName() {
-        return members.stream()
-                .filter(member -> member.getId().equals(selectedAssigneeId()))
-                .findFirst()
-                .map(User::getName)
-                .orElse(FALLBACK_USER_NAME);
+    public boolean hasSelectedFilters() {
+        return selectedStatus() != null || selectedAuthorId() != null || selectedAssigneeId() != null;
     }
 
     public String allStatusesUrl() {
@@ -155,7 +141,7 @@ public record TeamPageView(
         return baseUrl() + "?" + queryString;
     }
 
-    public record TeamPageCounts(int totalTasksCount, int membersCount) {}
+    public record TeamPageCounts(int totalTasksCount, int filteredTasksCount, int membersCount) {}
 
     public record TeamPageFilters(
             TaskStatus selectedStatus, TaskSort selectedSort, UUID selectedAuthorId, UUID selectedAssigneeId) {}

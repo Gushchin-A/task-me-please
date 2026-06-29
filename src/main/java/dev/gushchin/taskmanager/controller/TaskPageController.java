@@ -444,7 +444,7 @@ public class TaskPageController {
         boolean canUpdateStatus = taskService.canUpdateStatus(task, userId);
         boolean canArchive = taskService.canArchiveTask(task, userId);
         boolean canRestore = taskService.canRestoreTask(task, userId);
-        boolean showAuthorChangeWarning = taskService.isTeamOwner(task, userId);
+        boolean showAuthorChangeWarning = task.getAuthorId().equals(userId) && !taskService.isTeamOwner(task, userId);
 
         TaskView.TaskState state = new TaskView.TaskState(
                 task.isArchived(), canUpdateTask, canUpdateStatus, canArchive, canRestore, showAuthorChangeWarning);

@@ -124,7 +124,7 @@ public class TeamPageController {
                 team,
                 taskViews,
                 members,
-                new TeamPageCounts(modeFilteredTasks.size(), teamMembers.size()),
+                new TeamPageCounts(modeFilteredTasks.size(), sortedTasks.size(), teamMembers.size()),
                 stats,
                 new TeamPageFilters(status, sort, authorId, assigneeId),
                 canInvite,
@@ -188,7 +188,7 @@ public class TeamPageController {
                 team,
                 taskViews,
                 members,
-                new TeamPageCounts(modeFilteredTasks.size(), members.size()),
+                new TeamPageCounts(modeFilteredTasks.size(), sortedTasks.size(), members.size()),
                 stats,
                 new TeamPageFilters(status, sort, authorId, assigneeId),
                 canInvite,
@@ -361,7 +361,7 @@ public class TeamPageController {
         boolean canUpdateStatus = taskService.canUpdateStatus(task, userId);
         boolean canArchive = taskService.canArchiveTask(task, userId);
         boolean canRestore = taskService.canRestoreTask(task, userId);
-        boolean showAuthorChangeWarning = taskService.isTeamOwner(task, userId);
+        boolean showAuthorChangeWarning = task.getAuthorId().equals(userId) && !taskService.isTeamOwner(task, userId);
 
         TaskView.TaskState state = new TaskView.TaskState(
                 task.isArchived(), canUpdateTask, canUpdateStatus, canArchive, canRestore, showAuthorChangeWarning);

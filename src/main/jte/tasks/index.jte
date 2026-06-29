@@ -267,29 +267,66 @@
                                             <input type="hidden" name="selectedRole" value="${page.selectedRole().name()}">
                                         @endif
 
-                                        <select
-                                            name="authorId"
-                                            data-inline-control
-                                            data-original-value="${taskCard.task().authorId().toString()}"
-                                            onchange="showInlineSavePanel(this)"
-                                        >
-                                            <option value="${taskCard.task().authorId().toString()}" selected>
-                                                ${taskCard.task().authorName()}
-                                            </option>
-
-                                            @for(User member : taskCard.members())
-                                                @if(!member.getId().equals(taskCard.task().authorId()))
-                                                    <option value="${member.getId().toString()}">
-                                                        ${member.getName()}
-                                                    </option>
-                                                @endif
-                                            @endfor
-                                        </select>
-
                                         @if(taskCard.task().showAuthorChangeWarning())
-                                            <p style="color: #9a6700; margin: 4px 0 0 0;">
-                                                После смены автора предыдущий автор потеряет право редактировать задачу.
-                                            </p>
+                                            <span style="position: relative; display: inline-block;">
+                                                <select
+                                                    name="authorId"
+                                                    data-inline-control
+                                                    data-original-value="${taskCard.task().authorId().toString()}"
+                                                    onchange="showInlineSavePanel(this)"
+                                                    onmouseenter="document.getElementById('author-warning-${taskCard.task().id()}').style.display = 'block';"
+                                                    onmouseleave="document.getElementById('author-warning-${taskCard.task().id()}').style.display = 'none';"
+                                                >
+                                                    <option value="${taskCard.task().authorId().toString()}" selected>
+                                                        ${taskCard.task().authorName()}
+                                                    </option>
+
+                                                    @for(User member : taskCard.members())
+                                                        @if(!member.getId().equals(taskCard.task().authorId()))
+                                                            <option value="${member.getId().toString()}">
+                                                                ${member.getName()}
+                                                            </option>
+                                                        @endif
+                                                    @endfor
+                                                </select>
+
+                                                <span
+                                                    id="author-warning-${taskCard.task().id()}"
+                                                    style="
+                                                        display: none;
+                                                        position: absolute;
+                                                        top: 28px;
+                                                        left: 0;
+                                                        width: 320px;
+                                                        padding: 8px;
+                                                        border: 1px solid #d0d7de;
+                                                        background: white;
+                                                        color: #9a6700;
+                                                        z-index: 10;
+                                                    "
+                                                >
+                                                    После смены автора предыдущий автор потеряет право редактировать задачу.
+                                                </span>
+                                            </span>
+                                        @else
+                                            <select
+                                                name="authorId"
+                                                data-inline-control
+                                                data-original-value="${taskCard.task().authorId().toString()}"
+                                                onchange="showInlineSavePanel(this)"
+                                            >
+                                                <option value="${taskCard.task().authorId().toString()}" selected>
+                                                    ${taskCard.task().authorName()}
+                                                </option>
+
+                                                @for(User member : taskCard.members())
+                                                    @if(!member.getId().equals(taskCard.task().authorId()))
+                                                        <option value="${member.getId().toString()}">
+                                                            ${member.getName()}
+                                                        </option>
+                                                    @endif
+                                                @endfor
+                                            </select>
                                         @endif
 
                                         <span data-inline-actions style="display: none;">

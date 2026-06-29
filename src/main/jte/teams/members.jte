@@ -5,7 +5,6 @@
 @import java.util.UUID
 @import org.springframework.security.web.csrf.CsrfToken
 
-
 @param Team team
 @param int totalTasksCount
 @param int membersCount
@@ -85,27 +84,27 @@
                     </div>
                 @else
                     <table>
-						<thead>
-							<tr>
-								<th>Имя</th>
+                        <thead>
+                            <tr>
+                                <th>Имя</th>
 
-								@if(canSeeMemberPrivateData)
-									<th>Почта</th>
-									<th>Роль в команде</th>
-								@endif
+                                @if(canSeeMemberPrivateData)
+                                    <th>Почта</th>
+                                    <th>Роль в команде</th>
+                                @endif
 
-								@if(canSeeMemberDetails)
-									<th>Кол-во задач, где автор</th>
-									<th>Кол-во задач, где исполнитель</th>
-								@endif
+                                @if(canSeeMemberDetails)
+                                    <th>Кол-во задач, где автор</th>
+                                    <th>Кол-во задач, где исполнитель</th>
+                                @endif
 
-								@if(canManageVisibility)
-									<th>Видимость задач</th>
-								@endif
-							</tr>
-						</thead>
+                                @if(canManageVisibility)
+                                    <th>Видимость задач</th>
+                                @endif
+                            </tr>
+                        </thead>
 
-						<tbody>
+                        <tbody>
                             @for(TeamMemberView member : members)
                                 <tr>
                                     <td>${member.name()}</td>
@@ -129,27 +128,50 @@
                                                     method="post"
                                                     action="/teams/${team.getId()}/members/${member.userId().toString()}/visibility"
                                                     style="display: inline;"
+                                                    data-inline-update-form="true"
                                                 >
-                                                    <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                                                    <input
+                                                        type="hidden"
+                                                        name="${_csrf.getParameterName()}"
+                                                        value="${_csrf.getToken()}"
+                                                    >
 
-                                                    <select name="taskVisibility">
+                                                    <select
+                                                        name="taskVisibility"
+                                                        data-inline-control
+                                                        data-original-value="${member.taskVisibility().name()}"
+                                                        onchange="showInlineSavePanel(this)"
+                                                    >
                                                         @for(TeamTaskVisibility taskVisibility : taskVisibilities)
-                                                            <option
-                                                                value="${taskVisibility.name()}"
-                                                                selected="${taskVisibility == member.taskVisibility()}"
-                                                            >
-                                                                @if(taskVisibility == TeamTaskVisibility.ALL_TASKS)
-                                                                    Видит все задачи
-                                                                @else
-                                                                    Видит только свои задачи
-                                                                @endif
-                                                            </option>
+                                                            @if(taskVisibility == member.taskVisibility())
+                                                                <option value="${taskVisibility.name()}" selected>
+                                                                    @if(taskVisibility == TeamTaskVisibility.ALL_TASKS)
+                                                                        Видит все задачи
+                                                                    @else
+                                                                        Видит только свои задачи
+                                                                    @endif
+                                                                </option>
+                                                            @else
+                                                                <option value="${taskVisibility.name()}">
+                                                                    @if(taskVisibility == TeamTaskVisibility.ALL_TASKS)
+                                                                        Видит все задачи
+                                                                    @else
+                                                                        Видит только свои задачи
+                                                                    @endif
+                                                                </option>
+                                                            @endif
                                                         @endfor
                                                     </select>
 
-                                                    <button type="submit">
-                                                        Сохранить
-                                                    </button>
+                                                    <span data-inline-actions style="display: none;">
+                                                        <button type="submit">
+                                                            Сохранить
+                                                        </button>
+
+                                                        <button type="button" onclick="cancelInlineUpdate(this)">
+                                                            Отмена
+                                                        </button>
+                                                    </span>
                                                 </form>
                                             @endif
                                         </td>
