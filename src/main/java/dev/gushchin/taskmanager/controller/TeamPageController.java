@@ -115,12 +115,7 @@ public class TeamPageController {
         List<Task> sortedTasks = taskService.sortTasks(assigneeFilteredTasks, sort);
 
         List<TaskView> taskViews = sortedTasks.stream()
-                .map(task -> {
-                    User author = userService.findById(task.getAuthorId());
-                    User assignee = userService.findById(task.getAssigneeId());
-
-                    return TaskView.from(task, author.getName(), assignee.getName());
-                })
+                .map(task -> toTaskView(task, authUser.getId()))
                 .toList();
 
         boolean canInvite = currentMember.getRole() == TeamMemberRole.OWNER;
@@ -356,5 +351,21 @@ public class TeamPageController {
         } catch (TeamMemberAlreadyExistsException ex) {
             redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, "Пользователь уже состоит в этой команде.");
         }
+    }
+
+    private TaskView toTaskView(Task task, UUID userId) {
+        User author = userService.findById(task.getAuthorId());
+        User assignee = userService.findById(task.getAssigneeId());
+
+        boolean canUpdateTask = taskService.canUpdateTask(task, userId);
+        boolean canUpdateStatus = taskService.canUpdateStatus(task, userId);
+        boolean canArchive = taskService.canArchiveTask(task, userId);
+        boolean canRestore = taskService.canRestoreTask(task, userId);
+        boolean showAuthorChangeWarning = taskService.isTeamOwner(task, userId);
+
+        TaskView.TaskState state = new TaskView.TaskState(
+                task.isArchived(), canUpdateTask, canUpdateStatus, canArchive, canRestore, showAuthorChangeWarning);
+
+        return TaskView.from(task, author.getName(), assignee.getName(), state);
     }
 }

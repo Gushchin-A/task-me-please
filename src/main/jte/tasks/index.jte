@@ -176,66 +176,70 @@
                             <div>
                                 <span>Статус:</span>
 
-                                <form
-                                    method="post"
-                                    action="/tasks/${taskCard.task().id()}/status"
-                                    style="display: inline;"
-                                    data-inline-update-form="true"
-                                >
-                                    <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
-                                    <input type="hidden" name="returnTo" value="tasks">
-
-                                    @if(page.selectedStatus() != null)
-                                        <input type="hidden" name="selectedStatus" value="${page.selectedStatus().name()}">
-                                    @endif
-
-                                    @if(page.selectedSort() != null)
-                                        <input type="hidden" name="selectedSort" value="${page.selectedSort().name()}">
-                                    @endif
-
-                                    @if(page.selectedTeamId() != null)
-                                        <input type="hidden" name="selectedTeamId" value="${page.selectedTeamId()}">
-                                    @endif
-
-                                    @if(page.selectedRole() != null)
-                                        <input type="hidden" name="selectedRole" value="${page.selectedRole().name()}">
-                                    @endif
-
-                                    <select
-                                        name="status"
-                                        data-inline-control
-                                        data-original-value="${taskCard.task().status().name()}"
-                                        onchange="showInlineSavePanel(this)"
+                                @if(taskCard.task().canUpdateStatus())
+                                    <form
+                                        method="post"
+                                        action="/tasks/${taskCard.task().id()}/status"
+                                        style="display: inline;"
+                                        data-inline-update-form="true"
                                     >
-                                        <option value="${taskCard.task().status().name()}" selected>
-                                            ${taskCard.task().status().name()}
-                                        </option>
+                                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                                        <input type="hidden" name="returnTo" value="tasks">
 
-                                        @for(TaskStatus status : TaskStatus.values())
-                                            @if(status != taskCard.task().status())
-                                                <option value="${status.name()}">
-                                                    ${status.name()}
-                                                </option>
-                                            @endif
-                                        @endfor
-                                    </select>
+                                        @if(page.selectedStatus() != null)
+                                            <input type="hidden" name="selectedStatus" value="${page.selectedStatus().name()}">
+                                        @endif
 
-                                    <span data-inline-actions style="display: none;">
-                                        <button type="submit">
-                                            Сохранить
-                                        </button>
+                                        @if(page.selectedSort() != null)
+                                            <input type="hidden" name="selectedSort" value="${page.selectedSort().name()}">
+                                        @endif
 
-                                        <button type="button" onclick="cancelInlineUpdate(this)">
-                                            Отмена
-                                        </button>
-                                    </span>
-                                </form>
+                                        @if(page.selectedTeamId() != null)
+                                            <input type="hidden" name="selectedTeamId" value="${page.selectedTeamId()}">
+                                        @endif
+
+                                        @if(page.selectedRole() != null)
+                                            <input type="hidden" name="selectedRole" value="${page.selectedRole().name()}">
+                                        @endif
+
+                                        <select
+                                            name="status"
+                                            data-inline-control
+                                            data-original-value="${taskCard.task().status().name()}"
+                                            onchange="showInlineSavePanel(this)"
+                                        >
+                                            <option value="${taskCard.task().status().name()}" selected>
+                                                ${taskCard.task().status().name()}
+                                            </option>
+
+                                            @for(TaskStatus status : TaskStatus.values())
+                                                @if(status != taskCard.task().status())
+                                                    <option value="${status.name()}">
+                                                        ${status.name()}
+                                                    </option>
+                                                @endif
+                                            @endfor
+                                        </select>
+
+                                        <span data-inline-actions style="display: none;">
+                                            <button type="submit">
+                                                Сохранить
+                                            </button>
+
+                                            <button type="button" onclick="cancelInlineUpdate(this)">
+                                                Отмена
+                                            </button>
+                                        </span>
+                                    </form>
+                                @else
+                                    <span>${taskCard.task().status().name()}</span>
+                                @endif
                             </div>
 
                             <div>
                                 <span>Автор:</span>
 
-                                @if(taskCard.members().size() == 1)
+                                @if(!taskCard.task().canUpdateTask() || taskCard.members().size() == 1)
                                     <span>${taskCard.task().authorName()}</span>
                                 @else
                                     <form
@@ -282,6 +286,12 @@
                                             @endfor
                                         </select>
 
+                                        @if(taskCard.task().showAuthorChangeWarning())
+                                            <p style="color: #9a6700; margin: 4px 0 0 0;">
+                                                После смены автора предыдущий автор потеряет право редактировать задачу.
+                                            </p>
+                                        @endif
+
                                         <span data-inline-actions style="display: none;">
                                             <button type="submit">
                                                 Сохранить
@@ -298,7 +308,7 @@
                             <div>
                                 <span>Исполнитель:</span>
 
-                                @if(taskCard.members().size() == 1)
+                                @if(!taskCard.task().canUpdateTask() || taskCard.members().size() == 1)
                                     <span>${taskCard.task().assigneeName()}</span>
                                 @else
                                     <form
@@ -371,119 +381,125 @@
                                     </span>
                                 @endif
 
-                                <form
-                                    method="post"
-                                    action="/tasks/${taskCard.task().id()}/deadline"
-                                    style="display: inline;"
-                                    data-inline-update-form="true"
-                                >
-                                    <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
-                                    <input type="hidden" name="returnTo" value="tasks">
+                                @if(taskCard.task().canUpdateTask())
+                                    <form
+                                        method="post"
+                                        action="/tasks/${taskCard.task().id()}/deadline"
+                                        style="display: inline;"
+                                        data-inline-update-form="true"
+                                    >
+                                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                                        <input type="hidden" name="returnTo" value="tasks">
 
-                                    @if(page.selectedStatus() != null)
-                                        <input type="hidden" name="selectedStatus" value="${page.selectedStatus().name()}">
-                                    @endif
+                                        @if(page.selectedStatus() != null)
+                                            <input type="hidden" name="selectedStatus" value="${page.selectedStatus().name()}">
+                                        @endif
 
-                                    @if(page.selectedSort() != null)
-                                        <input type="hidden" name="selectedSort" value="${page.selectedSort().name()}">
-                                    @endif
+                                        @if(page.selectedSort() != null)
+                                            <input type="hidden" name="selectedSort" value="${page.selectedSort().name()}">
+                                        @endif
 
-                                    @if(page.selectedTeamId() != null)
-                                        <input type="hidden" name="selectedTeamId" value="${page.selectedTeamId()}">
-                                    @endif
+                                        @if(page.selectedTeamId() != null)
+                                            <input type="hidden" name="selectedTeamId" value="${page.selectedTeamId()}">
+                                        @endif
 
-                                    @if(page.selectedRole() != null)
-                                        <input type="hidden" name="selectedRole" value="${page.selectedRole().name()}">
-                                    @endif
+                                        @if(page.selectedRole() != null)
+                                            <input type="hidden" name="selectedRole" value="${page.selectedRole().name()}">
+                                        @endif
 
-                                    @if(taskCard.task().deadlineAt() == null)
-                                        <input
-                                            type="date"
-                                            name="deadlineDate"
-                                            data-inline-control
-                                            data-original-value=""
-                                            onchange="showInlineSavePanel(this)"
-                                        >
-                                    @else
-                                        <input
-                                            type="date"
-                                            name="deadlineDate"
-                                            value="${taskCard.task().deadlineAt().toString().substring(0, 10)}"
-                                            data-inline-control
-                                            data-original-value="${taskCard.task().deadlineAt().toString().substring(0, 10)}"
-                                            onchange="showInlineSavePanel(this)"
-                                        >
-                                    @endif
+                                        @if(taskCard.task().deadlineAt() == null)
+                                            <input
+                                                type="date"
+                                                name="deadlineDate"
+                                                data-inline-control
+                                                data-original-value=""
+                                                onchange="showInlineSavePanel(this)"
+                                            >
+                                        @else
+                                            <input
+                                                type="date"
+                                                name="deadlineDate"
+                                                value="${taskCard.task().deadlineAt().toString().substring(0, 10)}"
+                                                data-inline-control
+                                                data-original-value="${taskCard.task().deadlineAt().toString().substring(0, 10)}"
+                                                onchange="showInlineSavePanel(this)"
+                                            >
+                                        @endif
 
-                                    <span data-inline-actions style="display: none;">
-                                        <button type="submit">
-                                            Сохранить
-                                        </button>
+                                        <span data-inline-actions style="display: none;">
+                                            <button type="submit">
+                                                Сохранить
+                                            </button>
 
-                                        <button type="button" onclick="cancelInlineUpdate(this)">
-                                            Отмена
-                                        </button>
-                                    </span>
-                                </form>
+                                            <button type="button" onclick="cancelInlineUpdate(this)">
+                                                Отмена
+                                            </button>
+                                        </span>
+                                    </form>
+                                @endif
                             </div>
 
                             <div>
                                 <span>Категория:</span>
 
-                                <form
-                                    method="post"
-                                    action="/tasks/${taskCard.task().id()}/category"
-                                    style="display: inline;"
-                                    data-inline-update-form="true"
-                                >
-                                    <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
-                                    <input type="hidden" name="returnTo" value="tasks">
-
-                                    @if(page.selectedStatus() != null)
-                                        <input type="hidden" name="selectedStatus" value="${page.selectedStatus().name()}">
-                                    @endif
-
-                                    @if(page.selectedSort() != null)
-                                        <input type="hidden" name="selectedSort" value="${page.selectedSort().name()}">
-                                    @endif
-
-                                    @if(page.selectedTeamId() != null)
-                                        <input type="hidden" name="selectedTeamId" value="${page.selectedTeamId()}">
-                                    @endif
-
-                                    @if(page.selectedRole() != null)
-                                        <input type="hidden" name="selectedRole" value="${page.selectedRole().name()}">
-                                    @endif
-
-                                    <select
-                                        name="category"
-                                        data-inline-control
-                                        data-original-value="${taskCard.task().category().name()}"
-                                        onchange="showInlineSavePanel(this)"
+                                @if(taskCard.task().canUpdateTask())
+                                    <form
+                                        method="post"
+                                        action="/tasks/${taskCard.task().id()}/category"
+                                        style="display: inline;"
+                                        data-inline-update-form="true"
                                     >
-                                        <option value="${taskCard.task().category().name()}" selected>
-                                            ${taskCard.task().category().name()}
-                                        </option>
+                                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                                        <input type="hidden" name="returnTo" value="tasks">
 
-                                        @for(TaskCategory category : TaskCategory.values())
-                                            @if(category != taskCard.task().category())
-                                                <option value="${category.name()}">
-                                                    ${category.name()}
-                                                </option>
-                                            @endif
-                                        @endfor
-                                    </select>
+                                        @if(page.selectedStatus() != null)
+                                            <input type="hidden" name="selectedStatus" value="${page.selectedStatus().name()}">
+                                        @endif
 
-                                    <span data-inline-actions style="display: none;">
-                                        <button type="submit">
-                                            Сохранить
-                                        </button>
+                                        @if(page.selectedSort() != null)
+                                            <input type="hidden" name="selectedSort" value="${page.selectedSort().name()}">
+                                        @endif
 
-                                        <button type="button" onclick="cancelInlineUpdate(this)">
-                                            Отмена
-                                        </button>
-                                    </span>
-                                </form>
+                                        @if(page.selectedTeamId() != null)
+                                            <input type="hidden" name="selectedTeamId" value="${page.selectedTeamId()}">
+                                        @endif
+
+                                        @if(page.selectedRole() != null)
+                                            <input type="hidden" name="selectedRole" value="${page.selectedRole().name()}">
+                                        @endif
+
+                                        <select
+                                            name="category"
+                                            data-inline-control
+                                            data-original-value="${taskCard.task().category().name()}"
+                                            onchange="showInlineSavePanel(this)"
+                                        >
+                                            <option value="${taskCard.task().category().name()}" selected>
+                                                ${taskCard.task().category().name()}
+                                            </option>
+
+                                            @for(TaskCategory category : TaskCategory.values())
+                                                @if(category != taskCard.task().category())
+                                                    <option value="${category.name()}">
+                                                        ${category.name()}
+                                                    </option>
+                                                @endif
+                                            @endfor
+                                        </select>
+
+                                        <span data-inline-actions style="display: none;">
+                                            <button type="submit">
+                                                Сохранить
+                                            </button>
+
+                                            <button type="button" onclick="cancelInlineUpdate(this)">
+                                                Отмена
+                                            </button>
+                                        </span>
+                                    </form>
+                                @else
+                                    <span>${taskCard.task().category().name()}</span>
+                                @endif
                             </div>
 
                             <div>

@@ -88,8 +88,9 @@ public class TaskPageController {
 
         TeamTasksStats stats = taskService.getStats(roleFilteredTasks);
 
-        List<TaskWithTeamView> taskCards =
-                statusFilteredTasks.stream().map(this::toTaskWithTeamView).toList();
+        List<TaskWithTeamView> taskCards = statusFilteredTasks.stream()
+                .map(task -> toTaskWithTeamView(task, authUser.getId()))
+                .toList();
 
         List<TaskWithTeamView> sortedTaskCards = taskService.sortTaskCards(taskCards, sort);
 
@@ -137,8 +138,9 @@ public class TaskPageController {
 
         TeamTasksStats stats = taskService.getStats(roleFilteredTasks);
 
-        List<TaskWithTeamView> taskCards =
-                statusFilteredTasks.stream().map(this::toTaskWithTeamView).toList();
+        List<TaskWithTeamView> taskCards = statusFilteredTasks.stream()
+                .map(task -> toTaskWithTeamView(task, authUser.getId()))
+                .toList();
 
         List<TaskWithTeamView> sortedTaskCards = taskService.sortTaskCards(taskCards, sort);
 
@@ -194,25 +196,25 @@ public class TaskPageController {
         teamMemberService.findById(task.getTeamId(), authUser.getId());
 
         Team team = teamService.findById(task.getTeamId());
-        User author = userService.findById(task.getAuthorId());
-        User assignee = userService.findById(task.getAssigneeId());
-
         List<User> members = getTeamUsers(task.getTeamId());
 
         List<CommentView> comments = commentService.findByTaskId(id).stream()
                 .map(comment -> {
                     User user = userService.findById(comment.getUserId());
 
+                    boolean canEditComment = comment.getUserId().equals(authUser.getId());
+
                     return new CommentView(
                             comment.getId(),
                             user.getName(),
                             comment.getMessage(),
                             comment.getCreatedAt(),
-                            comment.getUpdatedAt());
+                            comment.getUpdatedAt(),
+                            canEditComment);
                 })
                 .toList();
 
-        model.addAttribute(TASK_ATTRIBUTE, TaskView.from(task, author.getName(), assignee.getName()));
+        model.addAttribute(TASK_ATTRIBUTE, toTaskView(task, authUser.getId()));
         model.addAttribute(TEAM_ATTRIBUTE, team);
         model.addAttribute(MEMBERS_ATTRIBUTE, members);
         model.addAttribute(CATEGORIES_ATTRIBUTE, TaskCategory.values());
@@ -230,12 +232,9 @@ public class TaskPageController {
         teamMemberService.findById(task.getTeamId(), authUser.getId());
 
         Team team = teamService.findById(task.getTeamId());
-        User author = userService.findById(task.getAuthorId());
-        User assignee = userService.findById(task.getAssigneeId());
-
         List<User> members = getTeamUsers(task.getTeamId());
 
-        model.addAttribute(TASK_ATTRIBUTE, TaskView.from(task, author.getName(), assignee.getName()));
+        model.addAttribute(TASK_ATTRIBUTE, toTaskView(task, authUser.getId()));
         model.addAttribute(TEAM_ATTRIBUTE, team);
         model.addAttribute(MEMBERS_ATTRIBUTE, members);
         model.addAttribute(CATEGORIES_ATTRIBUTE, TaskCategory.values());
@@ -430,14 +429,27 @@ public class TaskPageController {
         return REDIRECT_TEAMS_PREFIX + task.getTeamId();
     }
 
-    private TaskWithTeamView toTaskWithTeamView(Task task) {
+    private TaskWithTeamView toTaskWithTeamView(Task task, UUID userId) {
         Team team = teamService.findById(task.getTeamId());
-        User author = userService.findById(task.getAuthorId());
-        User assignee = userService.findById(task.getAssigneeId());
         List<User> members = getTeamUsers(task.getTeamId());
 
-        return new TaskWithTeamView(
-                TaskView.from(task, author.getName(), assignee.getName()), team.getId(), team.getName(), members);
+        return new TaskWithTeamView(toTaskView(task, userId), team.getId(), team.getName(), members);
+    }
+
+    private TaskView toTaskView(Task task, UUID userId) {
+        User author = userService.findById(task.getAuthorId());
+        User assignee = userService.findById(task.getAssigneeId());
+
+        boolean canUpdateTask = taskService.canUpdateTask(task, userId);
+        boolean canUpdateStatus = taskService.canUpdateStatus(task, userId);
+        boolean canArchive = taskService.canArchiveTask(task, userId);
+        boolean canRestore = taskService.canRestoreTask(task, userId);
+        boolean showAuthorChangeWarning = taskService.isTeamOwner(task, userId);
+
+        TaskView.TaskState state = new TaskView.TaskState(
+                task.isArchived(), canUpdateTask, canUpdateStatus, canArchive, canRestore, showAuthorChangeWarning);
+
+        return TaskView.from(task, author.getName(), assignee.getName(), state);
     }
 
     private List<User> getTeamUsers(Long teamId) {

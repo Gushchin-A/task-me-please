@@ -331,6 +331,26 @@ public class TaskService {
         }
     }
 
+    public boolean canUpdateTask(Task task, UUID userId) {
+        return taskPermissionService.canUpdateTask(task, userId);
+    }
+
+    public boolean canUpdateStatus(Task task, UUID userId) {
+        return taskPermissionService.canUpdateStatus(task, userId);
+    }
+
+    public boolean canArchiveTask(Task task, UUID userId) {
+        return taskPermissionService.canArchiveTask(task, userId);
+    }
+
+    public boolean canRestoreTask(Task task, UUID userId) {
+        return taskPermissionService.canRestoreTask(task, userId);
+    }
+
+    public boolean isTeamOwner(Task task, UUID userId) {
+        return taskPermissionService.isTeamOwner(task, userId);
+    }
+
     public boolean canBeArchived(Task task) {
         return taskPermissionService.canBeArchived(task);
     }

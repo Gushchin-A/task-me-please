@@ -27,53 +27,57 @@
                     ${task.title()}
                 </h1>
 
-                <a
-                    href="#"
-                    style="margin-left: 12px; font-size: 14px;"
-                    onclick="document.getElementById('title-edit-form').style.display = 'block'; this.style.display = 'none'; return false;"
-                >
-                    Редактировать название
-                </a>
+                @if(task.canUpdateTask())
+                    <a
+                        href="#"
+                        style="margin-left: 12px; font-size: 14px;"
+                        onclick="document.getElementById('title-edit-form').style.display = 'block'; this.style.display = 'none'; return false;"
+                    >
+                        Редактировать название
+                    </a>
+                @endif
             </div>
 
-            <form
-                id="title-edit-form"
-                method="post"
-                action="/tasks/${task.id()}/edit"
-                style="display: none; margin-top: 12px;"
-            >
-                <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
-
-                <input type="hidden" name="category" value="${task.category().name()}">
-                <input type="hidden" name="assigneeId" value="${task.assigneeId().toString()}">
-
-                @if(task.deadlineAt() != null)
-                    <input
-                        type="hidden"
-                        name="deadlineDate"
-                        value="${task.deadlineAt().toString().substring(0, 10)}"
-                    >
-                @endif
-
-                <textarea name="description" style="display: none;">@if(task.description() != null)${task.description()}@endif</textarea>
-
-                <div>
-                    <label>Название</label>
-
-                    <input type="text" name="title" value="${task.title()}" required>
-                </div>
-
-                <button type="submit">
-                    Сохранить название
-                </button>
-
-                <button
-                    type="button"
-                    onclick="document.getElementById('title-edit-form').style.display = 'none';"
+            @if(task.canUpdateTask())
+                <form
+                    id="title-edit-form"
+                    method="post"
+                    action="/tasks/${task.id()}/edit"
+                    style="display: none; margin-top: 12px;"
                 >
-                    Отмена
-                </button>
-            </form>
+                    <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+
+                    <input type="hidden" name="category" value="${task.category().name()}">
+                    <input type="hidden" name="assigneeId" value="${task.assigneeId().toString()}">
+
+                    @if(task.deadlineAt() != null)
+                        <input
+                            type="hidden"
+                            name="deadlineDate"
+                            value="${task.deadlineAt().toString().substring(0, 10)}"
+                        >
+                    @endif
+
+                    <textarea name="description" style="display: none;">@if(task.description() != null)${task.description()}@endif</textarea>
+
+                    <div>
+                        <label>Название</label>
+
+                        <input type="text" name="title" value="${task.title()}" required>
+                    </div>
+
+                    <button type="submit">
+                        Сохранить название
+                    </button>
+
+                    <button
+                        type="button"
+                        onclick="document.getElementById('title-edit-form').style.display = 'none';"
+                    >
+                        Отмена
+                    </button>
+                </form>
+            @endif
 
             @if(task.archived())
                 <p>Архив</p>
@@ -83,51 +87,55 @@
                 <div>
                     <span>Статус:</span>
 
-                    <form
-                        method="post"
-                        action="/tasks/${task.id()}/status"
-                        style="display: inline;"
-                        data-inline-update-form="true"
-                    >
-                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
-
-                        <input type="hidden" name="returnTo" value="task">
-
-                        <select
-                            name="status"
-                            data-inline-control
-                            data-original-value="${task.status().name()}"
-                            onchange="showInlineSavePanel(this)"
+                    @if(task.canUpdateStatus())
+                        <form
+                            method="post"
+                            action="/tasks/${task.id()}/status"
+                            style="display: inline;"
+                            data-inline-update-form="true"
                         >
-                            <option value="${task.status().name()}" selected>
-                                ${task.status().name()}
-                            </option>
+                            <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
 
-                            @for(TaskStatus status : TaskStatus.values())
-                                @if(status != task.status())
-                                    <option value="${status.name()}">
-                                        ${status.name()}
-                                    </option>
-                                @endif
-                            @endfor
-                        </select>
+                            <input type="hidden" name="returnTo" value="task">
 
-                        <span data-inline-actions style="display: none;">
-                            <button type="submit">
-                                Сохранить
-                            </button>
+                            <select
+                                name="status"
+                                data-inline-control
+                                data-original-value="${task.status().name()}"
+                                onchange="showInlineSavePanel(this)"
+                            >
+                                <option value="${task.status().name()}" selected>
+                                    ${task.status().name()}
+                                </option>
 
-                            <button type="button" onclick="cancelInlineUpdate(this)">
-                                Отмена
-                            </button>
-                        </span>
-                    </form>
+                                @for(TaskStatus status : TaskStatus.values())
+                                    @if(status != task.status())
+                                        <option value="${status.name()}">
+                                            ${status.name()}
+                                        </option>
+                                    @endif
+                                @endfor
+                            </select>
+
+                            <span data-inline-actions style="display: none;">
+                                <button type="submit">
+                                    Сохранить
+                                </button>
+
+                                <button type="button" onclick="cancelInlineUpdate(this)">
+                                    Отмена
+                                </button>
+                            </span>
+                        </form>
+                    @else
+                        <span>${task.status().name()}</span>
+                    @endif
                 </div>
 
                 <div>
                     <span>Автор:</span>
 
-                    @if(members.size() == 1)
+                    @if(!task.canUpdateTask() || members.size() == 1)
                         <span>${task.authorName()}</span>
                     @else
                         <form
@@ -159,6 +167,12 @@
                                 @endfor
                             </select>
 
+                            @if(task.showAuthorChangeWarning())
+                                <p style="color: #9a6700; margin: 4px 0 0 0;">
+                                    После смены автора предыдущий автор потеряет право редактировать задачу.
+                                </p>
+                            @endif
+
                             <span data-inline-actions style="display: none;">
                                 <button type="submit">
                                     Сохранить
@@ -175,7 +189,7 @@
                 <div>
                     <span>Исполнитель:</span>
 
-                    @if(members.size() == 1)
+                    @if(!task.canUpdateTask() || members.size() == 1)
                         <span>${task.assigneeName()}</span>
                     @else
                         <form
@@ -233,89 +247,95 @@
                         </span>
                     @endif
 
-                    <form
-                        method="post"
-                        action="/tasks/${task.id()}/deadline"
-                        style="display: inline;"
-                        data-inline-update-form="true"
-                    >
-                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                    @if(task.canUpdateTask())
+                        <form
+                            method="post"
+                            action="/tasks/${task.id()}/deadline"
+                            style="display: inline;"
+                            data-inline-update-form="true"
+                        >
+                            <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
 
-                        <input type="hidden" name="returnTo" value="task">
+                            <input type="hidden" name="returnTo" value="task">
 
-                        @if(task.deadlineAt() == null)
-                            <input
-                                type="date"
-                                name="deadlineDate"
-                                data-inline-control
-                                data-original-value=""
-                                onchange="showInlineSavePanel(this)"
-                            >
-                        @else
-                            <input
-                                type="date"
-                                name="deadlineDate"
-                                value="${task.deadlineAt().toString().substring(0, 10)}"
-                                data-inline-control
-                                data-original-value="${task.deadlineAt().toString().substring(0, 10)}"
-                                onchange="showInlineSavePanel(this)"
-                            >
-                        @endif
+                            @if(task.deadlineAt() == null)
+                                <input
+                                    type="date"
+                                    name="deadlineDate"
+                                    data-inline-control
+                                    data-original-value=""
+                                    onchange="showInlineSavePanel(this)"
+                                >
+                            @else
+                                <input
+                                    type="date"
+                                    name="deadlineDate"
+                                    value="${task.deadlineAt().toString().substring(0, 10)}"
+                                    data-inline-control
+                                    data-original-value="${task.deadlineAt().toString().substring(0, 10)}"
+                                    onchange="showInlineSavePanel(this)"
+                                >
+                            @endif
 
-                        <span data-inline-actions style="display: none;">
-                            <button type="submit">
-                                Сохранить
-                            </button>
+                            <span data-inline-actions style="display: none;">
+                                <button type="submit">
+                                    Сохранить
+                                </button>
 
-                            <button type="button" onclick="cancelInlineUpdate(this)">
-                                Отмена
-                            </button>
-                        </span>
-                    </form>
+                                <button type="button" onclick="cancelInlineUpdate(this)">
+                                    Отмена
+                                </button>
+                            </span>
+                        </form>
+                    @endif
                 </div>
 
                 <div>
                     <span>Категория:</span>
 
-                    <form
-                        method="post"
-                        action="/tasks/${task.id()}/category"
-                        style="display: inline;"
-                        data-inline-update-form="true"
-                    >
-                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
-
-                        <input type="hidden" name="returnTo" value="task">
-
-                        <select
-                            name="category"
-                            data-inline-control
-                            data-original-value="${task.category().name()}"
-                            onchange="showInlineSavePanel(this)"
+                    @if(task.canUpdateTask())
+                        <form
+                            method="post"
+                            action="/tasks/${task.id()}/category"
+                            style="display: inline;"
+                            data-inline-update-form="true"
                         >
-                            <option value="${task.category().name()}" selected>
-                                ${task.category().name()}
-                            </option>
+                            <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
 
-                            @for(TaskCategory category : categories)
-                                @if(category != task.category())
-                                    <option value="${category.name()}">
-                                        ${category.name()}
-                                    </option>
-                                @endif
-                            @endfor
-                        </select>
+                            <input type="hidden" name="returnTo" value="task">
 
-                        <span data-inline-actions style="display: none;">
-                            <button type="submit">
-                                Сохранить
-                            </button>
+                            <select
+                                name="category"
+                                data-inline-control
+                                data-original-value="${task.category().name()}"
+                                onchange="showInlineSavePanel(this)"
+                            >
+                                <option value="${task.category().name()}" selected>
+                                    ${task.category().name()}
+                                </option>
 
-                            <button type="button" onclick="cancelInlineUpdate(this)">
-                                Отмена
-                            </button>
-                        </span>
-                    </form>
+                                @for(TaskCategory category : categories)
+                                    @if(category != task.category())
+                                        <option value="${category.name()}">
+                                            ${category.name()}
+                                        </option>
+                                    @endif
+                                @endfor
+                            </select>
+
+                            <span data-inline-actions style="display: none;">
+                                <button type="submit">
+                                    Сохранить
+                                </button>
+
+                                <button type="button" onclick="cancelInlineUpdate(this)">
+                                    Отмена
+                                </button>
+                            </span>
+                        </form>
+                    @else
+                        <span>${task.category().name()}</span>
+                    @endif
                 </div>
 
                 <div>
@@ -327,25 +347,29 @@
                 </div>
 
                 @if(task.archived())
-                    <form method="post" action="/tasks/${task.id()}/restore" style="display: inline;">
-                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                    @if(task.canRestore())
+                        <form method="post" action="/tasks/${task.id()}/restore" style="display: inline;">
+                            <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
 
-                        <input type="hidden" name="returnTo" value="task">
+                            <input type="hidden" name="returnTo" value="task">
 
-                        <button type="submit">
-                            Вернуть из архива
-                        </button>
-                    </form>
+                            <button type="submit">
+                                Вернуть из архива
+                            </button>
+                        </form>
+                    @endif
                 @else
-                    <form method="post" action="/tasks/${task.id()}/archive" style="display: inline;">
-                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                    @if(task.canArchive())
+                        <form method="post" action="/tasks/${task.id()}/archive" style="display: inline;">
+                            <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
 
-                        <input type="hidden" name="returnTo" value="task">
+                            <input type="hidden" name="returnTo" value="task">
 
-                        <button type="submit">
-                            Перенести в архив
-                        </button>
-                    </form>
+                            <button type="submit">
+                                Перенести в архив
+                            </button>
+                        </form>
+                    @endif
                 @endif
             </div>
         </section>
@@ -361,50 +385,52 @@
                 @endif
             </div>
 
-            <a
-                href="#"
-                onclick="document.getElementById('description-edit-form').style.display = 'block'; this.style.display = 'none'; return false;"
-            >
-                Редактировать описание
-            </a>
-
-            <form
-                id="description-edit-form"
-                method="post"
-                action="/tasks/${task.id()}/edit"
-                style="display: none; margin-top: 12px;"
-            >
-                <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
-
-                <input type="hidden" name="title" value="${task.title()}">
-                <input type="hidden" name="category" value="${task.category().name()}">
-                <input type="hidden" name="assigneeId" value="${task.assigneeId().toString()}">
-
-                @if(task.deadlineAt() != null)
-                    <input
-                        type="hidden"
-                        name="deadlineDate"
-                        value="${task.deadlineAt().toString().substring(0, 10)}"
-                    >
-                @endif
-
-                <div>
-                    <label>Описание</label>
-
-                    <textarea name="description" required>@if(task.description() != null)${task.description()}@endif</textarea>
-                </div>
-
-                <button type="submit">
-                    Сохранить описание
-                </button>
-
-                <button
-                    type="button"
-                    onclick="document.getElementById('description-edit-form').style.display = 'none';"
+            @if(task.canUpdateTask())
+                <a
+                    href="#"
+                    onclick="document.getElementById('description-edit-form').style.display = 'block'; this.style.display = 'none'; return false;"
                 >
-                    Отмена
-                </button>
-            </form>
+                    Редактировать описание
+                </a>
+
+                <form
+                    id="description-edit-form"
+                    method="post"
+                    action="/tasks/${task.id()}/edit"
+                    style="display: none; margin-top: 12px;"
+                >
+                    <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+
+                    <input type="hidden" name="title" value="${task.title()}">
+                    <input type="hidden" name="category" value="${task.category().name()}">
+                    <input type="hidden" name="assigneeId" value="${task.assigneeId().toString()}">
+
+                    @if(task.deadlineAt() != null)
+                        <input
+                            type="hidden"
+                            name="deadlineDate"
+                            value="${task.deadlineAt().toString().substring(0, 10)}"
+                        >
+                    @endif
+
+                    <div>
+                        <label>Описание</label>
+
+                        <textarea name="description" required>@if(task.description() != null)${task.description()}@endif</textarea>
+                    </div>
+
+                    <button type="submit">
+                        Сохранить описание
+                    </button>
+
+                    <button
+                        type="button"
+                        onclick="document.getElementById('description-edit-form').style.display = 'none';"
+                    >
+                        Отмена
+                    </button>
+                </form>
+            @endif
         </section>
 
         <section>
@@ -428,18 +454,37 @@
                                 @endif
                             </small>
 
-                            <div>
-                                <a
-                                    href="#"
-                                    onclick="document.getElementById('comment-edit-form-${comment.id()}').style.display = 'block'; return false;"
-                                >
-                                    Редактировать
-                                </a>
+                            @if(comment.canEdit())
+                                <div>
+                                    <a
+                                        href="#"
+                                        onclick="document.getElementById('comment-edit-form-${comment.id()}').style.display = 'block'; return false;"
+                                    >
+                                        Редактировать
+                                    </a>
+
+                                    <form
+                                        method="post"
+                                        action="/tasks/${task.id()}/comments/${comment.id()}/delete"
+                                        style="display: inline;"
+                                    >
+                                        <input
+                                            type="hidden"
+                                            name="${_csrf.getParameterName()}"
+                                            value="${_csrf.getToken()}"
+                                        >
+
+                                        <button type="submit">
+                                            Удалить
+                                        </button>
+                                    </form>
+                                </div>
 
                                 <form
+                                    id="comment-edit-form-${comment.id()}"
                                     method="post"
-                                    action="/tasks/${task.id()}/comments/${comment.id()}/delete"
-                                    style="display: inline;"
+                                    action="/tasks/${task.id()}/comments/${comment.id()}/edit"
+                                    style="display: none; margin-top: 8px;"
                                 >
                                     <input
                                         type="hidden"
@@ -447,37 +492,20 @@
                                         value="${_csrf.getToken()}"
                                     >
 
+                                    <textarea name="message" required>${comment.message()}</textarea>
+
                                     <button type="submit">
-                                        Удалить
+                                        Сохранить
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onclick="document.getElementById('comment-edit-form-${comment.id()}').style.display = 'none';"
+                                    >
+                                        Отмена
                                     </button>
                                 </form>
-                            </div>
-
-                            <form
-                                id="comment-edit-form-${comment.id()}"
-                                method="post"
-                                action="/tasks/${task.id()}/comments/${comment.id()}/edit"
-                                style="display: none; margin-top: 8px;"
-                            >
-                                <input
-                                    type="hidden"
-                                    name="${_csrf.getParameterName()}"
-                                    value="${_csrf.getToken()}"
-                                >
-
-                                <textarea name="message" required>${comment.message()}</textarea>
-
-                                <button type="submit">
-                                    Сохранить
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onclick="document.getElementById('comment-edit-form-${comment.id()}').style.display = 'none';"
-                                >
-                                    Отмена
-                                </button>
-                            </form>
+                            @endif
                         </li>
                     @endfor
                 </ul>
