@@ -36,6 +36,11 @@ public class TaskService {
         return teamIds.stream().flatMap(teamId -> findByTeamId(teamId).stream()).toList();
     }
 
+    public List<Task> findVisibleByTeamId(Long teamId, UUID userId) {
+        List<Task> tasks = findByTeamId(teamId);
+        return filterByVisibility(tasks, userId);
+    }
+
     public Task findById(Long id) {
         Task task = taskRepository.findById(id);
 

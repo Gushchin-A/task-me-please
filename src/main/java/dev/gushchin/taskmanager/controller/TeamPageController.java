@@ -98,8 +98,7 @@ public class TeamPageController {
         UUID assigneeId = request.getAssigneeId();
 
         Team team = teamService.findById(id);
-        List<Task> allTasks = taskService.findByTeamId(id);
-        List<Task> visibleTasks = taskService.filterByVisibility(allTasks, authUser.getId());
+        List<Task> visibleTasks = taskService.findVisibleByTeamId(id, authUser.getId());
         List<Task> modeFilteredTasks = taskService.filterByArchived(visibleTasks, false);
         List<TeamMember> teamMembers = teamMemberService.findByTeamId(id);
 
@@ -157,8 +156,7 @@ public class TeamPageController {
         UUID assigneeId = request.getAssigneeId();
 
         Team team = teamService.findById(id);
-        List<Task> allTasks = taskService.findByTeamId(id);
-        List<Task> visibleTasks = taskService.filterByVisibility(allTasks, authUser.getId());
+        List<Task> visibleTasks = taskService.findVisibleByTeamId(id, authUser.getId());
         List<Task> modeFilteredTasks = taskService.filterByArchived(visibleTasks, true);
         List<TeamMember> teamMembers = teamMemberService.findByTeamId(id);
 
@@ -212,7 +210,7 @@ public class TeamPageController {
         }
 
         Team team = teamService.findById(id);
-        List<Task> tasks = taskService.findByTeamId(id);
+        List<Task> tasks = taskService.findVisibleByTeamId(id, authUser.getId());
         List<TeamMember> members = teamMemberService.findByTeamId(id);
 
         boolean canManageVisibility = currentMember.getRole() == TeamMemberRole.OWNER;
