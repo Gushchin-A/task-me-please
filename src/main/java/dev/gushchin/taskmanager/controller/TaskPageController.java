@@ -2,18 +2,19 @@ package dev.gushchin.taskmanager.controller;
 
 import dev.gushchin.taskmanager.model.Comment;
 import dev.gushchin.taskmanager.model.Task;
-import dev.gushchin.taskmanager.model.TaskCategory;
 import dev.gushchin.taskmanager.model.TaskListMode;
 import dev.gushchin.taskmanager.model.TaskRoleFilter;
 import dev.gushchin.taskmanager.model.TaskSort;
 import dev.gushchin.taskmanager.model.TaskStatus;
 import dev.gushchin.taskmanager.model.Team;
+import dev.gushchin.taskmanager.model.TeamTag;
 import dev.gushchin.taskmanager.model.User;
 import dev.gushchin.taskmanager.security.AuthUser;
 import dev.gushchin.taskmanager.service.CommentService;
 import dev.gushchin.taskmanager.service.TaskService;
 import dev.gushchin.taskmanager.service.TeamMemberService;
 import dev.gushchin.taskmanager.service.TeamService;
+import dev.gushchin.taskmanager.service.TeamTagService;
 import dev.gushchin.taskmanager.service.UserService;
 import dev.gushchin.taskmanager.view.CommentView;
 import dev.gushchin.taskmanager.view.MyTasksPageView;
@@ -39,7 +40,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Controller
 @RequiredArgsConstructor
 public class TaskPageController {
-    private static final String CATEGORIES_ATTRIBUTE = "categories";
+    private static final String TAGS_ATTRIBUTE = "tags";
     private static final String CSRF_ATTRIBUTE = "_csrf";
     private static final String MEMBERS_ATTRIBUTE = "members";
     private static final String REDIRECT_TEAMS_PREFIX = "redirect:/teams/";
@@ -58,6 +59,7 @@ public class TaskPageController {
     private final TeamMemberService teamMemberService;
     private final UserService userService;
     private final CommentService commentService;
+    private final TeamTagService teamTagService;
 
     @GetMapping("/tasks")
     public String tasksPage(
@@ -179,11 +181,13 @@ public class TaskPageController {
                         .map(teamMember -> userService.findById(teamMember.getUserId()))
                         .toList();
 
+        List<TeamTag> tags = selectedTeamId == null ? List.of() : teamTagService.findByTeamId(selectedTeamId);
+
         model.addAttribute("teams", teams);
         model.addAttribute("selectedTeamId", selectedTeamId);
         model.addAttribute(MEMBERS_ATTRIBUTE, members);
         model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
-        model.addAttribute(CATEGORIES_ATTRIBUTE, TaskCategory.values());
+        model.addAttribute(TAGS_ATTRIBUTE, tags);
 
         return "tasks/new";
     }
@@ -217,7 +221,7 @@ public class TaskPageController {
         model.addAttribute(TASK_ATTRIBUTE, toTaskView(task, authUser.getId()));
         model.addAttribute(TEAM_ATTRIBUTE, team);
         model.addAttribute(MEMBERS_ATTRIBUTE, members);
-        model.addAttribute(CATEGORIES_ATTRIBUTE, TaskCategory.values());
+        model.addAttribute(TAGS_ATTRIBUTE, teamTagService.findByTeamId(task.getTeamId()));
         model.addAttribute("comments", comments);
         model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
 
@@ -237,7 +241,7 @@ public class TaskPageController {
         model.addAttribute(TASK_ATTRIBUTE, toTaskView(task, authUser.getId()));
         model.addAttribute(TEAM_ATTRIBUTE, team);
         model.addAttribute(MEMBERS_ATTRIBUTE, members);
-        model.addAttribute(CATEGORIES_ATTRIBUTE, TaskCategory.values());
+        model.addAttribute(TAGS_ATTRIBUTE, teamTagService.findByTeamId(task.getTeamId()));
         model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
 
         return "tasks/edit";
@@ -250,13 +254,13 @@ public class TaskPageController {
             @RequestParam String title,
             @RequestParam String description,
             @RequestParam(required = false) LocalDate deadlineDate,
-            @RequestParam TaskCategory category,
+            @RequestParam Long tagId,
             @RequestParam UUID assigneeId) {
         Task task = taskService.findById(id);
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
         teamMemberService.findById(task.getTeamId(), assigneeId);
-        taskService.updateDetails(id, title, description, deadlineDate, category, assigneeId, authUser.getId());
+        taskService.updateDetails(id, title, description, deadlineDate, tagId, assigneeId, authUser.getId());
 
         return REDIRECT_TASKS_PREFIX + id;
     }
@@ -309,11 +313,11 @@ public class TaskPageController {
             @RequestParam String title,
             @RequestParam String description,
             @RequestParam(required = false) LocalDate deadlineDate,
-            @RequestParam TaskCategory category) {
+            @RequestParam Long tagId) {
         teamMemberService.findById(teamId, authUser.getId());
         teamMemberService.findById(teamId, assigneeId);
 
-        taskService.create(teamId, authUser.getId(), assigneeId, title, description, deadlineDate, category);
+        taskService.create(teamId, authUser.getId(), assigneeId, title, description, deadlineDate, tagId);
 
         return REDIRECT_TEAMS_PREFIX + teamId;
     }
@@ -333,17 +337,17 @@ public class TaskPageController {
         return buildRedirectAfterInlineUpdate(task, request, returnTo);
     }
 
-    @PostMapping("/tasks/{id}/category")
-    public String updateTaskCategory(
+    @PostMapping("/tasks/{id}/tag")
+    public String updateTaskTag(
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long id,
-            @RequestParam TaskCategory category,
+            @RequestParam Long tagId,
             InlineTaskUpdateRequest request,
             @RequestParam(required = false) String returnTo) {
         Task task = taskService.findById(id);
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
-        taskService.updateCategory(id, category, authUser.getId());
+        taskService.updateTag(id, tagId, authUser.getId());
 
         return buildRedirectAfterInlineUpdate(task, request, returnTo);
     }
@@ -432,8 +436,9 @@ public class TaskPageController {
     private TaskWithTeamView toTaskWithTeamView(Task task, UUID userId) {
         Team team = teamService.findById(task.getTeamId());
         List<User> members = getTeamUsers(task.getTeamId());
+        List<TeamTag> tags = teamTagService.findByTeamId(task.getTeamId());
 
-        return new TaskWithTeamView(toTaskView(task, userId), team.getId(), team.getName(), members);
+        return new TaskWithTeamView(toTaskView(task, userId), team.getId(), team.getName(), members, tags);
     }
 
     private TaskView toTaskView(Task task, UUID userId) {
@@ -446,10 +451,12 @@ public class TaskPageController {
         boolean canRestore = taskService.canRestoreTask(task, userId);
         boolean showAuthorChangeWarning = task.getAuthorId().equals(userId) && !taskService.isTeamOwner(task, userId);
 
+        TeamTag tag = teamTagService.findById(task.getTagId());
+
         TaskView.TaskState state = new TaskView.TaskState(
                 task.isArchived(), canUpdateTask, canUpdateStatus, canArchive, canRestore, showAuthorChangeWarning);
 
-        return TaskView.from(task, author.getName(), assignee.getName(), state);
+        return TaskView.from(task, tag.getName(), author.getName(), assignee.getName(), state);
     }
 
     private List<User> getTeamUsers(Long teamId) {

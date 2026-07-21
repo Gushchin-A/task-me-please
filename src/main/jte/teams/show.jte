@@ -1,4 +1,4 @@
-@import dev.gushchin.taskmanager.model.TaskCategory
+@import dev.gushchin.taskmanager.model.TeamTag
 @import dev.gushchin.taskmanager.model.TaskSort
 @import dev.gushchin.taskmanager.model.TaskStatus
 @import dev.gushchin.taskmanager.model.User
@@ -132,6 +132,26 @@
                         @endif
                     </a>
                 @endfor
+
+                <span>По тегу:</span>
+
+                <a href="${page.allTagsUrl()}">
+                    @if(page.selectedTagId() == null)
+                        <strong>Все</strong>
+                    @else
+                        Все
+                    @endif
+                </a>
+
+                @for(TeamTag tag : page.tags())
+                    <a href="${page.tagUrl(tag.getId())}">
+                        @if(page.selectedTagId() != null && page.selectedTagId().equals(tag.getId()))
+                            <strong>${tag.getName()}</strong>
+                        @else
+                            ${tag.getName()}
+                        @endif
+                    </a>
+                @endfor
             </div>
 
             <div>
@@ -145,11 +165,11 @@
                     @endif
                 </a>
 
-                <a href="${page.sortUrl(TaskSort.CATEGORY)}">
-                    @if(page.selectedSort() == TaskSort.CATEGORY)
-                        <strong>Сервис</strong>
+                <a href="${page.sortUrl(TaskSort.TAG)}">
+                    @if(page.selectedSort() == TaskSort.TAG)
+                        <strong>Тег</strong>
                     @else
-                        Сервис
+                        Тег
                     @endif
                 </a>
             </div>
@@ -198,14 +218,26 @@
                                         style="display: inline;"
                                         data-inline-update-form="true"
                                     >
-                                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                                        <input
+                                            type="hidden"
+                                            name="${_csrf.getParameterName()}"
+                                            value="${_csrf.getToken()}"
+                                        >
 
                                         @if(page.selectedStatus() != null)
-                                            <input type="hidden" name="selectedStatus" value="${page.selectedStatus().name()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedStatus"
+                                                value="${page.selectedStatus().name()}"
+                                            >
                                         @endif
 
                                         @if(page.selectedSort() != null)
-                                            <input type="hidden" name="selectedSort" value="${page.selectedSort().name()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedSort"
+                                                value="${page.selectedSort().name()}"
+                                            >
                                         @endif
 
                                         <select
@@ -214,7 +246,10 @@
                                             data-original-value="${task.status().name()}"
                                             onchange="showInlineSavePanel(this)"
                                         >
-                                            <option value="${task.status().name()}" selected>
+                                            <option
+                                                value="${task.status().name()}"
+                                                selected
+                                            >
                                                 ${task.status().name()}
                                             </option>
 
@@ -227,12 +262,18 @@
                                             @endfor
                                         </select>
 
-                                        <span data-inline-actions style="display: none;">
+                                        <span
+                                            data-inline-actions
+                                            style="display: none;"
+                                        >
                                             <button type="submit">
                                                 Сохранить
                                             </button>
 
-                                            <button type="button" onclick="cancelInlineUpdate(this)">
+                                            <button
+                                                type="button"
+                                                onclick="cancelInlineUpdate(this)"
+                                            >
                                                 Отмена
                                             </button>
                                         </span>
@@ -254,18 +295,35 @@
                                         style="display: inline;"
                                         data-inline-update-form="true"
                                     >
-                                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                                        <input
+                                            type="hidden"
+                                            name="${_csrf.getParameterName()}"
+                                            value="${_csrf.getToken()}"
+                                        >
 
                                         @if(page.selectedStatus() != null)
-                                            <input type="hidden" name="selectedStatus" value="${page.selectedStatus().name()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedStatus"
+                                                value="${page.selectedStatus().name()}"
+                                            >
                                         @endif
 
                                         @if(page.selectedSort() != null)
-                                            <input type="hidden" name="selectedSort" value="${page.selectedSort().name()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedSort"
+                                                value="${page.selectedSort().name()}"
+                                            >
                                         @endif
 
                                         @if(task.showAuthorChangeWarning())
-                                            <span style="position: relative; display: inline-block;">
+                                            <span
+                                                style="
+                                                    position: relative;
+                                                    display: inline-block;
+                                                "
+                                            >
                                                 <select
                                                     name="authorId"
                                                     data-inline-control
@@ -274,7 +332,10 @@
                                                     onmouseenter="document.getElementById('author-warning-${task.id()}').style.display = 'block';"
                                                     onmouseleave="document.getElementById('author-warning-${task.id()}').style.display = 'none';"
                                                 >
-                                                    <option value="${task.authorId().toString()}" selected>
+                                                    <option
+                                                        value="${task.authorId().toString()}"
+                                                        selected
+                                                    >
                                                         ${task.authorName()}
                                                     </option>
 
@@ -302,7 +363,8 @@
                                                         z-index: 10;
                                                     "
                                                 >
-                                                    После смены автора предыдущий автор потеряет право редактировать задачу.
+                                                    После смены автора предыдущий автор
+                                                    потеряет право редактировать задачу.
                                                 </span>
                                             </span>
                                         @else
@@ -312,7 +374,10 @@
                                                 data-original-value="${task.authorId().toString()}"
                                                 onchange="showInlineSavePanel(this)"
                                             >
-                                                <option value="${task.authorId().toString()}" selected>
+                                                <option
+                                                    value="${task.authorId().toString()}"
+                                                    selected
+                                                >
                                                     ${task.authorName()}
                                                 </option>
 
@@ -326,12 +391,18 @@
                                             </select>
                                         @endif
 
-                                        <span data-inline-actions style="display: none;">
+                                        <span
+                                            data-inline-actions
+                                            style="display: none;"
+                                        >
                                             <button type="submit">
                                                 Сохранить
                                             </button>
 
-                                            <button type="button" onclick="cancelInlineUpdate(this)">
+                                            <button
+                                                type="button"
+                                                onclick="cancelInlineUpdate(this)"
+                                            >
                                                 Отмена
                                             </button>
                                         </span>
@@ -351,14 +422,26 @@
                                         style="display: inline;"
                                         data-inline-update-form="true"
                                     >
-                                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                                        <input
+                                            type="hidden"
+                                            name="${_csrf.getParameterName()}"
+                                            value="${_csrf.getToken()}"
+                                        >
 
                                         @if(page.selectedStatus() != null)
-                                            <input type="hidden" name="selectedStatus" value="${page.selectedStatus().name()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedStatus"
+                                                value="${page.selectedStatus().name()}"
+                                            >
                                         @endif
 
                                         @if(page.selectedSort() != null)
-                                            <input type="hidden" name="selectedSort" value="${page.selectedSort().name()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedSort"
+                                                value="${page.selectedSort().name()}"
+                                            >
                                         @endif
 
                                         <select
@@ -367,7 +450,10 @@
                                             data-original-value="${task.assigneeId().toString()}"
                                             onchange="showInlineSavePanel(this)"
                                         >
-                                            <option value="${task.assigneeId().toString()}" selected>
+                                            <option
+                                                value="${task.assigneeId().toString()}"
+                                                selected
+                                            >
                                                 ${task.assigneeName()}
                                             </option>
 
@@ -380,12 +466,18 @@
                                             @endfor
                                         </select>
 
-                                        <span data-inline-actions style="display: none;">
+                                        <span
+                                            data-inline-actions
+                                            style="display: none;"
+                                        >
                                             <button type="submit">
                                                 Сохранить
                                             </button>
 
-                                            <button type="button" onclick="cancelInlineUpdate(this)">
+                                            <button
+                                                type="button"
+                                                onclick="cancelInlineUpdate(this)"
+                                            >
                                                 Отмена
                                             </button>
                                         </span>
@@ -413,14 +505,26 @@
                                         style="display: inline;"
                                         data-inline-update-form="true"
                                     >
-                                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                                        <input
+                                            type="hidden"
+                                            name="${_csrf.getParameterName()}"
+                                            value="${_csrf.getToken()}"
+                                        >
 
                                         @if(page.selectedStatus() != null)
-                                            <input type="hidden" name="selectedStatus" value="${page.selectedStatus().name()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedStatus"
+                                                value="${page.selectedStatus().name()}"
+                                            >
                                         @endif
 
                                         @if(page.selectedSort() != null)
-                                            <input type="hidden" name="selectedSort" value="${page.selectedSort().name()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedSort"
+                                                value="${page.selectedSort().name()}"
+                                            >
                                         @endif
 
                                         @if(task.deadlineAt() == null)
@@ -442,12 +546,18 @@
                                             >
                                         @endif
 
-                                        <span data-inline-actions style="display: none;">
+                                        <span
+                                            data-inline-actions
+                                            style="display: none;"
+                                        >
                                             <button type="submit">
                                                 Сохранить
                                             </button>
 
-                                            <button type="button" onclick="cancelInlineUpdate(this)">
+                                            <button
+                                                type="button"
+                                                onclick="cancelInlineUpdate(this)"
+                                            >
                                                 Отмена
                                             </button>
                                         </span>
@@ -456,56 +566,71 @@
                             </div>
 
                             <div>
-                                <span>Категория:</span>
+                                <span>Тег:</span>
 
                                 @if(task.canUpdateTask())
                                     <form
                                         method="post"
-                                        action="/tasks/${task.id()}/category"
+                                        action="/tasks/${task.id()}/tag"
                                         style="display: inline;"
                                         data-inline-update-form="true"
                                     >
-                                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                                        <input
+                                            type="hidden"
+                                            name="${_csrf.getParameterName()}"
+                                            value="${_csrf.getToken()}"
+                                        >
 
                                         @if(page.selectedStatus() != null)
-                                            <input type="hidden" name="selectedStatus" value="${page.selectedStatus().name()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedStatus"
+                                                value="${page.selectedStatus().name()}"
+                                            >
                                         @endif
 
                                         @if(page.selectedSort() != null)
-                                            <input type="hidden" name="selectedSort" value="${page.selectedSort().name()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedSort"
+                                                value="${page.selectedSort().name()}"
+                                            >
                                         @endif
 
                                         <select
-                                            name="category"
+                                            name="tagId"
                                             data-inline-control
-                                            data-original-value="${task.category().name()}"
+                                            data-original-value="${task.tagId()}"
                                             onchange="showInlineSavePanel(this)"
                                         >
-                                            <option value="${task.category().name()}" selected>
-                                                ${task.category().name()}
-                                            </option>
-
-                                            @for(TaskCategory category : TaskCategory.values())
-                                                @if(category != task.category())
-                                                    <option value="${category.name()}">
-                                                        ${category.name()}
-                                                    </option>
-                                                @endif
+                                            @for(TeamTag tag : page.tags())
+                                                <option
+                                                    value="${tag.getId()}"
+                                                    selected="${tag.getId().equals(task.tagId())}"
+                                                >
+                                                    ${tag.getName()}
+                                                </option>
                                             @endfor
                                         </select>
 
-                                        <span data-inline-actions style="display: none;">
+                                        <span
+                                            data-inline-actions
+                                            style="display: none;"
+                                        >
                                             <button type="submit">
                                                 Сохранить
                                             </button>
 
-                                            <button type="button" onclick="cancelInlineUpdate(this)">
+                                            <button
+                                                type="button"
+                                                onclick="cancelInlineUpdate(this)"
+                                            >
                                                 Отмена
                                             </button>
                                         </span>
                                     </form>
                                 @else
-                                    <span>${task.category().name()}</span>
+                                    <span>${task.tagName()}</span>
                                 @endif
                             </div>
                         </li>

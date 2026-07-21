@@ -1,7 +1,6 @@
 package dev.gushchin.taskmanager.view;
 
 import dev.gushchin.taskmanager.model.Task;
-import dev.gushchin.taskmanager.model.TaskCategory;
 import dev.gushchin.taskmanager.model.TaskStatus;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -16,24 +15,29 @@ public record TaskView(
         String description,
         TaskTimeline timeline,
         TaskStatus status,
-        TaskCategory category,
+        TaskTag tag,
         TaskParticipants participants,
         TaskState state) {
     private static final DateTimeFormatter DEADLINE_FORMATTER =
             DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.forLanguageTag("ru"));
 
-    public static TaskView from(Task task, String authorName, String assigneeName) {
-        return from(task, authorName, assigneeName, new TaskState(task.isArchived(), true, true, true, true, false));
+    public static TaskView from(Task task, String tagName, String authorName, String assigneeName) {
+        return from(
+                task,
+                tagName,
+                authorName,
+                assigneeName,
+                new TaskState(task.isArchived(), true, true, true, true, false));
     }
 
-    public static TaskView from(Task task, String authorName, String assigneeName, TaskState state) {
+    public static TaskView from(Task task, String tagName, String authorName, String assigneeName, TaskState state) {
         return new TaskView(
                 task.getId(),
                 task.getTitle(),
                 task.getDescription(),
                 new TaskTimeline(task.getDeadlineAt(), task.getCreatedAt()),
                 task.getStatus(),
-                task.getCategory(),
+                new TaskTag(task.getTagId(), tagName),
                 new TaskParticipants(task.getAuthorId(), authorName, task.getAssigneeId(), assigneeName),
                 state);
     }
@@ -44,6 +48,14 @@ public record TaskView(
 
     public Instant createdAt() {
         return timeline.createdAt();
+    }
+
+    public Long tagId() {
+        return tag.id();
+    }
+
+    public String tagName() {
+        return tag.name();
     }
 
     public UUID authorId() {
@@ -130,6 +142,8 @@ public record TaskView(
     }
 
     public record TaskTimeline(Instant deadlineAt, Instant createdAt) {}
+
+    public record TaskTag(Long id, String name) {}
 
     public record TaskParticipants(UUID authorId, String authorName, UUID assigneeId, String assigneeName) {}
 

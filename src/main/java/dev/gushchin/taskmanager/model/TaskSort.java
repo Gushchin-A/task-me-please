@@ -2,6 +2,6 @@ package dev.gushchin.taskmanager.model;
 
 public enum TaskSort {
     DEADLINE,
-    CATEGORY,
+    TAG,
     TEAM
 }

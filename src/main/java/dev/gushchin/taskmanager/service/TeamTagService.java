@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class TeamTagService {
     private static final int MAX_TAGS_PER_TEAM = 20;
-    private static final int MAX_TAG_NAME_LENGTH = 50;
+    private static final int MAX_TAG_NAME_LENGTH = 30;
 
     private final TeamTagRepository teamTagRepository;
     private final TeamService teamService;
@@ -84,5 +84,16 @@ public class TeamTagService {
 
     private String normalizeName(String name) {
         return name.toLowerCase(Locale.ROOT);
+    }
+
+    public TeamTag findByIdForTeam(Long tagId, Long teamId) {
+        TeamTag teamTag = findById(tagId);
+
+        if (!teamId.equals(teamTag.getTeamId())) {
+            throw new InvalidTeamTagException(
+                    "Team tag does not belong to team. Tag id = " + tagId + ", team id = " + teamId);
+        }
+
+        return teamTag;
     }
 }

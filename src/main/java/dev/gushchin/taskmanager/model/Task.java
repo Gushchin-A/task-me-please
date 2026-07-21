@@ -20,7 +20,7 @@ public class Task {
     private String description;
     private Instant deadlineAt;
     private TaskStatus status;
-    private TaskCategory category;
+    private Long tagId;
     private Instant createdAt;
     private Instant updatedAt;
     private boolean archived;

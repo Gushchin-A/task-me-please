@@ -1,14 +1,19 @@
 package dev.gushchin.taskmanager.service;
 
+import dev.gushchin.taskmanager.exception.InvalidTeamTagException;
 import dev.gushchin.taskmanager.exception.TeamNotFoundException;
 import dev.gushchin.taskmanager.model.Team;
 import dev.gushchin.taskmanager.model.TeamMember;
 import dev.gushchin.taskmanager.model.TeamMemberRole;
+import dev.gushchin.taskmanager.model.TeamTag;
 import dev.gushchin.taskmanager.model.TeamTaskVisibility;
+import dev.gushchin.taskmanager.model.User;
 import dev.gushchin.taskmanager.repository.TeamMemberRepository;
 import dev.gushchin.taskmanager.repository.TeamRepository;
+import dev.gushchin.taskmanager.repository.TeamTagRepository;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.function.Predicate;
 import lombok.RequiredArgsConstructor;
@@ -18,9 +23,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class TeamService {
+    private static final int MAX_TAGS_PER_TEAM = 20;
+    private static final int MAX_TAG_NAME_LENGTH = 30;
+
     private final TeamRepository teamRepository;
     private final UserService userService;
     private final TeamMemberRepository teamMemberRepository;
+    private final TeamTagRepository teamTagRepository;
 
     public Team findById(Long id) {
         Team team = teamRepository.findById(id);
@@ -47,18 +56,63 @@ public class TeamService {
 
     @Transactional
     public Team create(String name, UUID createdBy) {
-        userService.findById(createdBy);
+        return create(name, createdBy, List.of());
+    }
 
+    @Transactional
+    public Team create(String name, UUID createdBy, List<String> tagNames) {
+        User creator = userService.findById(createdBy);
         Instant now = Instant.now();
 
-        Team team = new Team(name, createdBy, now, now, false);
+        Team team = new Team(null, name, creator.getId(), now, now, false);
+
         Team savedTeam = teamRepository.save(team);
 
-        TeamMember owner =
-                new TeamMember(savedTeam.getId(), createdBy, TeamMemberRole.OWNER, TeamTaskVisibility.ALL_TASKS, now);
+        TeamMember owner = new TeamMember(
+                savedTeam.getId(), creator.getId(), TeamMemberRole.OWNER, TeamTaskVisibility.ALL_TASKS, now);
+
         teamMemberRepository.save(owner);
 
+        List<TeamTag> teamTags = prepareTagNames(tagNames).stream()
+                .map(tagName -> createTeamTag(savedTeam.getId(), tagName, now))
+                .toList();
+
+        teamTags.forEach(teamTagRepository::save);
+
         return savedTeam;
+    }
+
+    private List<String> prepareTagNames(List<String> tagNames) {
+        if (tagNames == null) {
+            return List.of();
+        }
+
+        List<String> preparedNames = tagNames.stream()
+                .filter(tagName -> tagName != null && !tagName.isBlank())
+                .map(String::trim)
+                .toList();
+
+        if (preparedNames.size() > MAX_TAGS_PER_TEAM) {
+            throw new InvalidTeamTagException("Team cannot contain more than " + MAX_TAGS_PER_TEAM + " tags");
+        }
+
+        for (String tagName : preparedNames) {
+            if (tagName.length() > MAX_TAG_NAME_LENGTH) {
+                throw new InvalidTeamTagException(
+                        "Team tag name must not be longer than " + MAX_TAG_NAME_LENGTH + " characters");
+            }
+        }
+
+        long normalizedNamesCount = preparedNames.stream()
+                .map(tagName -> tagName.toLowerCase(Locale.ROOT))
+                .distinct()
+                .count();
+
+        if (normalizedNamesCount != preparedNames.size()) {
+            throw new InvalidTeamTagException("Team tag names must be unique");
+        }
+
+        return preparedNames;
     }
 
     public void deleteById(Long id) {
@@ -66,5 +120,9 @@ public class TeamService {
         team.setDeleted(true);
         team.setUpdatedAt(Instant.now());
         teamRepository.update(team);
+    }
+
+    private TeamTag createTeamTag(Long teamId, String tagName, Instant now) {
+        return new TeamTag(teamId, tagName, tagName.toLowerCase(Locale.ROOT), now, now, false);
     }
 }

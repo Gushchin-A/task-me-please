@@ -7,36 +7,48 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import dev.gushchin.taskmanager.exception.TeamNotFoundException;
 import dev.gushchin.taskmanager.model.Team;
 import dev.gushchin.taskmanager.model.TeamMember;
+import dev.gushchin.taskmanager.model.TeamTag;
 import dev.gushchin.taskmanager.model.User;
 import dev.gushchin.taskmanager.repository.TeamMemberRepository;
 import dev.gushchin.taskmanager.repository.TeamRepository;
+import dev.gushchin.taskmanager.repository.TeamTagRepository;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class TeamServiceTest {
     private final TeamRepository teamRepository = mock(TeamRepository.class);
     private final UserService userService = mock(UserService.class);
     private final TeamMemberRepository teamMemberRepository = mock(TeamMemberRepository.class);
+    private final TeamTagRepository teamTagRepository = mock(TeamTagRepository.class);
 
-    private final TeamService teamService = new TeamService(teamRepository, userService, teamMemberRepository);
+    private final TeamService teamService =
+            new TeamService(teamRepository, userService, teamMemberRepository, teamTagRepository);
 
     @Test
     void createShouldReturnSavedTeam() {
         // given
-        UUID createdBy = UUID.randomUUID();
+        final UUID createdBy = UUID.randomUUID();
+        User creator = new User();
+        creator.setId(createdBy);
 
+        when(userService.findById(createdBy)).thenReturn(creator);
         when(teamRepository.save(any(Team.class))).thenAnswer(invocationOnMock -> {
             Team team = invocationOnMock.getArgument(0);
             team.setId(1L);
+
             return team;
         });
+
         when(teamMemberRepository.save(any(TeamMember.class)))
                 .thenAnswer(invocationOnMock -> invocationOnMock.getArgument(0));
 
@@ -52,6 +64,7 @@ class TeamServiceTest {
         verify(userService).findById(createdBy);
         verify(teamRepository).save(any(Team.class));
         verify(teamMemberRepository).save(any(TeamMember.class));
+        verifyNoInteractions(teamTagRepository);
     }
 
     @Test
@@ -142,5 +155,52 @@ class TeamServiceTest {
         assertTrue(existingTeam.isDeleted());
         verify(teamRepository).findById(7L);
         verify(teamRepository).update(existingTeam);
+    }
+
+    @Test
+    void createWithTagsShouldSaveTeamTags() {
+        // given
+        final UUID createdBy = UUID.randomUUID();
+        User creator = new User();
+        creator.setId(createdBy);
+
+        when(userService.findById(createdBy)).thenReturn(creator);
+        when(teamRepository.save(any(Team.class))).thenAnswer(invocationOnMock -> {
+            Team savedTeam = invocationOnMock.getArgument(0);
+            savedTeam.setId(10L);
+
+            return savedTeam;
+        });
+
+        when(teamMemberRepository.save(any(TeamMember.class)))
+                .thenAnswer(invocationOnMock -> invocationOnMock.getArgument(0));
+
+        when(teamTagRepository.save(any(TeamTag.class)))
+                .thenAnswer(invocationOnMock -> invocationOnMock.getArgument(0));
+
+        // when
+        teamService.create("Project Team", createdBy, List.of("Кинопоиск", "Плюс"));
+
+        // then
+        ArgumentCaptor<TeamTag> tagCaptor = ArgumentCaptor.forClass(TeamTag.class);
+        verify(teamTagRepository, times(2)).save(tagCaptor.capture());
+
+        List<TeamTag> savedTags = tagCaptor.getAllValues();
+        final TeamTag firstTag = savedTags.get(0);
+        final TeamTag secondTag = savedTags.get(1);
+
+        assertEquals(10L, firstTag.getTeamId());
+        assertEquals("Кинопоиск", firstTag.getName());
+        assertEquals("кинопоиск", firstTag.getNormalizedName());
+        assertFalse(firstTag.isDeleted());
+
+        assertEquals(10L, secondTag.getTeamId());
+        assertEquals("Плюс", secondTag.getName());
+        assertEquals("плюс", secondTag.getNormalizedName());
+        assertFalse(secondTag.isDeleted());
+
+        verify(userService).findById(createdBy);
+        verify(teamRepository).save(any(Team.class));
+        verify(teamMemberRepository).save(any(TeamMember.class));
     }
 }

@@ -5,6 +5,7 @@ import static dev.gushchin.taskmanager.jooq.Tables.TASKS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAMS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAM_INVITATIONS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAM_MEMBERS;
+import static dev.gushchin.taskmanager.jooq.Tables.TEAM_TAGS;
 import static dev.gushchin.taskmanager.jooq.Tables.USERS;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -14,13 +15,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import dev.gushchin.taskmanager.IntegrationTestBase;
-import dev.gushchin.taskmanager.model.TaskCategory;
 import dev.gushchin.taskmanager.model.Team;
+import dev.gushchin.taskmanager.model.TeamTag;
 import dev.gushchin.taskmanager.model.User;
 import dev.gushchin.taskmanager.security.AuthUser;
 import dev.gushchin.taskmanager.service.TaskService;
 import dev.gushchin.taskmanager.service.TeamMemberService;
 import dev.gushchin.taskmanager.service.TeamService;
+import dev.gushchin.taskmanager.service.TeamTagService;
 import dev.gushchin.taskmanager.service.UserService;
 import java.time.LocalDate;
 import org.jooq.DSLContext;
@@ -48,6 +50,9 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
     @Autowired
     private TaskService taskService;
 
+    @Autowired
+    private TeamTagService teamTagService;
+
     private User owner;
     private User member;
     private Team team;
@@ -57,10 +62,15 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
         cleanDatabase();
 
         owner = userService.create("team-owner@test.com", "Owner", "qwerty");
+
         member = userService.create("team-member@test.com", "Member", "qwerty");
 
         team = teamService.create("Project Team", owner.getId());
+
         teamMemberService.addMember(team.getId(), member.getId());
+
+        TeamTag kinopoiskTag = teamTagService.create(team.getId(), "Кинопоиск");
+        TeamTag plusTag = teamTagService.create(team.getId(), "Плюс");
 
         taskService.create(
                 team.getId(),
@@ -69,7 +79,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 "Visible task",
                 "Visible to member",
                 DEADLINE_DATE,
-                TaskCategory.KINOPOISK);
+                kinopoiskTag.getId());
 
         taskService.create(
                 team.getId(),
@@ -78,7 +88,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 "Hidden task",
                 "Not visible to member",
                 DEADLINE_DATE,
-                TaskCategory.PLUS);
+                plusTag.getId());
     }
 
     @AfterEach
@@ -98,6 +108,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
         dsl.deleteFrom(COMMENTS).execute();
         dsl.deleteFrom(TASKS).execute();
         dsl.deleteFrom(TEAM_INVITATIONS).execute();
+        dsl.deleteFrom(TEAM_TAGS).execute();
         dsl.deleteFrom(TEAM_MEMBERS).execute();
         dsl.deleteFrom(TEAMS).execute();
         dsl.deleteFrom(USERS).execute();

@@ -5,7 +5,6 @@ import static dev.gushchin.taskmanager.jooq.Tables.TASKS;
 import dev.gushchin.taskmanager.jooq.tables.records.TasksRecord;
 import dev.gushchin.taskmanager.mapper.TaskMapper;
 import dev.gushchin.taskmanager.model.Task;
-import dev.gushchin.taskmanager.model.TaskCategory;
 import dev.gushchin.taskmanager.model.TaskStatus;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -43,7 +42,7 @@ public class TaskRepository {
                                 ? null
                                 : task.getDeadlineAt().atOffset(ZoneOffset.UTC))
                 .set(TASKS.STATUS, task.getStatus().name())
-                .set(TASKS.CATEGORY, task.getCategory().name())
+                .set(TASKS.TAG_ID, task.getTagId())
                 .set(TASKS.IS_ARCHIVED, task.isArchived())
                 .set(TASKS.IS_DELETED, task.isDeleted())
                 .set(TASKS.CREATED_AT, task.getCreatedAt().atOffset(ZoneOffset.UTC))
@@ -65,9 +64,9 @@ public class TaskRepository {
         return TaskMapper.toModel(record);
     }
 
-    public Task updateCategory(Long id, TaskCategory category, Instant updatedAt) {
+    public Task updateTag(Long id, Long tagId, Instant updatedAt) {
         TasksRecord record = dsl.update(TASKS)
-                .set(TASKS.CATEGORY, category.name())
+                .set(TASKS.TAG_ID, tagId)
                 .set(TASKS.UPDATED_AT, updatedAt.atOffset(ZoneOffset.UTC))
                 .where(TASKS.ID.eq(id))
                 .returning()
@@ -114,14 +113,14 @@ public class TaskRepository {
             String title,
             String description,
             Instant deadlineAt,
-            TaskCategory category,
+            Long tagId,
             UUID assigneeId,
             Instant updatedAt) {
         TasksRecord record = dsl.update(TASKS)
                 .set(TASKS.TITLE, title)
                 .set(TASKS.DESCRIPTION, description)
                 .set(TASKS.DEADLINE_AT, deadlineAt == null ? null : deadlineAt.atOffset(ZoneOffset.UTC))
-                .set(TASKS.CATEGORY, category.name())
+                .set(TASKS.TAG_ID, tagId)
                 .set(TASKS.ASSIGNEE_ID, assigneeId)
                 .set(TASKS.UPDATED_AT, updatedAt.atOffset(ZoneOffset.UTC))
                 .where(TASKS.ID.eq(id))

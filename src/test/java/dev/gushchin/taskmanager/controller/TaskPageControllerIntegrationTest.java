@@ -5,6 +5,7 @@ import static dev.gushchin.taskmanager.jooq.Tables.TASKS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAMS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAM_INVITATIONS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAM_MEMBERS;
+import static dev.gushchin.taskmanager.jooq.Tables.TEAM_TAGS;
 import static dev.gushchin.taskmanager.jooq.Tables.USERS;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -19,15 +20,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import dev.gushchin.taskmanager.IntegrationTestBase;
 import dev.gushchin.taskmanager.model.Comment;
 import dev.gushchin.taskmanager.model.Task;
-import dev.gushchin.taskmanager.model.TaskCategory;
 import dev.gushchin.taskmanager.model.TaskStatus;
 import dev.gushchin.taskmanager.model.Team;
+import dev.gushchin.taskmanager.model.TeamTag;
 import dev.gushchin.taskmanager.model.User;
 import dev.gushchin.taskmanager.repository.CommentRepository;
 import dev.gushchin.taskmanager.security.AuthUser;
 import dev.gushchin.taskmanager.service.TaskService;
 import dev.gushchin.taskmanager.service.TeamMemberService;
 import dev.gushchin.taskmanager.service.TeamService;
+import dev.gushchin.taskmanager.service.TeamTagService;
 import dev.gushchin.taskmanager.service.UserService;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -40,6 +42,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 @SuppressWarnings("PMD.UnitTestShouldIncludeAssert")
 class TaskPageControllerIntegrationTest extends IntegrationTestBase {
     private static final LocalDate DEADLINE_DATE = LocalDate.of(2035, 1, 20);
+
     private static final Instant COMMENT_CREATED_AT = Instant.parse("2026-06-15T16:17:18.176447Z");
 
     @Autowired
@@ -58,11 +61,16 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
     private TaskService taskService;
 
     @Autowired
+    private TeamTagService teamTagService;
+
+    @Autowired
     private CommentRepository commentRepository;
 
     private User owner;
     private User secondUser;
     private Team team;
+    private TeamTag kinopoiskTag;
+    private TeamTag plusTag;
     private Task task;
 
     @BeforeEach
@@ -70,10 +78,13 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
         cleanDatabase();
 
         owner = userService.create("owner@test.com", "Owner", "qwerty");
+
         secondUser = userService.create("second@test.com", "Second", "qwerty");
 
         team = teamService.create("Project Team", owner.getId());
         teamMemberService.addMember(team.getId(), secondUser.getId());
+        kinopoiskTag = teamTagService.create(team.getId(), "Кинопоиск");
+        plusTag = teamTagService.create(team.getId(), "Плюс");
 
         task = taskService.create(
                 team.getId(),
@@ -82,7 +93,7 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                 "Important task",
                 "Task description",
                 DEADLINE_DATE,
-                TaskCategory.KINOPOISK);
+                kinopoiskTag.getId());
     }
 
     @AfterEach
@@ -98,6 +109,7 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
 
         Comment comment = new Comment(
                 null, task.getId(), owner.getId(), "Initial comment", COMMENT_CREATED_AT, COMMENT_CREATED_AT, false);
+
         commentRepository.save(comment);
 
         // when
@@ -109,6 +121,7 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("Архив")))
                 .andExpect(content().string(containsString("Вернуть из архива")))
                 .andExpect(content().string(containsString("20 января 2035")))
+                .andExpect(content().string(containsString("Кинопоиск")))
                 .andExpect(content().string(containsString("Initial comment")))
                 .andExpect(content().string(containsString("15 июня 2026 18:17")));
     }
@@ -159,10 +172,10 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(redirectedUrl("/tasks/" + taskId));
 
         // when
-        mockMvc.perform(post("/tasks/" + taskId + "/category")
+        mockMvc.perform(post("/tasks/" + taskId + "/tag")
                         .with(csrf())
                         .with(user(new AuthUser(owner)))
-                        .param("category", TaskCategory.PLUS.name())
+                        .param("tagId", plusTag.getId().toString())
                         .param("returnTo", "task"))
                 // then
                 .andExpect(status().is3xxRedirection())
@@ -176,7 +189,7 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("Second")))
                 .andExpect(content().string(containsString("Owner")))
                 .andExpect(content().string(containsString("20 января 2035")))
-                .andExpect(content().string(containsString(TaskCategory.PLUS.name())));
+                .andExpect(content().string(containsString("Плюс")));
     }
 
     @Test
@@ -268,6 +281,7 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
         dsl.deleteFrom(COMMENTS).execute();
         dsl.deleteFrom(TASKS).execute();
         dsl.deleteFrom(TEAM_INVITATIONS).execute();
+        dsl.deleteFrom(TEAM_TAGS).execute();
         dsl.deleteFrom(TEAM_MEMBERS).execute();
         dsl.deleteFrom(TEAMS).execute();
         dsl.deleteFrom(USERS).execute();
