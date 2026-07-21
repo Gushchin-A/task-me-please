@@ -74,4 +74,24 @@ public class TeamMemberService {
 
         return teamMemberRepository.updateTaskVisibility(teamId, userId, taskVisibility);
     }
+
+    public TeamMember removeMember(Long teamId, UUID userId, UUID currentUserId) {
+        TeamMember currentMember = findById(teamId, currentUserId);
+
+        if (currentMember.getRole() != TeamMemberRole.OWNER) {
+            throw new AccessDeniedForTaskException();
+        }
+
+        TeamMember targetMember = findById(teamId, userId);
+
+        if (targetMember.getRole() == TeamMemberRole.OWNER) {
+            throw new AccessDeniedForTaskException();
+        }
+
+        if (targetMember.getUserId().equals(currentUserId)) {
+            throw new AccessDeniedForTaskException();
+        }
+
+        return teamMemberRepository.softDelete(teamId, userId);
+    }
 }

@@ -1,5 +1,6 @@
 package dev.gushchin.taskmanager.controller;
 
+import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
 import dev.gushchin.taskmanager.exception.TeamMemberAlreadyExistsException;
 import dev.gushchin.taskmanager.exception.TeamMemberNotFoundException;
 import dev.gushchin.taskmanager.exception.UserNotFoundByEmailException;
@@ -43,13 +44,17 @@ public class TeamPageController {
     private static final String CSRF_ATTRIBUTE = "_csrf";
     private static final String ERROR_MESSAGE_ATTRIBUTE = "errorMessage";
     private static final String INVITE_PATH_SUFFIX = "/invite";
+    private static final String MEMBERS_PATH_SUFFIX = "/members";
     private static final String NOT_FOUND_VIEW = "teams/not-found";
     private static final String OWNER_INVITE_REQUIRED_MESSAGE_PREFIX =
             "Только owner команды может приглашать новых участников. ";
     private static final String OWNER_INVITE_REQUIRED_MESSAGE_SUFFIX = "Вы можете пока только просматривать команду.";
     private static final String OWNER_INVITE_REQUIRED_MESSAGE =
             OWNER_INVITE_REQUIRED_MESSAGE_PREFIX + OWNER_INVITE_REQUIRED_MESSAGE_SUFFIX;
+    private static final String OWNER_REMOVE_REQUIRED_MESSAGE = "Только owner команды может удалять участников.";
     private static final String REDIRECT_TEAMS_PREFIX = "redirect:/teams/";
+    private static final String REMOVE_MEMBER_ERROR_MESSAGE = "Участника не удалось удалить.";
+    private static final String REMOVE_MEMBER_SUCCESS_MESSAGE = "Участник удалён из команды.";
     private static final String SUCCESS_MESSAGE_ATTRIBUTE = "successMessage";
     private static final String TEAM_ATTRIBUTE = "team";
     private static final String PAGE_ATTRIBUTE = "page";
@@ -259,6 +264,7 @@ public class TeamPageController {
         model.addAttribute("canSeeMemberPrivateData", canSeeMemberPrivateData);
         model.addAttribute("taskVisibilities", TeamTaskVisibility.values());
         model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
+        addEmptyFlashAttributes(model);
 
         return "teams/members";
     }
@@ -304,7 +310,25 @@ public class TeamPageController {
             @RequestParam TeamTaskVisibility taskVisibility) {
         teamMemberService.updateTaskVisibility(teamId, userId, taskVisibility, authUser.getId());
 
-        return REDIRECT_TEAMS_PREFIX + teamId + "/members";
+        return REDIRECT_TEAMS_PREFIX + teamId + MEMBERS_PATH_SUFFIX;
+    }
+
+    @PostMapping("/teams/{teamId}/members/{userId}/remove")
+    public String removeMember(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long teamId,
+            @PathVariable UUID userId,
+            RedirectAttributes redirectAttributes) {
+        try {
+            teamMemberService.removeMember(teamId, userId, authUser.getId());
+            redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, REMOVE_MEMBER_SUCCESS_MESSAGE);
+        } catch (AccessDeniedForTaskException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, OWNER_REMOVE_REQUIRED_MESSAGE);
+        } catch (TeamMemberNotFoundException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, REMOVE_MEMBER_ERROR_MESSAGE);
+        }
+
+        return REDIRECT_TEAMS_PREFIX + teamId + MEMBERS_PATH_SUFFIX;
     }
 
     @PostMapping("/teams/{id}/members")
@@ -351,6 +375,16 @@ public class TeamPageController {
             redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, "Пользователь с такой почтой не найден.");
         } catch (TeamMemberAlreadyExistsException ex) {
             redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, "Пользователь уже состоит в этой команде.");
+        }
+    }
+
+    private void addEmptyFlashAttributes(Model model) {
+        if (!model.containsAttribute(SUCCESS_MESSAGE_ATTRIBUTE)) {
+            model.addAttribute(SUCCESS_MESSAGE_ATTRIBUTE, null);
+        }
+
+        if (!model.containsAttribute(ERROR_MESSAGE_ATTRIBUTE)) {
+            model.addAttribute(ERROR_MESSAGE_ATTRIBUTE, null);
         }
     }
 

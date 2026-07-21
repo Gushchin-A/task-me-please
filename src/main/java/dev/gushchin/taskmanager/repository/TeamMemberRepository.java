@@ -72,6 +72,18 @@ public class TeamMemberRepository {
         return TeamMemberMapper.toModel(record);
     }
 
+    public TeamMember softDelete(Long teamId, UUID userId) {
+        TeamMembersRecord record = dsl.update(TEAM_MEMBERS)
+                .set(TEAM_MEMBERS.IS_DELETED, true)
+                .set(TEAM_MEMBERS.UPDATED_AT, Instant.now().atOffset(ZoneOffset.UTC))
+                .where(TEAM_MEMBERS.TEAM_ID.eq(teamId))
+                .and(TEAM_MEMBERS.USER_ID.eq(userId))
+                .returning()
+                .fetchOne();
+
+        return TeamMemberMapper.toModel(record);
+    }
+
     public void deleteAll() {
         dsl.deleteFrom(TEAM_MEMBERS).execute();
     }

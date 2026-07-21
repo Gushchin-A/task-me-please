@@ -1,4 +1,5 @@
 @import dev.gushchin.taskmanager.model.Team
+@import dev.gushchin.taskmanager.model.TeamMemberRole
 @import dev.gushchin.taskmanager.model.TeamTaskVisibility
 @import dev.gushchin.taskmanager.view.TeamMemberView
 @import java.util.List
@@ -17,6 +18,8 @@
 @param UUID currentUserId
 @param TeamTaskVisibility[] taskVisibilities
 @param CsrfToken _csrf
+@param String successMessage
+@param String errorMessage
 
 @template.layout.page(
     title = team.getName() + " — участники",
@@ -46,6 +49,18 @@
                     </a>
                 @endif
             </div>
+
+            @if(successMessage != null)
+                <div class="flash-message">
+                    ${successMessage}
+                </div>
+            @endif
+
+            @if(errorMessage != null)
+                <div class="flash-message">
+                    ${errorMessage}
+                </div>
+            @endif
 
             @if(onlyCurrentOwnerInTeam)
                 <div>
@@ -100,6 +115,7 @@
 
                                 @if(canManageVisibility)
                                     <th>Видимость задач</th>
+                                    <th>Действия</th>
                                 @endif
                             </tr>
                         </thead>
@@ -173,6 +189,39 @@
                                                         </button>
                                                     </span>
                                                 </form>
+                                            @endif
+                                        </td>
+
+                                        <td>
+                                            @if(member.role() == TeamMemberRole.MEMBER && !member.userId().equals(currentUserId))
+                                                <details>
+                                                    <summary>Удалить</summary>
+
+                                                    <form
+                                                        method="post"
+                                                        action="/teams/${team.getId()}/members/${member.userId().toString()}/remove"
+                                                        style="display: inline;"
+                                                    >
+                                                        <input
+                                                            type="hidden"
+                                                            name="${_csrf.getParameterName()}"
+                                                            value="${_csrf.getToken()}"
+                                                        >
+
+                                                        <span>Удалить участника из команды?</span>
+
+                                                        <button type="submit">
+                                                            Да
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            onclick="this.closest('details').removeAttribute('open')"
+                                                        >
+                                                            Нет
+                                                        </button>
+                                                    </form>
+                                                </details>
                                             @endif
                                         </td>
                                     @endif

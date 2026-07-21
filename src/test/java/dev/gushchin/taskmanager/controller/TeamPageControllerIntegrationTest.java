@@ -9,15 +9,25 @@ import static dev.gushchin.taskmanager.jooq.Tables.TEAM_TAGS;
 import static dev.gushchin.taskmanager.jooq.Tables.USERS;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import dev.gushchin.taskmanager.IntegrationTestBase;
+import dev.gushchin.taskmanager.exception.TeamMemberNotFoundException;
 import dev.gushchin.taskmanager.model.Team;
+import dev.gushchin.taskmanager.model.TeamMember;
 import dev.gushchin.taskmanager.model.TeamTag;
 import dev.gushchin.taskmanager.model.User;
+import dev.gushchin.taskmanager.repository.TeamMemberRepository;
 import dev.gushchin.taskmanager.security.AuthUser;
 import dev.gushchin.taskmanager.service.TaskService;
 import dev.gushchin.taskmanager.service.TeamMemberService;
@@ -52,6 +62,9 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
 
     @Autowired
     private TeamTagService teamTagService;
+
+    @Autowired
+    private TeamMemberRepository teamMemberRepository;
 
     private User owner;
     private User member;
@@ -102,6 +115,92 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Задачи (1)")))
                 .andExpect(content().string(not(containsString("Задачи (2)"))));
+    }
+
+    @Test
+    void ownerShouldRemoveMember() throws Exception {
+        mockMvc.perform(post("/teams/" + team.getId() + "/members/" + member.getId() + "/remove")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/members"))
+                .andExpect(flash().attribute("successMessage", "Участник удалён из команды."));
+
+        TeamMember removedMember = teamMemberRepository.findByTeamIdAndUserId(team.getId(), member.getId());
+
+        assertTrue(removedMember.isDeleted());
+        assertThrows(TeamMemberNotFoundException.class, () -> teamMemberService.findById(team.getId(), member.getId()));
+        assertFalse(teamMemberService.findByTeamId(team.getId()).stream()
+                .anyMatch(teamMember -> teamMember.getUserId().equals(member.getId())));
+    }
+
+    @Test
+    void memberShouldNotRemoveAnotherMember() throws Exception {
+        User anotherMember = userService.create("another-member@test.com", "Another member", "qwerty");
+        teamMemberService.addMember(team.getId(), anotherMember.getId());
+
+        mockMvc.perform(post("/teams/" + team.getId() + "/members/" + anotherMember.getId() + "/remove")
+                        .with(csrf())
+                        .with(user(new AuthUser(member))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/members"))
+                .andExpect(flash().attribute("errorMessage", "Только owner команды может удалять участников."));
+
+        TeamMember activeMember = teamMemberRepository.findByTeamIdAndUserId(team.getId(), anotherMember.getId());
+
+        assertFalse(activeMember.isDeleted());
+    }
+
+    @Test
+    void ownerShouldNotRemoveOwner() throws Exception {
+        mockMvc.perform(post("/teams/" + team.getId() + "/members/" + owner.getId() + "/remove")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/members"))
+                .andExpect(flash().attribute("errorMessage", "Только owner команды может удалять участников."));
+
+        TeamMember ownerMember = teamMemberRepository.findByTeamIdAndUserId(team.getId(), owner.getId());
+
+        assertFalse(ownerMember.isDeleted());
+    }
+
+    @Test
+    void repeatedRemoveShouldReturnErrorAndKeepMemberDeleted() throws Exception {
+        teamMemberService.removeMember(team.getId(), member.getId(), owner.getId());
+
+        mockMvc.perform(post("/teams/" + team.getId() + "/members/" + member.getId() + "/remove")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/members"))
+                .andExpect(flash().attribute("errorMessage", "Участника не удалось удалить."));
+
+        TeamMember removedMember = teamMemberRepository.findByTeamIdAndUserId(team.getId(), member.getId());
+
+        assertTrue(removedMember.isDeleted());
+    }
+
+    @Test
+    void removeMemberShouldRequireCsrf() throws Exception {
+        mockMvc.perform(post("/teams/" + team.getId() + "/members/" + member.getId() + "/remove")
+                        .with(user(new AuthUser(owner))))
+                .andExpect(status().isForbidden());
+
+        TeamMember activeMember = teamMemberRepository.findByTeamIdAndUserId(team.getId(), member.getId());
+
+        assertFalse(activeMember.isDeleted());
+    }
+
+    @Test
+    void ownerShouldSeeRemoveActionOnlyForMembers() throws Exception {
+        mockMvc.perform(get("/teams/" + team.getId() + "/members").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content()
+                        .string(containsString("/teams/" + team.getId() + "/members/" + member.getId() + "/remove")))
+                .andExpect(content()
+                        .string(not(
+                                containsString("/teams/" + team.getId() + "/members/" + owner.getId() + "/remove"))));
     }
 
     private void cleanDatabase() {
