@@ -32,8 +32,10 @@ public class TeamInvitationService {
     private static final int TOKEN_BYTES = 32;
 
     private final SecureRandom secureRandom = new SecureRandom();
+    private final InvitationEmailService invitationEmailService;
     private final TeamInvitationRepository teamInvitationRepository;
     private final TeamMemberService teamMemberService;
+    private final TeamService teamService;
     private final UserService userService;
 
     public List<TeamInvitation> findByTeamId(Long teamId, UUID currentUserId) {
@@ -79,6 +81,16 @@ public class TeamInvitationService {
                 false);
 
         return teamInvitationRepository.save(invitation);
+    }
+
+    @Transactional
+    public TeamInvitation createAndSend(Long teamId, String invitedEmail, UUID currentUserId) {
+        TeamInvitation invitation = create(teamId, invitedEmail, currentUserId);
+
+        invitationEmailService.sendInvitation(
+                invitation, teamService.findById(invitation.getTeamId()), userService.findById(currentUserId));
+
+        return invitation;
     }
 
     public TeamInvitation findByToken(String token) {

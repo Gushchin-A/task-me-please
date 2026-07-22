@@ -13,6 +13,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -23,6 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import dev.gushchin.taskmanager.IntegrationTestBase;
+import dev.gushchin.taskmanager.exception.InvitationEmailSendingException;
 import dev.gushchin.taskmanager.exception.TeamMemberNotFoundException;
 import dev.gushchin.taskmanager.model.Task;
 import dev.gushchin.taskmanager.model.TaskStatus;
@@ -35,6 +39,7 @@ import dev.gushchin.taskmanager.model.User;
 import dev.gushchin.taskmanager.repository.TeamInvitationRepository;
 import dev.gushchin.taskmanager.repository.TeamMemberRepository;
 import dev.gushchin.taskmanager.security.AuthUser;
+import dev.gushchin.taskmanager.service.InvitationEmailService;
 import dev.gushchin.taskmanager.service.TaskService;
 import dev.gushchin.taskmanager.service.TeamInvitationService;
 import dev.gushchin.taskmanager.service.TeamMemberService;
@@ -51,6 +56,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MvcResult;
 
 @SuppressWarnings("PMD.UnitTestShouldIncludeAssert")
@@ -83,6 +89,9 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
 
     @Autowired
     private TeamInvitationRepository teamInvitationRepository;
+
+    @MockitoBean
+    private InvitationEmailService invitationEmailService;
 
     private User owner;
     private User member;
@@ -274,6 +283,25 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 Duration.between(invitation.getCreatedAt(), invitation.getExpiresAt())
                         .toDays());
         assertFalse(invitation.getToken().isBlank());
+        verify(invitationEmailService).sendInvitation(any(TeamInvitation.class), any(Team.class), any(User.class));
+    }
+
+    @Test
+    void ownerShouldSeeErrorAndInvitationShouldRollbackWhenEmailSendingFails() throws Exception {
+        String invitedEmail = "smtp-failure@test.com";
+        doThrow(new InvitationEmailSendingException(new RuntimeException()))
+                .when(invitationEmailService)
+                .sendInvitation(any(TeamInvitation.class), any(Team.class), any(User.class));
+
+        mockMvc.perform(post("/teams/" + team.getId() + "/members")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("email", invitedEmail))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
+                .andExpect(flash().attribute("errorMessage", "Приглашение не отправлено. Попробуйте позже."));
+
+        assertTrue(teamInvitationRepository.findByTeamId(team.getId()).isEmpty());
     }
 
     @Test
