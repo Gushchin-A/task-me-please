@@ -1,8 +1,10 @@
 @import org.springframework.security.web.csrf.CsrfToken
+@import dev.gushchin.taskmanager.view.AuthenticationInviteView
 
 @param CsrfToken _csrf
 @param String redirect
 @param String invite
+@param AuthenticationInviteView inviteContext
 @param String loginUrl
 @param String registrationUrl
 @param String successMessage
@@ -14,6 +16,7 @@
     registrationUrl = registrationUrl,
     activeTab = "login",
     invite = invite,
+    inviteContext = inviteContext,
     successMessage = successMessage,
     errorMessage = errorMessage,
     content = @`

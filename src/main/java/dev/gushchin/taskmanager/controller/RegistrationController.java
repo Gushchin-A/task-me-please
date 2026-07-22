@@ -1,8 +1,16 @@
 package dev.gushchin.taskmanager.controller;
 
+import dev.gushchin.taskmanager.exception.TeamInvitationNotFoundException;
+import dev.gushchin.taskmanager.exception.TeamInvitationNotPendingException;
 import dev.gushchin.taskmanager.exception.UserAlreadyExistsException;
+import dev.gushchin.taskmanager.model.Team;
+import dev.gushchin.taskmanager.model.TeamInvitation;
+import dev.gushchin.taskmanager.model.User;
 import dev.gushchin.taskmanager.security.SafeRedirectAuthenticationSuccessHandler;
+import dev.gushchin.taskmanager.service.TeamInvitationService;
+import dev.gushchin.taskmanager.service.TeamService;
 import dev.gushchin.taskmanager.service.UserService;
+import dev.gushchin.taskmanager.view.AuthenticationInviteView;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.regex.Pattern;
@@ -44,6 +52,8 @@ public class RegistrationController {
 
     private final AuthenticationManager authenticationManager;
     private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
+    private final TeamInvitationService teamInvitationService;
+    private final TeamService teamService;
     private final UserService userService;
 
     @GetMapping("/login")
@@ -108,6 +118,7 @@ public class RegistrationController {
         model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
         model.addAttribute(SafeRedirectAuthenticationSuccessHandler.REDIRECT_PARAMETER, getSafeRedirect(redirect));
         model.addAttribute(INVITE_PARAMETER, getInvite(invite));
+        model.addAttribute("inviteContext", getInviteContext(invite));
         model.addAttribute("loginUrl", buildAuthUrl(LOGIN_PATH, redirect, invite));
         model.addAttribute("registrationUrl", buildAuthUrl(REGISTRATION_PATH, redirect, invite));
 
@@ -186,6 +197,25 @@ public class RegistrationController {
         }
 
         return null;
+    }
+
+    private AuthenticationInviteView getInviteContext(String invite) {
+        String inviteToken = getInvite(invite);
+        if (inviteToken == null) {
+            return null;
+        }
+
+        try {
+            TeamInvitation invitation = teamInvitationService.findPendingByToken(inviteToken);
+            Team team = teamService.findById(invitation.getTeamId());
+            User invitedBy = userService.findById(invitation.getInvitedBy());
+
+            return new AuthenticationInviteView(team.getName(), invitedBy.getName(), invitedBy.getEmail());
+        } catch (TeamInvitationNotFoundException ex) {
+            return null;
+        } catch (TeamInvitationNotPendingException ex) {
+            return null;
+        }
     }
 
     private boolean isAuthenticated(Authentication authentication) {

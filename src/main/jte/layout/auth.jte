@@ -1,10 +1,12 @@
 @import gg.jte.Content
+@import dev.gushchin.taskmanager.view.AuthenticationInviteView
 
 @param String title
 @param String loginUrl
 @param String registrationUrl
 @param String activeTab
 @param String invite
+@param AuthenticationInviteView inviteContext
 @param String successMessage
 @param String errorMessage
 @param Content content
@@ -158,9 +160,13 @@
                     </a>
                 </div>
 
-                @if(invite != null)
+                @if(inviteContext != null)
                     <div class="auth-invite">
                         <strong>Приглашение в команду</strong>
+                        <p>
+                            ${inviteContext.invitedByName()}, ${inviteContext.invitedByEmail()}
+                            пригласил вас в команду «${inviteContext.teamName()}».
+                        </p>
                         <p>После входа или регистрации вы вернётесь к приглашению.</p>
                     </div>
                 @endif
