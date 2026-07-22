@@ -79,6 +79,9 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
     private TeamMemberRepository teamMemberRepository;
 
     @Autowired
+    private TeamInvitationService teamInvitationService;
+
+    @Autowired
     private TeamInvitationRepository teamInvitationRepository;
 
     private User owner;
@@ -454,6 +457,175 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void authenticatedUserShouldSeeInvitationDecisionPage() throws Exception {
+        User invitedUser = userService.create("invited-member@test.com", "Invited member", "qwerty");
+        TeamInvitation invitation = teamInvitationService.create(team.getId(), invitedUser.getEmail(), owner.getId());
+
+        mockMvc.perform(get("/invitations/" + invitation.getToken()).with(user(new AuthUser(invitedUser))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Приглашение в команду")))
+                .andExpect(content().string(containsString("Owner, team-owner@test.com пригласил вас")))
+                .andExpect(content().string(containsString("Project Team")))
+                .andExpect(content().string(containsString("Принять приглашение")))
+                .andExpect(content().string(containsString("Отклонить приглашение")));
+    }
+
+    @Test
+    void anonymousUserShouldReturnToValidInvitationAfterLogin() throws Exception {
+        TeamInvitation invitation =
+                teamInvitationService.create(team.getId(), "invited-member@test.com", owner.getId());
+
+        mockMvc.perform(get("/invitations/" + invitation.getToken()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl(
+                        "/login?redirect=/invitations/" + invitation.getToken() + "&invite=" + invitation.getToken()));
+    }
+
+    @Test
+    void validUserShouldAcceptInvitation() throws Exception {
+        User invitedUser = userService.create("accepted-invite@test.com", "Accepted invite", "qwerty");
+        TeamInvitation invitation = teamInvitationService.create(team.getId(), invitedUser.getEmail(), owner.getId());
+
+        mockMvc.perform(post("/invitations/" + invitation.getToken() + "/accept")
+                        .with(csrf())
+                        .with(user(new AuthUser(invitedUser))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams"));
+
+        assertEquals(
+                TeamInvitationStatus.ACCEPTED,
+                teamInvitationRepository.findByToken(invitation.getToken()).getStatus());
+        assertTrue(teamMemberService.isActiveMember(team.getId(), invitedUser.getId()));
+    }
+
+    @Test
+    void validUserShouldDeclineInvitation() throws Exception {
+        User invitedUser = userService.create("declined-invite@test.com", "Declined invite", "qwerty");
+        TeamInvitation invitation = teamInvitationService.create(team.getId(), invitedUser.getEmail(), owner.getId());
+
+        mockMvc.perform(post("/invitations/" + invitation.getToken() + "/decline")
+                        .with(csrf())
+                        .with(user(new AuthUser(invitedUser))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams"));
+
+        assertEquals(
+                TeamInvitationStatus.DECLINED,
+                teamInvitationRepository.findByToken(invitation.getToken()).getStatus());
+        assertFalse(teamMemberService.isActiveMember(team.getId(), invitedUser.getId()));
+    }
+
+    @Test
+    void activeMemberShouldOpenTeamWithoutChangingInvitation() throws Exception {
+        TeamInvitation invitation =
+                teamInvitationService.create(team.getId(), "another-invited-member@test.com", owner.getId());
+
+        mockMvc.perform(get("/invitations/" + invitation.getToken()).with(user(new AuthUser(member))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId()));
+
+        assertEquals(
+                TeamInvitationStatus.PENDING,
+                teamInvitationRepository.findByToken(invitation.getToken()).getStatus());
+    }
+
+    @Test
+    void activeMemberShouldNotAcceptInvitation() throws Exception {
+        TeamInvitation invitation =
+                teamInvitationService.create(team.getId(), "another-invited-member@test.com", owner.getId());
+
+        mockMvc.perform(post("/invitations/" + invitation.getToken() + "/accept")
+                        .with(csrf())
+                        .with(user(new AuthUser(member))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId()));
+
+        assertEquals(
+                TeamInvitationStatus.PENDING,
+                teamInvitationRepository.findByToken(invitation.getToken()).getStatus());
+    }
+
+    @Test
+    void anyNonMemberWithLiveLinkShouldAcceptInvitation() throws Exception {
+        User invitedUser = userService.create("link-holder@test.com", "Link holder", "qwerty");
+        TeamInvitation invitation =
+                teamInvitationService.create(team.getId(), "mistyped-email@test.com", owner.getId());
+
+        mockMvc.perform(post("/invitations/" + invitation.getToken() + "/accept")
+                        .with(csrf())
+                        .with(user(new AuthUser(invitedUser))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams"));
+
+        assertEquals(
+                TeamInvitationStatus.ACCEPTED,
+                teamInvitationRepository.findByToken(invitation.getToken()).getStatus());
+        assertTrue(teamMemberService.isActiveMember(team.getId(), invitedUser.getId()));
+    }
+
+    @Test
+    void invalidInvitationShouldShowPublicInvalidPageForAnonymousUser() throws Exception {
+        TeamInvitation invitation = teamInvitationRepository.save(
+                createInvitation("canceled-invite@test.com", TeamInvitationStatus.CANCELED));
+
+        mockMvc.perform(get("/invitations/" + invitation.getToken()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Ссылка приглашения недействительна.")))
+                .andExpect(content().string(containsString("Войти")))
+                .andExpect(content().string(containsString("Зарегистрироваться")))
+                .andExpect(content().string(not(containsString("К моим задачам"))));
+    }
+
+    @Test
+    void invalidInvitationShouldShowTasksLinkForAuthenticatedUser() throws Exception {
+        mockMvc.perform(get("/invitations/unknown-token").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Ссылка приглашения недействительна.")))
+                .andExpect(content().string(containsString("К моим задачам")))
+                .andExpect(content().string(not(containsString("Зарегистрироваться"))));
+    }
+
+    @Test
+    void expiredInvitationShouldShowInvalidPageAndBeCanceled() throws Exception {
+        TeamInvitation invitation = teamInvitationRepository.save(createInvitation(
+                "expired-invite@test.com",
+                TeamInvitationStatus.PENDING,
+                Instant.now().minusSeconds(60)));
+
+        mockMvc.perform(get("/invitations/" + invitation.getToken()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Ссылка приглашения недействительна.")));
+
+        assertEquals(
+                TeamInvitationStatus.CANCELED,
+                teamInvitationRepository.findByToken(invitation.getToken()).getStatus());
+    }
+
+    @Test
+    void acceptedInvitationShouldShowInvalidPage() throws Exception {
+        TeamInvitation invitation = teamInvitationRepository.save(
+                createInvitation("accepted-invite@test.com", TeamInvitationStatus.ACCEPTED));
+
+        mockMvc.perform(get("/invitations/" + invitation.getToken()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Ссылка приглашения недействительна.")));
+    }
+
+    @Test
+    void invitationAcceptShouldRequireCsrf() throws Exception {
+        User invitedUser = userService.create("csrf-invite@test.com", "Csrf invite", "qwerty");
+        TeamInvitation invitation = teamInvitationService.create(team.getId(), invitedUser.getEmail(), owner.getId());
+
+        mockMvc.perform(post("/invitations/" + invitation.getToken() + "/accept")
+                        .with(user(new AuthUser(invitedUser))))
+                .andExpect(status().isForbidden());
+
+        assertEquals(
+                TeamInvitationStatus.PENDING,
+                teamInvitationRepository.findByToken(invitation.getToken()).getStatus());
+    }
+
+    @Test
     void userWithoutTeamAccessShouldSeeNotFoundAfterLoginRedirect() throws Exception {
         User outsider = userService.create("outsider@test.com", "Outsider", "qwerty");
 
@@ -535,6 +707,11 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     private TeamInvitation createInvitation(String invitedEmail, TeamInvitationStatus status) {
+        return createInvitation(
+                invitedEmail, status, Instant.now().plus(Duration.ofDays(TeamInvitationService.EXPIRATION_DAYS)));
+    }
+
+    private TeamInvitation createInvitation(String invitedEmail, TeamInvitationStatus status, Instant expiresAt) {
         Instant now = Instant.now();
 
         return new TeamInvitation(
@@ -544,7 +721,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 invitedEmail,
                 "token-" + invitedEmail,
                 status,
-                now.plus(Duration.ofDays(TeamInvitationService.EXPIRATION_DAYS)),
+                expiresAt,
                 now,
                 now,
                 false);

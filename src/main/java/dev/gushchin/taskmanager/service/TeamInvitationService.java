@@ -93,11 +93,6 @@ public class TeamInvitationService {
     @Transactional
     public TeamInvitation accept(String token, UUID currentUserId) {
         TeamInvitation invitation = findPendingByToken(token);
-        User currentUser = userService.findById(currentUserId);
-
-        if (!invitation.getInvitedEmail().equals(currentUser.getEmail())) {
-            throw new AccessDeniedForTaskException();
-        }
 
         teamMemberService.addMember(invitation.getTeamId(), currentUserId);
 
@@ -106,11 +101,8 @@ public class TeamInvitationService {
 
     public TeamInvitation decline(String token, UUID currentUserId) {
         TeamInvitation invitation = findPendingByToken(token);
-        User currentUser = userService.findById(currentUserId);
 
-        if (!invitation.getInvitedEmail().equals(currentUser.getEmail())) {
-            throw new AccessDeniedForTaskException();
-        }
+        userService.findById(currentUserId);
 
         return teamInvitationRepository.updateStatus(invitation.getId(), TeamInvitationStatus.DECLINED, Instant.now());
     }
@@ -132,7 +124,7 @@ public class TeamInvitationService {
         return teamInvitationRepository.updateStatus(invitation.getId(), TeamInvitationStatus.CANCELED, Instant.now());
     }
 
-    private TeamInvitation findPendingByToken(String token) {
+    public TeamInvitation findPendingByToken(String token) {
         TeamInvitation invitation = findByToken(token);
         ensurePending(invitation);
 

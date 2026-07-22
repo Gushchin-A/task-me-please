@@ -27,6 +27,8 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http.authorizeHttpRequests(auth -> auth.requestMatchers("/", LOGIN_PATH, REGISTRATION_PATH, "/error")
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/invitations/*")
+                        .permitAll()
                         .requestMatchers(HttpMethod.POST, REGISTRATION_PATH)
                         .permitAll()
                         .anyRequest()
