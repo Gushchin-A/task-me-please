@@ -9,6 +9,7 @@ import static dev.gushchin.taskmanager.jooq.Tables.TEAM_TAGS;
 import static dev.gushchin.taskmanager.jooq.Tables.USERS;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -26,22 +27,31 @@ import dev.gushchin.taskmanager.exception.TeamMemberNotFoundException;
 import dev.gushchin.taskmanager.model.Task;
 import dev.gushchin.taskmanager.model.TaskStatus;
 import dev.gushchin.taskmanager.model.Team;
+import dev.gushchin.taskmanager.model.TeamInvitation;
+import dev.gushchin.taskmanager.model.TeamInvitationStatus;
 import dev.gushchin.taskmanager.model.TeamMember;
 import dev.gushchin.taskmanager.model.TeamTag;
 import dev.gushchin.taskmanager.model.User;
+import dev.gushchin.taskmanager.repository.TeamInvitationRepository;
 import dev.gushchin.taskmanager.repository.TeamMemberRepository;
 import dev.gushchin.taskmanager.security.AuthUser;
 import dev.gushchin.taskmanager.service.TaskService;
+import dev.gushchin.taskmanager.service.TeamInvitationService;
 import dev.gushchin.taskmanager.service.TeamMemberService;
 import dev.gushchin.taskmanager.service.TeamService;
 import dev.gushchin.taskmanager.service.TeamTagService;
 import dev.gushchin.taskmanager.service.UserService;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import org.jooq.DSLContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.web.servlet.MvcResult;
 
 @SuppressWarnings("PMD.UnitTestShouldIncludeAssert")
 class TeamPageControllerIntegrationTest extends IntegrationTestBase {
@@ -67,6 +77,9 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
 
     @Autowired
     private TeamMemberRepository teamMemberRepository;
+
+    @Autowired
+    private TeamInvitationRepository teamInvitationRepository;
 
     private User owner;
     private User member;
@@ -218,7 +231,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    void ownerShouldAddRemovedMemberAgain() throws Exception {
+    void ownerShouldInviteRemovedMember() throws Exception {
         teamMemberService.removeMember(team.getId(), member.getId(), owner.getId());
 
         mockMvc.perform(post("/teams/" + team.getId() + "/members")
@@ -227,13 +240,131 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .param("email", member.getEmail()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
-                .andExpect(flash().attribute("successMessage", "Пользователь добавлен в команду."));
+                .andExpect(flash().attribute("successMessage", "Приглашение отправлено."));
 
-        TeamMember restoredMember = teamMemberRepository.findByTeamIdAndUserId(team.getId(), member.getId());
+        List<TeamInvitation> invitations = teamInvitationRepository.findByTeamId(team.getId());
 
-        assertFalse(restoredMember.isDeleted());
-        assertTrue(teamMemberService.findByTeamId(team.getId()).stream()
-                .anyMatch(teamMember -> teamMember.getUserId().equals(member.getId())));
+        assertEquals(1, invitations.size());
+        assertEquals(member.getEmail(), invitations.getFirst().getInvitedEmail());
+    }
+
+    @Test
+    void ownerShouldCreatePendingInvitation() throws Exception {
+        String invitedEmail = "new-member@test.com";
+
+        mockMvc.perform(post("/teams/" + team.getId() + "/members")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("email", invitedEmail))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
+                .andExpect(flash().attribute("successMessage", "Приглашение отправлено."));
+
+        List<TeamInvitation> invitations = teamInvitationRepository.findByTeamId(team.getId());
+        TeamInvitation invitation = invitations.getFirst();
+
+        assertEquals(1, invitations.size());
+        assertEquals(invitedEmail, invitation.getInvitedEmail());
+        assertEquals(TeamInvitationStatus.PENDING, invitation.getStatus());
+        assertEquals(
+                TeamInvitationService.EXPIRATION_DAYS,
+                Duration.between(invitation.getCreatedAt(), invitation.getExpiresAt())
+                        .toDays());
+        assertFalse(invitation.getToken().isBlank());
+    }
+
+    @Test
+    void memberShouldNotCreateInvitation() throws Exception {
+        mockMvc.perform(post("/teams/" + team.getId() + "/members")
+                        .with(csrf())
+                        .with(user(new AuthUser(member)))
+                        .param("email", "new-member@test.com"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
+                .andExpect(flash().attribute(
+                                "errorMessage",
+                                "Только owner команды может приглашать новых участников. "
+                                        + "Вы можете пока только просматривать команду."));
+
+        assertTrue(teamInvitationRepository.findByTeamId(team.getId()).isEmpty());
+    }
+
+    @Test
+    void ownerShouldNotInviteActiveMember() throws Exception {
+        mockMvc.perform(post("/teams/" + team.getId() + "/members")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("email", member.getEmail()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
+                .andExpect(flash().attribute("errorMessage", "Пользователь уже состоит в этой команде."));
+
+        assertTrue(teamInvitationRepository.findByTeamId(team.getId()).isEmpty());
+    }
+
+    @Test
+    void ownerShouldNotCreateDuplicatePendingInvitation() throws Exception {
+        String invitedEmail = "new-member@test.com";
+
+        mockMvc.perform(post("/teams/" + team.getId() + "/members")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("email", invitedEmail))
+                .andExpect(status().is3xxRedirection());
+
+        mockMvc.perform(post("/teams/" + team.getId() + "/members")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("email", invitedEmail))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
+                .andExpect(flash().attribute("errorMessage", "Приглашение на этот email уже отправлено."));
+
+        assertEquals(1, teamInvitationRepository.findByTeamId(team.getId()).size());
+    }
+
+    @Test
+    void invitePageShouldShowInvitationHistoryWithPendingLinksOnly() throws Exception {
+        TeamInvitation pendingInvitation = teamInvitationRepository.save(
+                createInvitation("pending-member@test.com", TeamInvitationStatus.PENDING));
+        TeamInvitation acceptedInvitation = teamInvitationRepository.save(
+                createInvitation("accepted-member@test.com", TeamInvitationStatus.ACCEPTED));
+
+        mockMvc.perform(get("/teams/" + team.getId() + "/invite").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Ссылка-приглашение действует 30 дней.")))
+                .andExpect(content().string(containsString("Статус отправленных приглашений")))
+                .andExpect(content().string(containsString(pendingInvitation.getInvitedEmail())))
+                .andExpect(content().string(containsString("/invitations/" + pendingInvitation.getToken())))
+                .andExpect(content().string(containsString(acceptedInvitation.getInvitedEmail())))
+                .andExpect(content().string(not(containsString("/invitations/" + acceptedInvitation.getToken()))));
+    }
+
+    @Test
+    void userWithoutTeamAccessShouldSeeNotFoundAfterLoginRedirect() throws Exception {
+        User outsider = userService.create("outsider@test.com", "Outsider", "qwerty");
+
+        MvcResult anonymousResult = mockMvc.perform(get("/teams/" + team.getId()))
+                .andExpect(status().isFound())
+                .andReturn();
+
+        MvcResult loginResult = mockMvc.perform(post("/login")
+                        .with(csrf())
+                        .session((MockHttpSession) anonymousResult.getRequest().getSession())
+                        .param("username", outsider.getEmail())
+                        .param("password", "qwerty"))
+                .andExpect(status().isFound())
+                .andExpect(redirectedUrl("http://localhost/teams/" + team.getId() + "?continue"))
+                .andReturn();
+
+        mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(outsider))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Такая страница не найдена")));
+
+        mockMvc.perform(get("/teams/" + team.getId()).queryParam("continue", "").session((MockHttpSession)
+                        loginResult.getRequest().getSession()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Такая страница не найдена")));
     }
 
     @Test
@@ -288,5 +419,21 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
         dsl.deleteFrom(TEAM_MEMBERS).execute();
         dsl.deleteFrom(TEAMS).execute();
         dsl.deleteFrom(USERS).execute();
+    }
+
+    private TeamInvitation createInvitation(String invitedEmail, TeamInvitationStatus status) {
+        Instant now = Instant.now();
+
+        return new TeamInvitation(
+                null,
+                team.getId(),
+                owner.getId(),
+                invitedEmail,
+                "token-" + invitedEmail,
+                status,
+                now.plus(Duration.ofDays(TeamInvitationService.EXPIRATION_DAYS)),
+                now,
+                now,
+                false);
     }
 }

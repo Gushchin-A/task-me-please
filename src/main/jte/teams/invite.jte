@@ -1,9 +1,13 @@
 @import dev.gushchin.taskmanager.model.Team
+@import dev.gushchin.taskmanager.view.TeamInvitationView
+@import java.util.List
 @import org.springframework.security.web.csrf.CsrfToken
 
 @param Team team
 @param CsrfToken _csrf
 @param boolean canInvite
+@param int invitationExpirationDays
+@param List<TeamInvitationView> invitations
 @param String successMessage
 @param String errorMessage
 
@@ -57,11 +61,45 @@
                     </div>
 
                     <button type="submit">
-                        Добавить в команду
+                        Отправить приглашение
                     </button>
+
+                    <p>Ссылка-приглашение действует ${invitationExpirationDays} дней.</p>
                 </form>
             @else
                 <p>Вы можете просматривать команду, но не можете приглашать новых участников.</p>
+            @endif
+
+            @if(canInvite)
+                <h2>Статус отправленных приглашений</h2>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Email получателя</th>
+                            <th>Status</th>
+                            <th>Ссылка приглашение</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @for(TeamInvitationView invitation : invitations)
+                            <tr>
+                                <td>${invitation.invitedEmail()}</td>
+                                <td>${invitation.status()}</td>
+                                <td>
+                                    @if(invitation.invitationUrl() != null)
+                                        <a href="${invitation.invitationUrl()}">
+                                            ${invitation.invitationUrl()}
+                                        </a>
+                                    @else
+                                        —
+                                    @endif
+                                </td>
+                            </tr>
+                        @endfor
+                    </tbody>
+                </table>
             @endif
         </section>
     `

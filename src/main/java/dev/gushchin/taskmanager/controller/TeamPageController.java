@@ -1,9 +1,9 @@
 package dev.gushchin.taskmanager.controller;
 
 import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
+import dev.gushchin.taskmanager.exception.TeamInvitationAlreadyPendingException;
 import dev.gushchin.taskmanager.exception.TeamMemberAlreadyExistsException;
 import dev.gushchin.taskmanager.exception.TeamMemberNotFoundException;
-import dev.gushchin.taskmanager.exception.UserNotFoundByEmailException;
 import dev.gushchin.taskmanager.model.Task;
 import dev.gushchin.taskmanager.model.TaskListMode;
 import dev.gushchin.taskmanager.model.TaskSort;
@@ -16,12 +16,14 @@ import dev.gushchin.taskmanager.model.TeamTaskVisibility;
 import dev.gushchin.taskmanager.model.User;
 import dev.gushchin.taskmanager.security.AuthUser;
 import dev.gushchin.taskmanager.service.TaskService;
+import dev.gushchin.taskmanager.service.TeamInvitationService;
 import dev.gushchin.taskmanager.service.TeamMemberService;
 import dev.gushchin.taskmanager.service.TeamService;
 import dev.gushchin.taskmanager.service.TeamTagService;
 import dev.gushchin.taskmanager.service.UserService;
 import dev.gushchin.taskmanager.view.TaskParticipantView;
 import dev.gushchin.taskmanager.view.TaskView;
+import dev.gushchin.taskmanager.view.TeamInvitationView;
 import dev.gushchin.taskmanager.view.TeamMemberView;
 import dev.gushchin.taskmanager.view.TeamPageView;
 import dev.gushchin.taskmanager.view.TeamTasksStats;
@@ -54,6 +56,7 @@ public class TeamPageController {
     private static final String OWNER_INVITE_REQUIRED_MESSAGE =
             OWNER_INVITE_REQUIRED_MESSAGE_PREFIX + OWNER_INVITE_REQUIRED_MESSAGE_SUFFIX;
     private static final String OWNER_REMOVE_REQUIRED_MESSAGE = "Только owner команды может удалять участников.";
+    private static final String PENDING_INVITATION_EXISTS_MESSAGE = "Приглашение на этот email уже отправлено.";
     private static final String REDIRECT_TEAMS_PREFIX = "redirect:/teams/";
     private static final String REMOVE_MEMBER_ERROR_MESSAGE = "Участника не удалось удалить.";
     private static final String REMOVE_MEMBER_SUCCESS_MESSAGE = "Участник удалён из команды.";
@@ -65,6 +68,7 @@ public class TeamPageController {
     private final TeamService teamService;
     private final TaskService taskService;
     private final UserService userService;
+    private final TeamInvitationService teamInvitationService;
     private final TeamMemberService teamMemberService;
     private final TeamTagService teamTagService;
 
@@ -287,6 +291,14 @@ public class TeamPageController {
         model.addAttribute(TEAM_ATTRIBUTE, team);
         model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
         model.addAttribute(CAN_INVITE_ATTRIBUTE, canInvite);
+        model.addAttribute("invitationExpirationDays", TeamInvitationService.EXPIRATION_DAYS);
+        model.addAttribute(
+                "invitations",
+                canInvite
+                        ? teamInvitationService.findByTeamId(id, authUser.getId()).stream()
+                                .map(TeamInvitationView::from)
+                                .toList()
+                        : List.of());
 
         if (!model.containsAttribute(SUCCESS_MESSAGE_ATTRIBUTE)) {
             model.addAttribute(SUCCESS_MESSAGE_ATTRIBUTE, null);
@@ -351,7 +363,7 @@ public class TeamPageController {
         if (currentMember.getRole() != TeamMemberRole.OWNER) {
             redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, OWNER_INVITE_REQUIRED_MESSAGE);
         } else {
-            addMemberByEmail(id, email, redirectAttributes);
+            createInvitation(id, email, authUser.getId(), redirectAttributes);
         }
 
         return redirect;
@@ -367,15 +379,15 @@ public class TeamPageController {
         return "redirect:/teams";
     }
 
-    private void addMemberByEmail(Long teamId, String email, RedirectAttributes redirectAttributes) {
+    private void createInvitation(
+            Long teamId, String email, UUID currentUserId, RedirectAttributes redirectAttributes) {
         try {
-            User user = userService.findByEmail(email);
-            teamMemberService.addMember(teamId, user.getId());
-            redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Пользователь добавлен в команду.");
-        } catch (UserNotFoundByEmailException ex) {
-            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, "Пользователь с такой почтой не найден.");
+            teamInvitationService.create(teamId, email, currentUserId);
+            redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Приглашение отправлено.");
         } catch (TeamMemberAlreadyExistsException ex) {
             redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, "Пользователь уже состоит в этой команде.");
+        } catch (TeamInvitationAlreadyPendingException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, PENDING_INVITATION_EXISTS_MESSAGE);
         }
     }
 
