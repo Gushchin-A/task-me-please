@@ -239,7 +239,7 @@
                             <div>
                                 <span>Автор:</span>
 
-                                @if(!taskCard.task().canUpdateTask() || taskCard.members().size() == 1)
+                                @if(!taskCard.task().canUpdateTask())
                                     <span>${taskCard.task().authorName()}</span>
                                 @else
                                     <form
@@ -345,7 +345,7 @@
                             <div>
                                 <span>Исполнитель:</span>
 
-                                @if(!taskCard.task().canUpdateTask() || taskCard.members().size() == 1)
+                                @if(!taskCard.task().canUpdateTask())
                                     <span>${taskCard.task().assigneeName()}</span>
                                 @else
                                     <form

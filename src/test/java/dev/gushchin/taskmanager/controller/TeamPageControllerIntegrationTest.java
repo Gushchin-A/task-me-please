@@ -203,6 +203,37 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                                 containsString("/teams/" + team.getId() + "/members/" + owner.getId() + "/remove"))));
     }
 
+    @Test
+    void ownerShouldSeeMembersTableWhenOnlyOwnerRemains() throws Exception {
+        teamMemberService.removeMember(team.getId(), member.getId(), owner.getId());
+
+        mockMvc.perform(get("/teams/" + team.getId() + "/members").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Кроме вас в команде пока никого нет.")))
+                .andExpect(content().string(containsString("<table>")))
+                .andExpect(content().string(containsString("Owner")))
+                .andExpect(content().string(containsString("OWNER")));
+    }
+
+    @Test
+    void ownerShouldAddRemovedMemberAgain() throws Exception {
+        teamMemberService.removeMember(team.getId(), member.getId(), owner.getId());
+
+        mockMvc.perform(post("/teams/" + team.getId() + "/members")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("email", member.getEmail()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
+                .andExpect(flash().attribute("successMessage", "Пользователь добавлен в команду."));
+
+        TeamMember restoredMember = teamMemberRepository.findByTeamIdAndUserId(team.getId(), member.getId());
+
+        assertFalse(restoredMember.isDeleted());
+        assertTrue(teamMemberService.findByTeamId(team.getId()).stream()
+                .anyMatch(teamMember -> teamMember.getUserId().equals(member.getId())));
+    }
+
     private void cleanDatabase() {
         dsl.deleteFrom(COMMENTS).execute();
         dsl.deleteFrom(TASKS).execute();

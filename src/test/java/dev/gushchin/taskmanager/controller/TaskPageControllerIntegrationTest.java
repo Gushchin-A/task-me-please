@@ -445,6 +445,19 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
         assertEquals(secondUser.getId(), unchangedTask.getAssigneeId());
     }
 
+    @Test
+    void ownerShouldSeeAuthorAndAssigneeSelectorsWhenOnlyOwnerRemains() throws Exception {
+        teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
+
+        mockMvc.perform(get("/tasks/" + task.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("action=\"/tasks/" + task.getId() + "/author\"")))
+                .andExpect(content().string(containsString("name=\"authorId\"")))
+                .andExpect(content().string(containsString("action=\"/tasks/" + task.getId() + "/assignee\"")))
+                .andExpect(content().string(containsString("name=\"assigneeId\"")))
+                .andExpect(content().string(containsString("Owner")));
+    }
+
     private void cleanDatabase() {
         dsl.deleteFrom(COMMENTS).execute();
         dsl.deleteFrom(TASKS).execute();

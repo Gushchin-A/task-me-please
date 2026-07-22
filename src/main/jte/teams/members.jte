@@ -79,8 +79,9 @@
                         </a>
                     @endif
                 </div>
-            @else
-                @if(members.isEmpty())
+            @endif
+
+            @if(members.isEmpty())
                     <div>
                         <p>В команде нет участников.</p>
 
@@ -229,7 +230,6 @@
                             @endfor
                         </tbody>
                     </table>
-                @endif
             @endif
         </section>
     `

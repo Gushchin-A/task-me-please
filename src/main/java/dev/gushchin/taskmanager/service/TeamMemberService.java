@@ -52,6 +52,10 @@ public class TeamMemberService {
 
         Instant now = Instant.now();
 
+        if (existingTeamMember != null) {
+            return teamMemberRepository.restoreMember(teamId, userId, now);
+        }
+
         TeamMember teamMember =
                 new TeamMember(teamId, userId, TeamMemberRole.MEMBER, TeamTaskVisibility.OWN_TASKS, now);
 

@@ -180,7 +180,7 @@
                 <div>
                     <span>Автор:</span>
 
-                    @if(!task.canUpdateTask() || members.size() == 1)
+                    @if(!task.canUpdateTask())
                         <span>${task.authorName()}</span>
                     @else
                         <form
@@ -301,7 +301,7 @@
                 <div>
                     <span>Исполнитель:</span>
 
-                    @if(!task.canUpdateTask() || members.size() == 1)
+                    @if(!task.canUpdateTask())
                         <span>${task.assigneeName()}</span>
                     @else
                         <form
