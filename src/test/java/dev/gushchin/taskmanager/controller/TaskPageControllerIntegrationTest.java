@@ -9,6 +9,10 @@ import static dev.gushchin.taskmanager.jooq.Tables.TEAM_TAGS;
 import static dev.gushchin.taskmanager.jooq.Tables.USERS;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -18,6 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import dev.gushchin.taskmanager.IntegrationTestBase;
+import dev.gushchin.taskmanager.exception.TeamMemberNotFoundException;
 import dev.gushchin.taskmanager.model.Comment;
 import dev.gushchin.taskmanager.model.Task;
 import dev.gushchin.taskmanager.model.TaskStatus;
@@ -26,6 +31,7 @@ import dev.gushchin.taskmanager.model.TeamTag;
 import dev.gushchin.taskmanager.model.User;
 import dev.gushchin.taskmanager.repository.CommentRepository;
 import dev.gushchin.taskmanager.security.AuthUser;
+import dev.gushchin.taskmanager.service.CommentService;
 import dev.gushchin.taskmanager.service.TaskService;
 import dev.gushchin.taskmanager.service.TeamMemberService;
 import dev.gushchin.taskmanager.service.TeamService;
@@ -65,6 +71,9 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
 
     @Autowired
     private CommentRepository commentRepository;
+
+    @Autowired
+    private CommentService commentService;
 
     private User owner;
     private User secondUser;
@@ -275,6 +284,165 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                 // then
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Перенести в архив")));
+    }
+
+    @Test
+    void removedMemberShouldNotOpenTeamOrTask() throws Exception {
+        teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
+
+        mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Такая страница не найдена")))
+                .andExpect(content().string(not(containsString("Important task"))));
+
+        mockMvc.perform(get("/tasks/" + task.getId()).with(user(new AuthUser(secondUser))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void removedMemberShouldNotCreateTask() throws Exception {
+        teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
+
+        mockMvc.perform(post("/tasks")
+                        .with(csrf())
+                        .with(user(new AuthUser(secondUser)))
+                        .param("teamId", team.getId().toString())
+                        .param("assigneeId", secondUser.getId().toString())
+                        .param("title", "Created by removed member")
+                        .param("description", "Description")
+                        .param("deadlineDate", DEADLINE_DATE.toString())
+                        .param("tagId", kinopoiskTag.getId().toString()))
+                .andExpect(status().isNotFound());
+
+        assertEquals(1, dsl.fetchCount(TASKS));
+        assertThrows(
+                TeamMemberNotFoundException.class,
+                () -> taskService.create(
+                        team.getId(),
+                        secondUser.getId(),
+                        owner.getId(),
+                        "Created through service",
+                        "Description",
+                        DEADLINE_DATE,
+                        kinopoiskTag.getId()));
+    }
+
+    @Test
+    void removedMemberShouldNotUpdateTaskFields() throws Exception {
+        teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
+
+        mockMvc.perform(post("/tasks/" + task.getId() + "/status")
+                        .with(csrf())
+                        .with(user(new AuthUser(secondUser)))
+                        .param("status", TaskStatus.IN_PROGRESS.name())
+                        .param("returnTo", "task"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(post("/tasks/" + task.getId() + "/author")
+                        .with(csrf())
+                        .with(user(new AuthUser(secondUser)))
+                        .param("authorId", owner.getId().toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(post("/tasks/" + task.getId() + "/assignee")
+                        .with(csrf())
+                        .with(user(new AuthUser(secondUser)))
+                        .param("assigneeId", owner.getId().toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(post("/tasks/" + task.getId() + "/deadline")
+                        .with(csrf())
+                        .with(user(new AuthUser(secondUser)))
+                        .param("deadlineDate", DEADLINE_DATE.toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(post("/tasks/" + task.getId() + "/tag")
+                        .with(csrf())
+                        .with(user(new AuthUser(secondUser)))
+                        .param("tagId", plusTag.getId().toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().isNotFound());
+
+        Task unchangedTask = taskService.findById(task.getId());
+
+        assertEquals(TaskStatus.OPEN, unchangedTask.getStatus());
+        assertEquals(owner.getId(), unchangedTask.getAuthorId());
+        assertEquals(secondUser.getId(), unchangedTask.getAssigneeId());
+        assertEquals(kinopoiskTag.getId(), unchangedTask.getTagId());
+    }
+
+    @Test
+    void removedMemberShouldNotArchiveOrRestoreTask() throws Exception {
+        taskService.updateStatus(task.getId(), TaskStatus.DONE, owner.getId());
+        teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
+
+        mockMvc.perform(post("/tasks/" + task.getId() + "/archive")
+                        .with(csrf())
+                        .with(user(new AuthUser(secondUser)))
+                        .param("returnTo", "task"))
+                .andExpect(status().isNotFound());
+
+        assertFalse(taskService.findById(task.getId()).isArchived());
+
+        taskService.archive(task.getId(), owner.getId());
+
+        mockMvc.perform(post("/tasks/" + task.getId() + "/restore")
+                        .with(csrf())
+                        .with(user(new AuthUser(secondUser)))
+                        .param("returnTo", "task"))
+                .andExpect(status().isNotFound());
+
+        assertTrue(taskService.findById(task.getId()).isArchived());
+    }
+
+    @Test
+    void removedMemberShouldNotCreateEditOrDeleteComments() throws Exception {
+        Comment comment = commentService.create(task.getId(), secondUser.getId(), "Before removal");
+
+        teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
+
+        mockMvc.perform(post("/tasks/" + task.getId() + "/comments")
+                        .with(csrf())
+                        .with(user(new AuthUser(secondUser)))
+                        .param("message", "After removal"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(post("/tasks/" + task.getId() + "/comments/" + comment.getId() + "/edit")
+                        .with(csrf())
+                        .with(user(new AuthUser(secondUser)))
+                        .param("message", "Edited after removal"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(post("/tasks/" + task.getId() + "/comments/" + comment.getId() + "/delete")
+                        .with(csrf())
+                        .with(user(new AuthUser(secondUser))))
+                .andExpect(status().isNotFound());
+
+        assertEquals(
+                "Before removal", commentRepository.findById(comment.getId()).getMessage());
+        assertFalse(commentRepository.findById(comment.getId()).isDeleted());
+        assertThrows(
+                TeamMemberNotFoundException.class,
+                () -> commentService.create(task.getId(), secondUser.getId(), "Service create"));
+        assertThrows(
+                TeamMemberNotFoundException.class,
+                () -> commentService.updateMessage(comment.getId(), "Service edit", secondUser.getId()));
+        assertThrows(
+                TeamMemberNotFoundException.class,
+                () -> commentService.deleteById(comment.getId(), secondUser.getId()));
+    }
+
+    @Test
+    void removingMemberShouldKeepExistingTaskLinks() {
+        teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
+
+        Task unchangedTask = taskService.findById(task.getId());
+
+        assertEquals(owner.getId(), unchangedTask.getAuthorId());
+        assertEquals(secondUser.getId(), unchangedTask.getAssigneeId());
     }
 
     private void cleanDatabase() {

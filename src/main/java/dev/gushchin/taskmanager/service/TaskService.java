@@ -26,6 +26,7 @@ public class TaskService {
     private final TaskRepository taskRepository;
     private final TaskPermissionService taskPermissionService;
     private final TeamTagService teamTagService;
+    private final TeamMemberService teamMemberService;
 
     public List<Task> findByTeamId(Long teamId) {
         return taskRepository.findByTeamId(teamId).stream()
@@ -70,6 +71,8 @@ public class TaskService {
             String description,
             LocalDate deadlineDate,
             Long tagId) {
+        teamMemberService.findById(teamId, authorId);
+        teamMemberService.findById(teamId, assigneeId);
         teamTagService.findByIdForTeam(tagId, teamId);
 
         Instant now = Instant.now();
@@ -274,6 +277,7 @@ public class TaskService {
         Task task = findByIdForUser(id, userId);
 
         checkCanUpdateTask(task, userId);
+        teamMemberService.findById(task.getTeamId(), authorId);
 
         return taskRepository.updateAuthor(task.getId(), authorId, Instant.now());
     }
@@ -282,6 +286,7 @@ public class TaskService {
         Task task = findByIdForUser(id, userId);
 
         checkCanUpdateTask(task, userId);
+        teamMemberService.findById(task.getTeamId(), assigneeId);
 
         return taskRepository.updateAssignee(task.getId(), assigneeId, Instant.now());
     }
@@ -308,6 +313,7 @@ public class TaskService {
         Task task = findByIdForUser(id, userId);
 
         checkCanUpdateTask(task, userId);
+        teamMemberService.findById(task.getTeamId(), assigneeId);
         teamTagService.findByIdForTeam(tagId, task.getTeamId());
 
         Instant deadlineAt =

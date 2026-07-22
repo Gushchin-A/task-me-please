@@ -153,6 +153,26 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("Команда")));
     }
 
+    @Test
+    void removedMemberShouldNotSeeRemovedTeamInTeamsPage() throws Exception {
+        teamMemberService.removeMember(firstTeam.getId(), secondUser.getId(), owner.getId());
+
+        mockMvc.perform(get("/teams").with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("First Team"))))
+                .andExpect(content().string(containsString("Second Team")));
+    }
+
+    @Test
+    void removedMemberShouldNotSeeRemovedTeamTasksInMyTasksPage() throws Exception {
+        teamMemberService.removeMember(firstTeam.getId(), secondUser.getId(), owner.getId());
+
+        mockMvc.perform(get("/tasks").with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("Owner author task"))))
+                .andExpect(content().string(containsString("Owner assignee task")));
+    }
+
     private void cleanDatabase() {
         dsl.deleteFrom(COMMENTS).execute();
         dsl.deleteFrom(TASKS).execute();
