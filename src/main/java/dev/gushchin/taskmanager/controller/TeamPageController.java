@@ -2,6 +2,8 @@ package dev.gushchin.taskmanager.controller;
 
 import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
 import dev.gushchin.taskmanager.exception.TeamInvitationAlreadyPendingException;
+import dev.gushchin.taskmanager.exception.TeamInvitationNotFoundException;
+import dev.gushchin.taskmanager.exception.TeamInvitationNotPendingException;
 import dev.gushchin.taskmanager.exception.TeamMemberAlreadyExistsException;
 import dev.gushchin.taskmanager.exception.TeamMemberNotFoundException;
 import dev.gushchin.taskmanager.model.Task;
@@ -56,7 +58,9 @@ public class TeamPageController {
     private static final String OWNER_INVITE_REQUIRED_MESSAGE =
             OWNER_INVITE_REQUIRED_MESSAGE_PREFIX + OWNER_INVITE_REQUIRED_MESSAGE_SUFFIX;
     private static final String OWNER_REMOVE_REQUIRED_MESSAGE = "Только owner команды может удалять участников.";
+    private static final String PENDING_INVITATION_CANCEL_SUCCESS_MESSAGE = "Приглашение отменено.";
     private static final String PENDING_INVITATION_EXISTS_MESSAGE = "Приглашение на этот email уже отправлено.";
+    private static final String PENDING_INVITATION_REQUIRED_MESSAGE = "Отменить можно только ожидающее приглашение.";
     private static final String REDIRECT_TEAMS_PREFIX = "redirect:/teams/";
     private static final String REMOVE_MEMBER_ERROR_MESSAGE = "Участника не удалось удалить.";
     private static final String REMOVE_MEMBER_SUCCESS_MESSAGE = "Участник удалён из команды.";
@@ -342,6 +346,26 @@ public class TeamPageController {
         }
 
         return REDIRECT_TEAMS_PREFIX + teamId + MEMBERS_PATH_SUFFIX;
+    }
+
+    @PostMapping("/teams/{teamId}/invitations/{invitationId}/cancel")
+    public String cancelInvitation(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long teamId,
+            @PathVariable Long invitationId,
+            RedirectAttributes redirectAttributes) {
+        try {
+            teamInvitationService.cancel(invitationId, teamId, authUser.getId());
+            redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, PENDING_INVITATION_CANCEL_SUCCESS_MESSAGE);
+        } catch (AccessDeniedForTaskException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, OWNER_INVITE_REQUIRED_MESSAGE);
+        } catch (TeamInvitationNotFoundException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, PENDING_INVITATION_REQUIRED_MESSAGE);
+        } catch (TeamInvitationNotPendingException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, PENDING_INVITATION_REQUIRED_MESSAGE);
+        }
+
+        return REDIRECT_TEAMS_PREFIX + teamId + INVITE_PATH_SUFFIX;
     }
 
     @PostMapping("/teams/{id}/members")

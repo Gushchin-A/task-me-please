@@ -79,6 +79,7 @@
                             <th>Email получателя</th>
                             <th>Status</th>
                             <th>Ссылка приглашение</th>
+                            <th>Действие</th>
                         </tr>
                     </thead>
 
@@ -92,6 +93,44 @@
                                         <a href="${invitation.invitationUrl()}">
                                             ${invitation.invitationUrl()}
                                         </a>
+                                    @else
+                                        —
+                                    @endif
+                                </td>
+                                <td>
+                                    @if(invitation.canCancel())
+                                        <div id="cancel-invitation-action-${invitation.id()}">
+                                            <button
+                                                type="button"
+                                                onclick="document.getElementById('cancel-invitation-confirm-${invitation.id()}').style.display = 'inline'; document.getElementById('cancel-invitation-action-${invitation.id()}').style.display = 'none';"
+                                            >
+                                                Отменить приглашение
+                                            </button>
+                                        </div>
+
+                                        <form
+                                            id="cancel-invitation-confirm-${invitation.id()}"
+                                            method="post"
+                                            action="/teams/${team.getId()}/invitations/${invitation.id()}/cancel"
+                                            style="display: none;"
+                                        >
+                                            <input
+                                                type="hidden"
+                                                name="${_csrf.getParameterName()}"
+                                                value="${_csrf.getToken()}"
+                                            >
+
+                                            <button type="submit">
+                                                Да
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onclick="document.getElementById('cancel-invitation-confirm-${invitation.id()}').style.display = 'none'; document.getElementById('cancel-invitation-action-${invitation.id()}').style.display = 'inline';"
+                                            >
+                                                Нет
+                                            </button>
+                                        </form>
                                     @else
                                         —
                                     @endif

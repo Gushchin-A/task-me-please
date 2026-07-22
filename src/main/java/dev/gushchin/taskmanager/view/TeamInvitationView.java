@@ -16,4 +16,8 @@ public record TeamInvitationView(Long id, String invitedEmail, TeamInvitationSta
         return new TeamInvitationView(
                 invitation.getId(), invitation.getInvitedEmail(), invitation.getStatus(), invitationUrl);
     }
+
+    public boolean canCancel() {
+        return status == TeamInvitationStatus.PENDING;
+    }
 }

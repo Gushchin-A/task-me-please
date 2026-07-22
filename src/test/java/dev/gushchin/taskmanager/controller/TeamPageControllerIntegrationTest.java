@@ -341,6 +341,119 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void invitePageShouldKeepInvitationOrderAfterStatusChange() throws Exception {
+        TeamInvitation firstInvitation =
+                teamInvitationRepository.save(createInvitation("first-member@test.com", TeamInvitationStatus.PENDING));
+        TeamInvitation secondInvitation =
+                teamInvitationRepository.save(createInvitation("second-member@test.com", TeamInvitationStatus.PENDING));
+        TeamInvitation thirdInvitation =
+                teamInvitationRepository.save(createInvitation("third-member@test.com", TeamInvitationStatus.PENDING));
+
+        mockMvc.perform(post("/teams/" + team.getId() + "/invitations/" + secondInvitation.getId() + "/cancel")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner))))
+                .andExpect(status().is3xxRedirection());
+
+        String response = mockMvc.perform(
+                        get("/teams/" + team.getId() + "/invite").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        assertTrue(response.indexOf(firstInvitation.getInvitedEmail())
+                < response.indexOf(secondInvitation.getInvitedEmail()));
+        assertTrue(response.indexOf(secondInvitation.getInvitedEmail())
+                < response.indexOf(thirdInvitation.getInvitedEmail()));
+    }
+
+    @Test
+    void ownerShouldCancelPendingInvitation() throws Exception {
+        TeamInvitation invitation = teamInvitationRepository.save(
+                createInvitation("pending-member@test.com", TeamInvitationStatus.PENDING));
+
+        mockMvc.perform(post("/teams/" + team.getId() + "/invitations/" + invitation.getId() + "/cancel")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
+                .andExpect(flash().attribute("successMessage", "Приглашение отменено."));
+
+        assertEquals(
+                TeamInvitationStatus.CANCELED,
+                teamInvitationRepository.findByToken(invitation.getToken()).getStatus());
+    }
+
+    @Test
+    void memberShouldNotCancelInvitation() throws Exception {
+        TeamInvitation invitation = teamInvitationRepository.save(
+                createInvitation("pending-member@test.com", TeamInvitationStatus.PENDING));
+
+        mockMvc.perform(post("/teams/" + team.getId() + "/invitations/" + invitation.getId() + "/cancel")
+                        .with(csrf())
+                        .with(user(new AuthUser(member))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
+                .andExpect(flash().attribute(
+                                "errorMessage",
+                                "Только owner команды может приглашать новых участников. "
+                                        + "Вы можете пока только просматривать команду."));
+
+        assertEquals(
+                TeamInvitationStatus.PENDING,
+                teamInvitationRepository.findByToken(invitation.getToken()).getStatus());
+    }
+
+    @Test
+    void terminalInvitationShouldNotBeCanceled() throws Exception {
+        TeamInvitation invitation = teamInvitationRepository.save(
+                createInvitation("accepted-member@test.com", TeamInvitationStatus.ACCEPTED));
+
+        mockMvc.perform(post("/teams/" + team.getId() + "/invitations/" + invitation.getId() + "/cancel")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
+                .andExpect(flash().attribute("errorMessage", "Отменить можно только ожидающее приглашение."));
+
+        assertEquals(
+                TeamInvitationStatus.ACCEPTED,
+                teamInvitationRepository.findByToken(invitation.getToken()).getStatus());
+    }
+
+    @Test
+    void invitePageShouldShowCancelActionOnlyForPendingInvitations() throws Exception {
+        TeamInvitation pendingInvitation = teamInvitationRepository.save(
+                createInvitation("pending-member@test.com", TeamInvitationStatus.PENDING));
+        TeamInvitation acceptedInvitation = teamInvitationRepository.save(
+                createInvitation("accepted-member@test.com", TeamInvitationStatus.ACCEPTED));
+
+        mockMvc.perform(get("/teams/" + team.getId() + "/invite").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Отменить приглашение")))
+                .andExpect(content()
+                        .string(containsString(
+                                "/teams/" + team.getId() + "/invitations/" + pendingInvitation.getId() + "/cancel")))
+                .andExpect(content()
+                        .string(not(containsString(
+                                "/teams/" + team.getId() + "/invitations/" + acceptedInvitation.getId() + "/cancel"))));
+    }
+
+    @Test
+    void cancelInvitationShouldRequireCsrf() throws Exception {
+        TeamInvitation invitation = teamInvitationRepository.save(
+                createInvitation("pending-member@test.com", TeamInvitationStatus.PENDING));
+
+        mockMvc.perform(post("/teams/" + team.getId() + "/invitations/" + invitation.getId() + "/cancel")
+                        .with(user(new AuthUser(owner))))
+                .andExpect(status().isForbidden());
+
+        assertEquals(
+                TeamInvitationStatus.PENDING,
+                teamInvitationRepository.findByToken(invitation.getToken()).getStatus());
+    }
+
+    @Test
     void userWithoutTeamAccessShouldSeeNotFoundAfterLoginRedirect() throws Exception {
         User outsider = userService.create("outsider@test.com", "Outsider", "qwerty");
 
