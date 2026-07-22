@@ -1,11 +1,11 @@
 @import dev.gushchin.taskmanager.model.Team
 @import dev.gushchin.taskmanager.model.TeamTag
-@import dev.gushchin.taskmanager.model.User
+@import dev.gushchin.taskmanager.view.TaskParticipantView
 @import java.util.List
 @import org.springframework.security.web.csrf.CsrfToken
 
 @param List<Team> teams
-@param List<User> members
+@param List<TaskParticipantView> members
 @param List<TeamTag> tags
 @param Long selectedTeamId
 @param CsrfToken _csrf
@@ -65,11 +65,11 @@
                                 name="assigneeId"
                                 required
                             >
-                                @for(User member : members)
+                                @for(TaskParticipantView member : members)
                                     <option
-                                        value="${member.getId().toString()}"
+                                        value="${member.id().toString()}"
                                     >
-                                        ${member.getName()}
+                                        ${member.name()}
                                     </option>
                                 @endfor
                             </select>

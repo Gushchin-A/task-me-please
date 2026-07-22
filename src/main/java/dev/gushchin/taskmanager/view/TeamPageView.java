@@ -5,7 +5,6 @@ import dev.gushchin.taskmanager.model.TaskSort;
 import dev.gushchin.taskmanager.model.TaskStatus;
 import dev.gushchin.taskmanager.model.Team;
 import dev.gushchin.taskmanager.model.TeamTag;
-import dev.gushchin.taskmanager.model.User;
 import java.util.List;
 import java.util.StringJoiner;
 import java.util.UUID;
@@ -24,8 +23,12 @@ public record TeamPageView(
     private static final String ARCHIVE_COUNT_TEXT_PREFIX = "Задач в архиве ";
     private static final String FILTERED_COUNT_TEXT_PREFIX = "Задач по выбранным фильтрам ";
 
-    public List<User> members() {
+    public List<TaskParticipantView> members() {
         return resources.members();
+    }
+
+    public List<TaskParticipantView> filterMembers() {
+        return resources.filterMembers();
     }
 
     public List<TeamTag> tags() {
@@ -169,7 +172,8 @@ public record TeamPageView(
         return baseUrl() + "?" + queryString;
     }
 
-    public record TeamPageResources(List<User> members, List<TeamTag> tags) {}
+    public record TeamPageResources(
+            List<TaskParticipantView> members, List<TaskParticipantView> filterMembers, List<TeamTag> tags) {}
 
     public record TeamPageCounts(int totalTasksCount, int filteredTasksCount, int membersCount) {}
 

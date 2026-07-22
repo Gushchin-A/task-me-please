@@ -458,6 +458,84 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("Owner")));
     }
 
+    @Test
+    void formerAssigneeShouldBeMarkedAndExcludedFromNewTaskAssignees() throws Exception {
+        teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
+
+        mockMvc.perform(get("/tasks/" + task.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Second")))
+                .andExpect(content().string(containsString("color: red;")))
+                .andExpect(content().string(containsString("Пользователь был удалён из команды")));
+
+        mockMvc.perform(get("/tasks/new?teamId=" + team.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("Second"))))
+                .andExpect(content().string(containsString("Owner")));
+    }
+
+    @Test
+    void ownerShouldReplaceFormerAuthor() throws Exception {
+        Task authorTask = taskService.create(
+                team.getId(),
+                secondUser.getId(),
+                owner.getId(),
+                "Former author task",
+                "Description",
+                DEADLINE_DATE,
+                kinopoiskTag.getId());
+
+        teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
+
+        mockMvc.perform(post("/tasks/" + authorTask.getId() + "/author")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("authorId", owner.getId().toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks/" + authorTask.getId()));
+
+        assertEquals(owner.getId(), taskService.findById(authorTask.getId()).getAuthorId());
+    }
+
+    @Test
+    void activeAuthorShouldReplaceFormerAssignee() throws Exception {
+        User activeAuthor = userService.create("active-author@test.com", "Active author", "qwerty");
+        teamMemberService.addMember(team.getId(), activeAuthor.getId());
+
+        Task assigneeTask = taskService.create(
+                team.getId(),
+                activeAuthor.getId(),
+                secondUser.getId(),
+                "Former assignee task",
+                "Description",
+                DEADLINE_DATE,
+                kinopoiskTag.getId());
+
+        teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
+
+        mockMvc.perform(post("/tasks/" + assigneeTask.getId() + "/assignee")
+                        .with(csrf())
+                        .with(user(new AuthUser(activeAuthor)))
+                        .param("assigneeId", owner.getId().toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks/" + assigneeTask.getId()));
+
+        assertEquals(owner.getId(), taskService.findById(assigneeTask.getId()).getAssigneeId());
+    }
+
+    @Test
+    void restoredMemberShouldNotBeMarkedAsFormer() throws Exception {
+        teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
+        teamMemberService.addMember(team.getId(), secondUser.getId());
+
+        mockMvc.perform(get("/tasks/" + task.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Second")))
+                .andExpect(content().string(not(containsString("Пользователь был удалён из команды"))));
+    }
+
     private void cleanDatabase() {
         dsl.deleteFrom(COMMENTS).execute();
         dsl.deleteFrom(TASKS).execute();

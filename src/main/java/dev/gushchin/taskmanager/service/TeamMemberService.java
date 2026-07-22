@@ -41,6 +41,15 @@ public class TeamMemberService {
         return teamMember;
     }
 
+    public boolean isActiveMember(Long teamId, UUID userId) {
+        teamService.findById(teamId);
+        userService.findById(userId);
+
+        TeamMember teamMember = teamMemberRepository.findByTeamIdAndUserId(teamId, userId);
+
+        return teamMember != null && !teamMember.isDeleted();
+    }
+
     public TeamMember addMember(Long teamId, UUID userId) {
         teamService.findById(teamId);
         userService.findById(userId);

@@ -20,10 +20,12 @@ import dev.gushchin.taskmanager.service.TeamMemberService;
 import dev.gushchin.taskmanager.service.TeamService;
 import dev.gushchin.taskmanager.service.TeamTagService;
 import dev.gushchin.taskmanager.service.UserService;
+import dev.gushchin.taskmanager.view.TaskParticipantView;
 import dev.gushchin.taskmanager.view.TaskView;
 import dev.gushchin.taskmanager.view.TeamMemberView;
 import dev.gushchin.taskmanager.view.TeamPageView;
 import dev.gushchin.taskmanager.view.TeamTasksStats;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -110,9 +112,7 @@ public class TeamPageController {
         List<TeamTag> tags = teamTagService.findByTeamId(id);
         List<TeamMember> teamMembers = teamMemberService.findByTeamId(id);
 
-        List<User> members = teamMembers.stream()
-                .map(teamMember -> userService.findById(teamMember.getUserId()))
-                .toList();
+        List<TaskParticipantView> members = toTaskParticipants(id, teamMembers);
 
         TeamTasksStats stats = taskService.getStats(modeFilteredTasks);
         List<Task> statusFilteredTasks = taskService.filterByStatus(modeFilteredTasks, status);
@@ -130,7 +130,8 @@ public class TeamPageController {
         TeamPageView page = new TeamPageView(
                 team,
                 taskViews,
-                new TeamPageView.TeamPageResources(members, tags),
+                new TeamPageView.TeamPageResources(
+                        members, getFilterParticipants(id, modeFilteredTasks, members), tags),
                 new TeamPageView.TeamPageCounts(modeFilteredTasks.size(), sortedTasks.size(), teamMembers.size()),
                 stats,
                 new TeamPageView.TeamPageFilters(status, sort, authorId, assigneeId, tagId),
@@ -170,9 +171,7 @@ public class TeamPageController {
         List<TeamTag> tags = teamTagService.findByTeamId(id);
         List<TeamMember> teamMembers = teamMemberService.findByTeamId(id);
 
-        List<User> members = teamMembers.stream()
-                .map(teamMember -> userService.findById(teamMember.getUserId()))
-                .toList();
+        List<TaskParticipantView> members = toTaskParticipants(id, teamMembers);
 
         TeamTasksStats stats = taskService.getStats(modeFilteredTasks);
         List<Task> statusFilteredTasks = taskService.filterByStatus(modeFilteredTasks, status);
@@ -190,7 +189,8 @@ public class TeamPageController {
         TeamPageView page = new TeamPageView(
                 team,
                 taskViews,
-                new TeamPageView.TeamPageResources(members, tags),
+                new TeamPageView.TeamPageResources(
+                        members, getFilterParticipants(id, modeFilteredTasks, members), tags),
                 new TeamPageView.TeamPageCounts(modeFilteredTasks.size(), sortedTasks.size(), teamMembers.size()),
                 stats,
                 new TeamPageView.TeamPageFilters(status, sort, authorId, assigneeId, tagId),
@@ -389,8 +389,8 @@ public class TeamPageController {
     }
 
     private TaskView toTaskView(Task task, UUID userId) {
-        User author = userService.findById(task.getAuthorId());
-        User assignee = userService.findById(task.getAssigneeId());
+        TaskParticipantView author = toTaskParticipant(task.getTeamId(), task.getAuthorId());
+        TaskParticipantView assignee = toTaskParticipant(task.getTeamId(), task.getAssigneeId());
         TeamTag tag = teamTagService.findById(task.getTagId());
 
         boolean canUpdateTask = taskService.canUpdateTask(task, userId);
@@ -402,6 +402,39 @@ public class TeamPageController {
         TaskView.TaskState state = new TaskView.TaskState(
                 task.isArchived(), canUpdateTask, canUpdateStatus, canArchive, canRestore, showAuthorChangeWarning);
 
-        return TaskView.from(task, tag.getName(), author.getName(), assignee.getName(), state);
+        return TaskView.from(task, tag.getName(), author, assignee, state);
+    }
+
+    private List<TaskParticipantView> toTaskParticipants(Long teamId, List<TeamMember> teamMembers) {
+        return teamMembers.stream()
+                .map(teamMember -> toTaskParticipant(teamId, teamMember.getUserId()))
+                .toList();
+    }
+
+    private TaskParticipantView toTaskParticipant(Long teamId, UUID userId) {
+        User user = userService.findById(userId);
+
+        return new TaskParticipantView(user.getId(), user.getName(), !teamMemberService.isActiveMember(teamId, userId));
+    }
+
+    private List<TaskParticipantView> getFilterParticipants(
+            Long teamId, List<Task> tasks, List<TaskParticipantView> activeParticipants) {
+        List<TaskParticipantView> filterParticipants = new ArrayList<>(activeParticipants);
+
+        for (Task task : tasks) {
+            addFilterParticipant(filterParticipants, toTaskParticipant(teamId, task.getAuthorId()));
+            addFilterParticipant(filterParticipants, toTaskParticipant(teamId, task.getAssigneeId()));
+        }
+
+        return filterParticipants;
+    }
+
+    private void addFilterParticipant(List<TaskParticipantView> filterParticipants, TaskParticipantView participant) {
+        boolean alreadyAdded = filterParticipants.stream()
+                .anyMatch(existingParticipant -> existingParticipant.id().equals(participant.id()));
+
+        if (!alreadyAdded) {
+            filterParticipants.add(participant);
+        }
     }
 }

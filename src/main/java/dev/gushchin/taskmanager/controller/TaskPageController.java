@@ -20,6 +20,7 @@ import dev.gushchin.taskmanager.view.CommentView;
 import dev.gushchin.taskmanager.view.MyTasksPageView;
 import dev.gushchin.taskmanager.view.MyTasksPageView.MyTasksPageFilters;
 import dev.gushchin.taskmanager.view.MyTasksPageView.MyTasksRoleCounts;
+import dev.gushchin.taskmanager.view.TaskParticipantView;
 import dev.gushchin.taskmanager.view.TaskView;
 import dev.gushchin.taskmanager.view.TaskWithTeamView;
 import dev.gushchin.taskmanager.view.TeamTasksStats;
@@ -175,11 +176,7 @@ public class TaskPageController {
             selectedTeamId = teams.getFirst().getId();
         }
 
-        List<User> members = selectedTeamId == null
-                ? List.of()
-                : teamMemberService.findByTeamId(selectedTeamId).stream()
-                        .map(teamMember -> userService.findById(teamMember.getUserId()))
-                        .toList();
+        List<TaskParticipantView> members = selectedTeamId == null ? List.of() : getTeamUsers(selectedTeamId);
 
         List<TeamTag> tags = selectedTeamId == null ? List.of() : teamTagService.findByTeamId(selectedTeamId);
 
@@ -200,7 +197,7 @@ public class TaskPageController {
         teamMemberService.findById(task.getTeamId(), authUser.getId());
 
         Team team = teamService.findById(task.getTeamId());
-        List<User> members = getTeamUsers(task.getTeamId());
+        List<TaskParticipantView> members = getTeamUsers(task.getTeamId());
 
         List<CommentView> comments = commentService.findByTaskId(id).stream()
                 .map(comment -> {
@@ -236,7 +233,7 @@ public class TaskPageController {
         teamMemberService.findById(task.getTeamId(), authUser.getId());
 
         Team team = teamService.findById(task.getTeamId());
-        List<User> members = getTeamUsers(task.getTeamId());
+        List<TaskParticipantView> members = getTeamUsers(task.getTeamId());
 
         model.addAttribute(TASK_ATTRIBUTE, toTaskView(task, authUser.getId()));
         model.addAttribute(TEAM_ATTRIBUTE, team);
@@ -435,15 +432,15 @@ public class TaskPageController {
 
     private TaskWithTeamView toTaskWithTeamView(Task task, UUID userId) {
         Team team = teamService.findById(task.getTeamId());
-        List<User> members = getTeamUsers(task.getTeamId());
+        List<TaskParticipantView> members = getTeamUsers(task.getTeamId());
         List<TeamTag> tags = teamTagService.findByTeamId(task.getTeamId());
 
         return new TaskWithTeamView(toTaskView(task, userId), team.getId(), team.getName(), members, tags);
     }
 
     private TaskView toTaskView(Task task, UUID userId) {
-        User author = userService.findById(task.getAuthorId());
-        User assignee = userService.findById(task.getAssigneeId());
+        TaskParticipantView author = toTaskParticipant(task.getTeamId(), task.getAuthorId());
+        TaskParticipantView assignee = toTaskParticipant(task.getTeamId(), task.getAssigneeId());
 
         boolean canUpdateTask = taskService.canUpdateTask(task, userId);
         boolean canUpdateStatus = taskService.canUpdateStatus(task, userId);
@@ -456,13 +453,19 @@ public class TaskPageController {
         TaskView.TaskState state = new TaskView.TaskState(
                 task.isArchived(), canUpdateTask, canUpdateStatus, canArchive, canRestore, showAuthorChangeWarning);
 
-        return TaskView.from(task, tag.getName(), author.getName(), assignee.getName(), state);
+        return TaskView.from(task, tag.getName(), author, assignee, state);
     }
 
-    private List<User> getTeamUsers(Long teamId) {
+    private List<TaskParticipantView> getTeamUsers(Long teamId) {
         return teamMemberService.findByTeamId(teamId).stream()
-                .map(teamMember -> userService.findById(teamMember.getUserId()))
+                .map(teamMember -> toTaskParticipant(teamId, teamMember.getUserId()))
                 .toList();
+    }
+
+    private TaskParticipantView toTaskParticipant(Long teamId, UUID userId) {
+        User user = userService.findById(userId);
+
+        return new TaskParticipantView(user.getId(), user.getName(), !teamMemberService.isActiveMember(teamId, userId));
     }
 
     private String buildTeamRedirect(Long teamId, TaskStatus selectedStatus, TaskSort selectedSort) {

@@ -1,7 +1,7 @@
 @import dev.gushchin.taskmanager.model.TeamTag
 @import dev.gushchin.taskmanager.model.TaskSort
 @import dev.gushchin.taskmanager.model.TaskStatus
-@import dev.gushchin.taskmanager.model.User
+@import dev.gushchin.taskmanager.view.TaskParticipantView
 @import dev.gushchin.taskmanager.view.TaskView
 @import dev.gushchin.taskmanager.view.TeamPageView
 @import org.springframework.security.web.csrf.CsrfToken
@@ -103,12 +103,16 @@
                     @endif
                 </a>
 
-                @for(User member : page.members())
-                    <a href="${page.assigneeUrl(member.getId())}">
-                        @if(page.selectedAssigneeId() != null && page.selectedAssigneeId().equals(member.getId()))
-                            <strong>${member.getName()}</strong>
+                @for(TaskParticipantView member : page.filterMembers())
+                    <a
+                        href="${page.assigneeUrl(member.id())}"
+                        style="${member.removedFromTeamStyle()}"
+                        title="${member.removedFromTeamTitle()}"
+                    >
+                        @if(page.selectedAssigneeId() != null && page.selectedAssigneeId().equals(member.id()))
+                            <strong>${member.name()}</strong>
                         @else
-                            ${member.getName()}
+                            ${member.name()}
                         @endif
                     </a>
                 @endfor
@@ -123,12 +127,16 @@
                     @endif
                 </a>
 
-                @for(User member : page.members())
-                    <a href="${page.authorUrl(member.getId())}">
-                        @if(page.selectedAuthorId() != null && page.selectedAuthorId().equals(member.getId()))
-                            <strong>${member.getName()}</strong>
+                @for(TaskParticipantView member : page.filterMembers())
+                    <a
+                        href="${page.authorUrl(member.id())}"
+                        style="${member.removedFromTeamStyle()}"
+                        title="${member.removedFromTeamTitle()}"
+                    >
+                        @if(page.selectedAuthorId() != null && page.selectedAuthorId().equals(member.id()))
+                            <strong>${member.name()}</strong>
                         @else
-                            ${member.getName()}
+                            ${member.name()}
                         @endif
                     </a>
                 @endfor
@@ -287,7 +295,13 @@
                                 <span>Автор:</span>
 
                                 @if(!task.canUpdateTask())
-                                    <span>${task.authorName()}</span>
+                                    @if(task.authorRemovedFromTeam())
+                                        <span style="color: red;" title="Пользователь был удалён из команды">
+                                            ${task.authorName()}
+                                        </span>
+                                    @else
+                                        <span>${task.authorName()}</span>
+                                    @endif
                                 @else
                                     <form
                                         method="post"
@@ -331,6 +345,8 @@
                                                     onchange="showInlineSavePanel(this)"
                                                     onmouseenter="document.getElementById('author-warning-${task.id()}').style.display = 'block';"
                                                     onmouseleave="document.getElementById('author-warning-${task.id()}').style.display = 'none';"
+                                                    style="${task.participants().author().removedFromTeamStyle()}"
+                                                    title="${task.participants().author().removedFromTeamTitle()}"
                                                 >
                                                     <option
                                                         value="${task.authorId().toString()}"
@@ -339,10 +355,10 @@
                                                         ${task.authorName()}
                                                     </option>
 
-                                                    @for(User member : page.members())
-                                                        @if(!member.getId().equals(task.authorId()))
-                                                            <option value="${member.getId().toString()}">
-                                                                ${member.getName()}
+                                                    @for(TaskParticipantView member : page.members())
+                                                        @if(!member.id().equals(task.authorId()))
+                                                            <option value="${member.id().toString()}">
+                                                                ${member.name()}
                                                             </option>
                                                         @endif
                                                     @endfor
@@ -373,6 +389,8 @@
                                                 data-inline-control
                                                 data-original-value="${task.authorId().toString()}"
                                                 onchange="showInlineSavePanel(this)"
+                                                style="${task.participants().author().removedFromTeamStyle()}"
+                                                title="${task.participants().author().removedFromTeamTitle()}"
                                             >
                                                 <option
                                                     value="${task.authorId().toString()}"
@@ -381,10 +399,10 @@
                                                     ${task.authorName()}
                                                 </option>
 
-                                                @for(User member : page.members())
-                                                    @if(!member.getId().equals(task.authorId()))
-                                                        <option value="${member.getId().toString()}">
-                                                            ${member.getName()}
+                                                @for(TaskParticipantView member : page.members())
+                                                    @if(!member.id().equals(task.authorId()))
+                                                        <option value="${member.id().toString()}">
+                                                            ${member.name()}
                                                         </option>
                                                     @endif
                                                 @endfor
@@ -414,7 +432,13 @@
                                 <span>Исполнитель:</span>
 
                                 @if(!task.canUpdateTask())
-                                    <span>${task.assigneeName()}</span>
+                                    @if(task.assigneeRemovedFromTeam())
+                                        <span style="color: red;" title="Пользователь был удалён из команды">
+                                            ${task.assigneeName()}
+                                        </span>
+                                    @else
+                                        <span>${task.assigneeName()}</span>
+                                    @endif
                                 @else
                                     <form
                                         method="post"
@@ -449,6 +473,8 @@
                                             data-inline-control
                                             data-original-value="${task.assigneeId().toString()}"
                                             onchange="showInlineSavePanel(this)"
+                                            style="${task.participants().assignee().removedFromTeamStyle()}"
+                                            title="${task.participants().assignee().removedFromTeamTitle()}"
                                         >
                                             <option
                                                 value="${task.assigneeId().toString()}"
@@ -457,10 +483,10 @@
                                                 ${task.assigneeName()}
                                             </option>
 
-                                            @for(User member : page.members())
-                                                @if(!member.getId().equals(task.assigneeId()))
-                                                    <option value="${member.getId().toString()}">
-                                                        ${member.getName()}
+                                            @for(TaskParticipantView member : page.members())
+                                                @if(!member.id().equals(task.assigneeId()))
+                                                    <option value="${member.id().toString()}">
+                                                        ${member.name()}
                                                     </option>
                                                 @endif
                                             @endfor

@@ -25,12 +25,22 @@ public record TaskView(
         return from(
                 task,
                 tagName,
-                authorName,
-                assigneeName,
+                new TaskParticipantView(task.getAuthorId(), authorName, false),
+                new TaskParticipantView(task.getAssigneeId(), assigneeName, false),
                 new TaskState(task.isArchived(), true, true, true, true, false));
     }
 
     public static TaskView from(Task task, String tagName, String authorName, String assigneeName, TaskState state) {
+        return from(
+                task,
+                tagName,
+                new TaskParticipantView(task.getAuthorId(), authorName, false),
+                new TaskParticipantView(task.getAssigneeId(), assigneeName, false),
+                state);
+    }
+
+    public static TaskView from(
+            Task task, String tagName, TaskParticipantView author, TaskParticipantView assignee, TaskState state) {
         return new TaskView(
                 task.getId(),
                 task.getTitle(),
@@ -38,7 +48,7 @@ public record TaskView(
                 new TaskTimeline(task.getDeadlineAt(), task.getCreatedAt()),
                 task.getStatus(),
                 new TaskTag(task.getTagId(), tagName),
-                new TaskParticipants(task.getAuthorId(), authorName, task.getAssigneeId(), assigneeName),
+                new TaskParticipants(author, assignee),
                 state);
     }
 
@@ -59,19 +69,27 @@ public record TaskView(
     }
 
     public UUID authorId() {
-        return participants.authorId();
+        return participants.author().id();
     }
 
     public String authorName() {
-        return participants.authorName();
+        return participants.author().name();
+    }
+
+    public boolean authorRemovedFromTeam() {
+        return participants.author().removedFromTeam();
     }
 
     public UUID assigneeId() {
-        return participants.assigneeId();
+        return participants.assignee().id();
     }
 
     public String assigneeName() {
-        return participants.assigneeName();
+        return participants.assignee().name();
+    }
+
+    public boolean assigneeRemovedFromTeam() {
+        return participants.assignee().removedFromTeam();
     }
 
     public boolean archived() {
@@ -145,7 +163,7 @@ public record TaskView(
 
     public record TaskTag(Long id, String name) {}
 
-    public record TaskParticipants(UUID authorId, String authorName, UUID assigneeId, String assigneeName) {}
+    public record TaskParticipants(TaskParticipantView author, TaskParticipantView assignee) {}
 
     public record TaskState(
             boolean archived,

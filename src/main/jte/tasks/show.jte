@@ -1,7 +1,7 @@
 @import dev.gushchin.taskmanager.model.TaskStatus
 @import dev.gushchin.taskmanager.model.Team
 @import dev.gushchin.taskmanager.model.TeamTag
-@import dev.gushchin.taskmanager.model.User
+@import dev.gushchin.taskmanager.view.TaskParticipantView
 @import dev.gushchin.taskmanager.view.CommentView
 @import dev.gushchin.taskmanager.view.TaskView
 @import java.util.List
@@ -9,7 +9,7 @@
 
 @param TaskView task
 @param Team team
-@param List<User> members
+@param List<TaskParticipantView> members
 @param List<TeamTag> tags
 @param List<CommentView> comments
 @param CsrfToken _csrf
@@ -181,7 +181,13 @@
                     <span>Автор:</span>
 
                     @if(!task.canUpdateTask())
-                        <span>${task.authorName()}</span>
+                        @if(task.authorRemovedFromTeam())
+                            <span style="color: red;" title="Пользователь был удалён из команды">
+                                ${task.authorName()}
+                            </span>
+                        @else
+                            <span>${task.authorName()}</span>
+                        @endif
                     @else
                         <form
                             method="post"
@@ -215,6 +221,8 @@
                                         onchange="showInlineSavePanel(this)"
                                         onmouseenter="document.getElementById('author-warning-${task.id()}').style.display = 'block';"
                                         onmouseleave="document.getElementById('author-warning-${task.id()}').style.display = 'none';"
+                                        style="${task.participants().author().removedFromTeamStyle()}"
+                                        title="${task.participants().author().removedFromTeamTitle()}"
                                     >
                                         <option
                                             value="${task.authorId().toString()}"
@@ -223,12 +231,12 @@
                                             ${task.authorName()}
                                         </option>
 
-                                        @for(User member : members)
-                                            @if(!member.getId().equals(task.authorId()))
+                                        @for(TaskParticipantView member : members)
+                                            @if(!member.id().equals(task.authorId()))
                                                 <option
-                                                    value="${member.getId().toString()}"
+                                                    value="${member.id().toString()}"
                                                 >
-                                                    ${member.getName()}
+                                                    ${member.name()}
                                                 </option>
                                             @endif
                                         @endfor
@@ -259,6 +267,8 @@
                                     data-inline-control
                                     data-original-value="${task.authorId().toString()}"
                                     onchange="showInlineSavePanel(this)"
+                                    style="${task.participants().author().removedFromTeamStyle()}"
+                                    title="${task.participants().author().removedFromTeamTitle()}"
                                 >
                                     <option
                                         value="${task.authorId().toString()}"
@@ -267,12 +277,12 @@
                                         ${task.authorName()}
                                     </option>
 
-                                    @for(User member : members)
-                                        @if(!member.getId().equals(task.authorId()))
+                                    @for(TaskParticipantView member : members)
+                                        @if(!member.id().equals(task.authorId()))
                                             <option
-                                                value="${member.getId().toString()}"
+                                                value="${member.id().toString()}"
                                             >
-                                                ${member.getName()}
+                                                ${member.name()}
                                             </option>
                                         @endif
                                     @endfor
@@ -302,7 +312,13 @@
                     <span>Исполнитель:</span>
 
                     @if(!task.canUpdateTask())
-                        <span>${task.assigneeName()}</span>
+                        @if(task.assigneeRemovedFromTeam())
+                            <span style="color: red;" title="Пользователь был удалён из команды">
+                                ${task.assigneeName()}
+                            </span>
+                        @else
+                            <span>${task.assigneeName()}</span>
+                        @endif
                     @else
                         <form
                             method="post"
@@ -327,6 +343,8 @@
                                 data-inline-control
                                 data-original-value="${task.assigneeId().toString()}"
                                 onchange="showInlineSavePanel(this)"
+                                style="${task.participants().assignee().removedFromTeamStyle()}"
+                                title="${task.participants().assignee().removedFromTeamTitle()}"
                             >
                                 <option
                                     value="${task.assigneeId().toString()}"
@@ -335,12 +353,12 @@
                                     ${task.assigneeName()}
                                 </option>
 
-                                @for(User member : members)
-                                    @if(!member.getId().equals(task.assigneeId()))
+                                @for(TaskParticipantView member : members)
+                                    @if(!member.id().equals(task.assigneeId()))
                                         <option
-                                            value="${member.getId().toString()}"
+                                            value="${member.id().toString()}"
                                         >
-                                            ${member.getName()}
+                                            ${member.name()}
                                         </option>
                                     @endif
                                 @endfor

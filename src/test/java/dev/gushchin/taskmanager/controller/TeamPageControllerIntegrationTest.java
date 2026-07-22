@@ -23,6 +23,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import dev.gushchin.taskmanager.IntegrationTestBase;
 import dev.gushchin.taskmanager.exception.TeamMemberNotFoundException;
+import dev.gushchin.taskmanager.model.Task;
+import dev.gushchin.taskmanager.model.TaskStatus;
 import dev.gushchin.taskmanager.model.Team;
 import dev.gushchin.taskmanager.model.TeamMember;
 import dev.gushchin.taskmanager.model.TeamTag;
@@ -232,6 +234,50 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
         assertFalse(restoredMember.isDeleted());
         assertTrue(teamMemberService.findByTeamId(team.getId()).stream()
                 .anyMatch(teamMember -> teamMember.getUserId().equals(member.getId())));
+    }
+
+    @Test
+    void formerAssigneeShouldAppearInActiveTaskFilters() throws Exception {
+        teamMemberService.removeMember(team.getId(), member.getId(), owner.getId());
+
+        mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("assigneeId=" + member.getId())))
+                .andExpect(content().string(containsString("Member")))
+                .andExpect(content().string(containsString("color: red;")))
+                .andExpect(content().string(containsString("Пользователь был удалён из команды")));
+    }
+
+    @Test
+    void formerMemberShouldDisappearFromActiveTaskFiltersAfterReassignment() throws Exception {
+        teamMemberService.removeMember(team.getId(), member.getId(), owner.getId());
+
+        Task visibleTask = taskService.findByTeamId(team.getId()).stream()
+                .filter(task -> task.getAssigneeId().equals(member.getId()))
+                .findFirst()
+                .orElseThrow();
+
+        taskService.updateAssignee(visibleTask.getId(), owner.getId(), owner.getId());
+
+        mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("assigneeId=" + member.getId()))));
+    }
+
+    @Test
+    void formerMemberWithOnlyArchivedTasksShouldNotAppearInActiveTaskFilters() throws Exception {
+        Task visibleTask = taskService.findByTeamId(team.getId()).stream()
+                .filter(task -> task.getAssigneeId().equals(member.getId()))
+                .findFirst()
+                .orElseThrow();
+
+        taskService.updateStatus(visibleTask.getId(), TaskStatus.DONE, owner.getId());
+        taskService.archive(visibleTask.getId(), owner.getId());
+        teamMemberService.removeMember(team.getId(), member.getId(), owner.getId());
+
+        mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("assigneeId=" + member.getId()))));
     }
 
     private void cleanDatabase() {
