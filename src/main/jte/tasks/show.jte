@@ -16,6 +16,7 @@
 
 @template.layout.page(
     title = task.title(),
+    _csrf = _csrf,
     content = @`
         <section>
             <a href="/teams/${team.getId()}">

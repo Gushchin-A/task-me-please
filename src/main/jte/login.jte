@@ -9,17 +9,17 @@
 @param String errorMessage
 
 @template.layout.auth(
-    title = "Регистрация",
+    title = "Вход",
     loginUrl = loginUrl,
     registrationUrl = registrationUrl,
-    activeTab = "registration",
+    activeTab = "login",
     invite = invite,
     successMessage = successMessage,
     errorMessage = errorMessage,
     content = @`
-        <h1>Регистрация</h1>
+        <h1>Вход</h1>
 
-        <form method="post" action="/registration">
+        <form method="post" action="/login">
             <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
 
             @if(redirect != null)
@@ -31,13 +31,8 @@
             @endif
 
             <div class="auth-field">
-                <label>Имя</label>
-                <input type="text" name="name">
-            </div>
-
-            <div class="auth-field">
                 <label>Email</label>
-                <input type="email" name="email" required>
+                <input type="email" name="username" required>
             </div>
 
             <div class="auth-field">
@@ -46,7 +41,7 @@
             </div>
 
             <button class="auth-submit" type="submit">
-                Создать аккаунт
+                Войти
             </button>
         </form>
     `

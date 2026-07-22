@@ -13,6 +13,7 @@
 
 @template.layout.page(
     title = "Редактировать задачу",
+    _csrf = _csrf,
     content = @`
         <section>
             <a href="/tasks/${task.id()}">

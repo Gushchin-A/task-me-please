@@ -23,6 +23,7 @@
 
 @template.layout.page(
     title = team.getName() + " — участники",
+    _csrf = _csrf,
     content = @`
         <section>
             <h1>${team.getName()}</h1>

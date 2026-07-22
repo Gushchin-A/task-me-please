@@ -69,11 +69,12 @@ public class TeamPageController {
     private final TeamTagService teamTagService;
 
     @GetMapping("/teams")
-    public String teamsPage(@AuthenticationPrincipal AuthUser authUser, Model model) {
+    public String teamsPage(@AuthenticationPrincipal AuthUser authUser, Model model, CsrfToken csrfToken) {
         List<Team> teams = teamService.findByUserId(authUser.getId());
 
         model.addAttribute("teams", teams);
         model.addAttribute(ERROR_MESSAGE_ATTRIBUTE, null);
+        model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
 
         return "teams/index";
     }

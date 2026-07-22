@@ -13,6 +13,7 @@
 
 @template.layout.page(
     title = "Мои задачи",
+    _csrf = _csrf,
     content = @`
         <section>
             <h1>Мои задачи</h1>

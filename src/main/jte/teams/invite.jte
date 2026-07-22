@@ -9,6 +9,7 @@
 
 @template.layout.page(
     title = team.getName() + " — пригласить",
+    _csrf = _csrf,
     content = @`
         <section>
             <h1>${team.getName()}</h1>

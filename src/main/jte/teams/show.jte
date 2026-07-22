@@ -11,6 +11,7 @@
 
 @template.layout.page(
     title = page.team().getName(),
+    _csrf = _csrf,
     content = @`
         <section>
             <h1>${page.team().getName()}</h1>

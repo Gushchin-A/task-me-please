@@ -1,6 +1,8 @@
 @import gg.jte.Content
+@import org.springframework.security.web.csrf.CsrfToken
 
 @param String title
+@param CsrfToken _csrf
 @param Content content
 
 <!doctype html>
@@ -30,6 +32,20 @@
             align-items: center;
             gap: 12px;
             padding: 0 24px;
+        }
+
+        .topbar-logout {
+            margin-left: auto;
+        }
+
+        .topbar-logout button {
+            background: none;
+            border: 0;
+            color: #0969da;
+            cursor: pointer;
+            font: inherit;
+            padding: 0;
+            text-decoration: underline;
         }
 
         .sidebar {
@@ -77,6 +93,16 @@
         <header class="topbar">
             <a href="/tasks/new">Создать задачу</a>
             <a href="/teams/new">Создать команду</a>
+
+            @if(_csrf != null)
+                <form class="topbar-logout" method="post" action="/logout">
+                    <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+
+                    <button type="submit">
+                        Выйти из профиля
+                    </button>
+                </form>
+            @endif
         </header>
 
         <main class="content">

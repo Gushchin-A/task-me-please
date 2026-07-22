@@ -1,5 +1,6 @@
 @template.layout.page(
     title = "Страница не найдена",
+    _csrf = null,
     content = @`
         <section>
             <h1>Такая страница не найдена</h1>

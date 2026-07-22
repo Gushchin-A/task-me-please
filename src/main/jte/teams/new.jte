@@ -4,6 +4,7 @@
 
 @template.layout.page(
     title = "Создать команду",
+    _csrf = _csrf,
     content = @`
         <section>
             <h1>Создать команду</h1>
