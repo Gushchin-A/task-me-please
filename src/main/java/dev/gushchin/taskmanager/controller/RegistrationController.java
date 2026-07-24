@@ -210,7 +210,7 @@ public class RegistrationController {
             Team team = teamService.findById(invitation.getTeamId());
             User invitedBy = userService.findById(invitation.getInvitedBy());
 
-            return new AuthenticationInviteView(team.getName(), invitedBy.getName(), invitedBy.getEmail());
+            return new AuthenticationInviteView(team.getName(), invitedBy.getEmail());
         } catch (TeamInvitationNotFoundException ex) {
             return null;
         } catch (TeamInvitationNotPendingException ex) {

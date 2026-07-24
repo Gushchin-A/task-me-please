@@ -195,9 +195,9 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("name=\"redirect\" value=\"" + redirect + "\"")))
                 .andExpect(content().string(containsString("name=\"invite\" value=\"" + invitation.getToken() + "\"")))
-                .andExpect(content().string(containsString("Owner")))
+                .andExpect(content().string(not(containsString("Owner"))))
                 .andExpect(content().string(containsString("invite-owner@test.com")))
-                .andExpect(content().string(containsString("пригласил вас")))
+                .andExpect(content().string(containsString("Вас пригласил invite-owner@test.com")))
                 .andExpect(content().string(containsString("Invite Team")))
                 .andExpect(content().string(containsString("href=\"/registration?redirect=")))
                 .andExpect(content().string(containsString("invite=" + invitation.getToken())));
@@ -239,9 +239,9 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                         .session((MockHttpSession) result.getRequest().getSession()))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Неверный email или пароль.")))
-                .andExpect(content().string(containsString("Owner")))
+                .andExpect(content().string(not(containsString("Owner"))))
                 .andExpect(content().string(containsString("invite-owner@test.com")))
-                .andExpect(content().string(containsString("пригласил вас")))
+                .andExpect(content().string(containsString("Вас пригласил invite-owner@test.com")))
                 .andExpect(content().string(containsString("Invite Team")));
     }
 
@@ -252,9 +252,9 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
 
         mockMvc.perform(get("/registration").param("redirect", redirect).param("invite", invitation.getToken()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Owner")))
+                .andExpect(content().string(not(containsString("Owner"))))
                 .andExpect(content().string(containsString("invite-owner@test.com")))
-                .andExpect(content().string(containsString("пригласил вас")))
+                .andExpect(content().string(containsString("Вас пригласил invite-owner@test.com")))
                 .andExpect(content().string(containsString("Invite Team")))
                 .andExpect(content().string(containsString("href=\"/login?redirect=")))
                 .andExpect(content().string(containsString("invite=" + invitation.getToken())));
@@ -282,9 +282,9 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                         .session((MockHttpSession) result.getRequest().getSession()))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Email имеет неправильный формат.")))
-                .andExpect(content().string(containsString("Owner")))
+                .andExpect(content().string(not(containsString("Owner"))))
                 .andExpect(content().string(containsString("invite-owner@test.com")))
-                .andExpect(content().string(containsString("пригласил вас")))
+                .andExpect(content().string(containsString("Вас пригласил invite-owner@test.com")))
                 .andExpect(content().string(containsString("Invite Team")));
     }
 

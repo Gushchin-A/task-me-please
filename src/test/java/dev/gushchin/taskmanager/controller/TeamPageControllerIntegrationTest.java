@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -252,7 +254,8 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .param("email", member.getEmail()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
-                .andExpect(flash().attribute("successMessage", "Приглашение отправлено."));
+                .andExpect(flash().attribute(
+                                "successMessage", "Приглашение создано. Ссылку-приглашение можно отправить лично."));
 
         List<TeamInvitation> invitations = teamInvitationRepository.findByTeamId(team.getId());
 
@@ -270,7 +273,8 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .param("email", invitedEmail))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
-                .andExpect(flash().attribute("successMessage", "Приглашение отправлено."));
+                .andExpect(flash().attribute(
+                                "successMessage", "Приглашение создано. Ссылку-приглашение можно отправить лично."));
 
         List<TeamInvitation> invitations = teamInvitationRepository.findByTeamId(team.getId());
         TeamInvitation invitation = invitations.getFirst();
@@ -287,7 +291,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    void ownerShouldSeeErrorAndInvitationShouldRollbackWhenEmailSendingFails() throws Exception {
+    void ownerShouldKeepInvitationWhenEmailSendingFails() throws Exception {
         String invitedEmail = "smtp-failure@test.com";
         doThrow(new InvitationEmailSendingException(new RuntimeException()))
                 .when(invitationEmailService)
@@ -299,9 +303,66 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .param("email", invitedEmail))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
-                .andExpect(flash().attribute("errorMessage", "Приглашение не отправлено. Попробуйте позже."));
+                .andExpect(flash().attribute(
+                                "successMessage", "Приглашение создано. Ссылку-приглашение можно отправить лично."));
 
-        assertTrue(teamInvitationRepository.findByTeamId(team.getId()).isEmpty());
+        List<TeamInvitation> invitations = teamInvitationRepository.findByTeamId(team.getId());
+
+        assertEquals(1, invitations.size());
+        assertEquals(TeamInvitationStatus.PENDING, invitations.getFirst().getStatus());
+    }
+
+    @Test
+    void ownerShouldResendPendingInvitation() throws Exception {
+        TeamInvitation invitation =
+                teamInvitationRepository.save(createInvitation("resend-member@test.com", TeamInvitationStatus.PENDING));
+        reset(invitationEmailService);
+
+        mockMvc.perform(post("/teams/" + team.getId() + "/invitations/" + invitation.getId() + "/resend")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"));
+
+        verify(invitationEmailService).sendInvitation(any(TeamInvitation.class), any(Team.class), any(User.class));
+    }
+
+    @Test
+    void memberShouldNotResendInvitation() throws Exception {
+        TeamInvitation invitation =
+                teamInvitationRepository.save(createInvitation("member-resend@test.com", TeamInvitationStatus.PENDING));
+        reset(invitationEmailService);
+
+        mockMvc.perform(post("/teams/" + team.getId() + "/invitations/" + invitation.getId() + "/resend")
+                        .with(csrf())
+                        .with(user(new AuthUser(member))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
+                .andExpect(flash().attribute(
+                                "errorMessage",
+                                "Только owner команды может приглашать новых участников. "
+                                        + "Вы можете пока только просматривать команду."));
+
+        verify(invitationEmailService, never()).sendInvitation(any(), any(), any());
+    }
+
+    @Test
+    void emailSendingFailureShouldNotCancelResentInvitation() throws Exception {
+        TeamInvitation invitation =
+                teamInvitationRepository.save(createInvitation("failed-resend@test.com", TeamInvitationStatus.PENDING));
+        doThrow(new InvitationEmailSendingException(new RuntimeException()))
+                .when(invitationEmailService)
+                .sendInvitation(any(TeamInvitation.class), any(Team.class), any(User.class));
+
+        mockMvc.perform(post("/teams/" + team.getId() + "/invitations/" + invitation.getId() + "/resend")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"));
+
+        assertEquals(
+                TeamInvitationStatus.PENDING,
+                teamInvitationRepository.findByToken(invitation.getToken()).getStatus());
     }
 
     @Test
@@ -461,6 +522,8 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
 
         mockMvc.perform(get("/teams/" + team.getId() + "/invite").with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("<th>Действие</th>"))))
+                .andExpect(content().string(containsString("Отправить письмо повторно")))
                 .andExpect(content().string(containsString("Отменить приглашение")))
                 .andExpect(content()
                         .string(containsString(
@@ -492,7 +555,8 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/invitations/" + invitation.getToken()).with(user(new AuthUser(invitedUser))))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Приглашение в команду")))
-                .andExpect(content().string(containsString("Owner, team-owner@test.com пригласил вас")))
+                .andExpect(content().string(containsString("Вас пригласил team-owner@test.com")))
+                .andExpect(content().string(not(containsString("Owner"))))
                 .andExpect(content().string(containsString("Project Team")))
                 .andExpect(content().string(containsString("Принять приглашение")))
                 .andExpect(content().string(containsString("Отклонить приглашение")));

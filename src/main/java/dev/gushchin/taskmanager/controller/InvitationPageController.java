@@ -4,7 +4,6 @@ import dev.gushchin.taskmanager.exception.TeamInvitationNotFoundException;
 import dev.gushchin.taskmanager.exception.TeamInvitationNotPendingException;
 import dev.gushchin.taskmanager.model.Team;
 import dev.gushchin.taskmanager.model.TeamInvitation;
-import dev.gushchin.taskmanager.model.User;
 import dev.gushchin.taskmanager.security.AuthUser;
 import dev.gushchin.taskmanager.security.SafeRedirectAuthenticationSuccessHandler;
 import dev.gushchin.taskmanager.service.TeamInvitationService;
@@ -54,11 +53,11 @@ public class InvitationPageController {
         }
 
         Team team = teamService.findById(invitation.getTeamId());
-        User invitedBy = userService.findById(invitation.getInvitedBy());
+        String invitedByEmail = userService.findById(invitation.getInvitedBy()).getEmail();
 
         model.addAttribute("invitation", invitation);
         model.addAttribute("team", team);
-        model.addAttribute("invitedBy", invitedBy);
+        model.addAttribute("invitedByEmail", invitedByEmail);
         model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
 
         return INVITATION_SHOW_VIEW;

@@ -1,3 +1,3 @@
 package dev.gushchin.taskmanager.view;
 
-public record AuthenticationInviteView(String teamName, String invitedByName, String invitedByEmail) {}
+public record AuthenticationInviteView(String teamName, String invitedByEmail) {}

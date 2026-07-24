@@ -1,6 +1,7 @@
 package dev.gushchin.taskmanager.service;
 
 import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
+import dev.gushchin.taskmanager.exception.InvitationEmailSendingException;
 import dev.gushchin.taskmanager.exception.TeamInvitationAlreadyPendingException;
 import dev.gushchin.taskmanager.exception.TeamInvitationNotFoundException;
 import dev.gushchin.taskmanager.exception.TeamInvitationNotPendingException;
@@ -21,11 +22,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TeamInvitationService {
     public static final int EXPIRATION_DAYS = 30;
 
@@ -87,10 +90,15 @@ public class TeamInvitationService {
     public TeamInvitation createAndSend(Long teamId, String invitedEmail, UUID currentUserId) {
         TeamInvitation invitation = create(teamId, invitedEmail, currentUserId);
 
-        invitationEmailService.sendInvitation(
-                invitation, teamService.findById(invitation.getTeamId()), userService.findById(currentUserId));
+        sendInvitation(invitation);
 
         return invitation;
+    }
+
+    public void resend(Long id, Long teamId, UUID currentUserId) {
+        TeamInvitation invitation = findPendingById(id, teamId, currentUserId);
+
+        sendInvitation(invitation);
     }
 
     public TeamInvitation findByToken(String token) {
@@ -120,6 +128,19 @@ public class TeamInvitationService {
     }
 
     public TeamInvitation cancel(Long id, Long teamId, UUID currentUserId) {
+        TeamInvitation invitation = findPendingById(id, teamId, currentUserId);
+
+        return teamInvitationRepository.updateStatus(invitation.getId(), TeamInvitationStatus.CANCELED, Instant.now());
+    }
+
+    public TeamInvitation findPendingByToken(String token) {
+        TeamInvitation invitation = findByToken(token);
+        ensurePending(invitation);
+
+        return invitation;
+    }
+
+    private TeamInvitation findPendingById(Long id, Long teamId, UUID currentUserId) {
         TeamMember currentMember = teamMemberService.findById(teamId, currentUserId);
 
         if (currentMember.getRole() != TeamMemberRole.OWNER) {
@@ -131,16 +152,22 @@ public class TeamInvitationService {
                 .findFirst()
                 .orElseThrow(() -> new TeamInvitationNotFoundException(id.toString()));
 
-        ensurePending(invitation);
-
-        return teamInvitationRepository.updateStatus(invitation.getId(), TeamInvitationStatus.CANCELED, Instant.now());
-    }
-
-    public TeamInvitation findPendingByToken(String token) {
-        TeamInvitation invitation = findByToken(token);
-        ensurePending(invitation);
+        ensurePending(cancelIfExpired(invitation));
 
         return invitation;
+    }
+
+    private void sendInvitation(TeamInvitation invitation) {
+        try {
+            invitationEmailService.sendInvitation(
+                    invitation,
+                    teamService.findById(invitation.getTeamId()),
+                    userService.findById(invitation.getInvitedBy()));
+        } catch (InvitationEmailSendingException ex) {
+            if (log.isWarnEnabled()) {
+                log.warn("Invitation email could not be sent for invitation {}", invitation.getId(), ex);
+            }
+        }
     }
 
     private void checkActiveMember(Long teamId, String invitedEmail) {

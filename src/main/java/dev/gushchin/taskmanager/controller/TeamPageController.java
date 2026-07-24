@@ -1,7 +1,6 @@
 package dev.gushchin.taskmanager.controller;
 
 import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
-import dev.gushchin.taskmanager.exception.InvitationEmailSendingException;
 import dev.gushchin.taskmanager.exception.TeamInvitationAlreadyPendingException;
 import dev.gushchin.taskmanager.exception.TeamInvitationNotFoundException;
 import dev.gushchin.taskmanager.exception.TeamInvitationNotPendingException;
@@ -62,7 +61,6 @@ public class TeamPageController {
     private static final String PENDING_INVITATION_CANCEL_SUCCESS_MESSAGE = "Приглашение отменено.";
     private static final String PENDING_INVITATION_EXISTS_MESSAGE = "Приглашение на этот email уже отправлено.";
     private static final String PENDING_INVITATION_REQUIRED_MESSAGE = "Отменить можно только ожидающее приглашение.";
-    private static final String INVITATION_EMAIL_FAILED_MESSAGE = "Приглашение не отправлено. Попробуйте позже.";
     private static final String REDIRECT_TEAMS_PREFIX = "redirect:/teams/";
     private static final String REMOVE_MEMBER_ERROR_MESSAGE = "Участника не удалось удалить.";
     private static final String REMOVE_MEMBER_SUCCESS_MESSAGE = "Участник удалён из команды.";
@@ -370,6 +368,25 @@ public class TeamPageController {
         return REDIRECT_TEAMS_PREFIX + teamId + INVITE_PATH_SUFFIX;
     }
 
+    @PostMapping("/teams/{teamId}/invitations/{invitationId}/resend")
+    public String resendInvitation(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long teamId,
+            @PathVariable Long invitationId,
+            RedirectAttributes redirectAttributes) {
+        try {
+            teamInvitationService.resend(invitationId, teamId, authUser.getId());
+        } catch (AccessDeniedForTaskException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, OWNER_INVITE_REQUIRED_MESSAGE);
+        } catch (TeamInvitationNotFoundException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, PENDING_INVITATION_REQUIRED_MESSAGE);
+        } catch (TeamInvitationNotPendingException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, PENDING_INVITATION_REQUIRED_MESSAGE);
+        }
+
+        return REDIRECT_TEAMS_PREFIX + teamId + INVITE_PATH_SUFFIX;
+    }
+
     @PostMapping("/teams/{id}/members")
     public String addMember(
             @AuthenticationPrincipal AuthUser authUser,
@@ -409,13 +426,12 @@ public class TeamPageController {
             Long teamId, String email, UUID currentUserId, RedirectAttributes redirectAttributes) {
         try {
             teamInvitationService.createAndSend(teamId, email, currentUserId);
-            redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Приглашение отправлено.");
+            redirectAttributes.addFlashAttribute(
+                    SUCCESS_MESSAGE_ATTRIBUTE, "Приглашение создано. Ссылку-приглашение можно отправить лично.");
         } catch (TeamMemberAlreadyExistsException ex) {
             redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, "Пользователь уже состоит в этой команде.");
         } catch (TeamInvitationAlreadyPendingException ex) {
             redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, PENDING_INVITATION_EXISTS_MESSAGE);
-        } catch (InvitationEmailSendingException ex) {
-            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, INVITATION_EMAIL_FAILED_MESSAGE);
         }
     }
 

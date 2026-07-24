@@ -164,8 +164,8 @@
                     <div class="auth-invite">
                         <strong>Приглашение в команду</strong>
                         <p>
-                            ${inviteContext.invitedByName()}, ${inviteContext.invitedByEmail()}
-                            пригласил вас в команду «${inviteContext.teamName()}».
+                            Вас пригласил ${inviteContext.invitedByEmail()}
+                            в команду «${inviteContext.teamName()}».
                         </p>
                         <p>После входа или регистрации вы вернётесь к приглашению.</p>
                     </div>

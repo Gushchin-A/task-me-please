@@ -1,11 +1,10 @@
 @import dev.gushchin.taskmanager.model.Team
 @import dev.gushchin.taskmanager.model.TeamInvitation
-@import dev.gushchin.taskmanager.model.User
 @import org.springframework.security.web.csrf.CsrfToken
 
 @param TeamInvitation invitation
 @param Team team
-@param User invitedBy
+@param String invitedByEmail
 @param CsrfToken _csrf
 
 @template.layout.page(
@@ -16,7 +15,7 @@
             <h1>Приглашение в команду</h1>
 
             <p>
-                ${invitedBy.getName()}, ${invitedBy.getEmail()} пригласил вас в команду «${team.getName()}».
+                Вас пригласил ${invitedByEmail} в команду «${team.getName()}».
             </p>
 
             <form method="post" action="/invitations/${invitation.getToken()}/accept">

@@ -1,6 +1,7 @@
 package dev.gushchin.taskmanager.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -39,7 +40,8 @@ class InvitationEmailServiceTest {
         assertEquals("invited@test.com", message.getTo()[0]);
         assertEquals("Приглашение в команду Invite Team", message.getSubject());
         assertTrue(message.getText().contains("Вас пригласили в команду «Invite Team»."));
-        assertTrue(message.getText().contains("Пригласил: Owner, owner@test.com"));
+        assertTrue(message.getText().contains("Пригласил: owner@test.com"));
+        assertFalse(message.getText().contains("Owner"));
         assertTrue(message.getText().contains("Ссылка действует 30 дней."));
         assertTrue(message.getText().contains("https://task-me-please.test/invitations/token-123"));
     }

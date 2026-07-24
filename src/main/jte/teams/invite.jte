@@ -79,7 +79,6 @@
                             <th>Email получателя</th>
                             <th>Status</th>
                             <th>Ссылка приглашение</th>
-                            <th>Действие</th>
                         </tr>
                     </thead>
 
@@ -96,10 +95,28 @@
                                     @else
                                         —
                                     @endif
-                                </td>
-                                <td>
+
                                     @if(invitation.canCancel())
-                                        <div id="cancel-invitation-action-${invitation.id()}">
+                                        <form
+                                            method="post"
+                                            action="/teams/${team.getId()}/invitations/${invitation.id()}/resend"
+                                            style="display: inline;"
+                                        >
+                                            <input
+                                                type="hidden"
+                                                name="${_csrf.getParameterName()}"
+                                                value="${_csrf.getToken()}"
+                                            >
+
+                                            <button type="submit">
+                                                Отправить письмо повторно
+                                            </button>
+                                        </form>
+
+                                        <div
+                                            id="cancel-invitation-action-${invitation.id()}"
+                                            style="display: inline;"
+                                        >
                                             <button
                                                 type="button"
                                                 onclick="document.getElementById('cancel-invitation-confirm-${invitation.id()}').style.display = 'inline'; document.getElementById('cancel-invitation-action-${invitation.id()}').style.display = 'none';"
@@ -131,8 +148,6 @@
                                                 Нет
                                             </button>
                                         </form>
-                                    @else
-                                        —
                                     @endif
                                 </td>
                             </tr>

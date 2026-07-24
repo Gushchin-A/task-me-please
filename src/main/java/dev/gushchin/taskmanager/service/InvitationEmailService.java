@@ -35,7 +35,7 @@ public class InvitationEmailService {
 
     private String buildText(TeamInvitation invitation, Team team, User invitedBy) {
         return "Вас пригласили в команду «" + team.getName() + "».\n\n"
-                + "Пригласил: " + invitedBy.getName() + ", " + invitedBy.getEmail() + "\n"
+                + "Пригласил: " + invitedBy.getEmail() + "\n"
                 + "Ссылка действует " + TeamInvitationService.EXPIRATION_DAYS + " дней.\n\n"
                 + "Перейти к приглашению: " + buildInvitationUrl(invitation);
     }
