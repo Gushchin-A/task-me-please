@@ -1,5 +1,6 @@
 package dev.gushchin.taskmanager.service;
 
+import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
 import dev.gushchin.taskmanager.exception.InvalidTeamTagException;
 import dev.gushchin.taskmanager.exception.TeamNotFoundException;
 import dev.gushchin.taskmanager.model.Team;
@@ -33,7 +34,7 @@ public class TeamService {
 
     public Team findById(Long id) {
         Team team = teamRepository.findById(id);
-        if (team == null) {
+        if (team == null || team.isDeleted()) {
             throw new TeamNotFoundException(id);
         }
 
@@ -49,8 +50,8 @@ public class TeamService {
     public List<Team> findByUserId(UUID userId) {
         return teamMemberRepository.findByUserId(userId).stream()
                 .filter(Predicate.not(TeamMember::isDeleted))
-                .map(teamMember -> findById(teamMember.getTeamId()))
-                .filter(Predicate.not(Team::isDeleted))
+                .map(teamMember -> teamRepository.findById(teamMember.getTeamId()))
+                .filter(team -> team != null && !team.isDeleted())
                 .toList();
     }
 
@@ -115,8 +116,14 @@ public class TeamService {
         return preparedNames;
     }
 
-    public void deleteById(Long id) {
+    public void delete(Long id, UUID currentUserId) {
         Team team = findById(id);
+        TeamMember currentMember = teamMemberRepository.findByTeamIdAndUserId(id, currentUserId);
+
+        if (currentMember == null || currentMember.isDeleted() || currentMember.getRole() != TeamMemberRole.OWNER) {
+            throw new AccessDeniedForTaskException();
+        }
+
         team.setDeleted(true);
         team.setUpdatedAt(Instant.now());
         teamRepository.update(team);

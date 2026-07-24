@@ -107,6 +107,8 @@ public class TeamInvitationService {
             throw new TeamInvitationNotFoundException(token);
         }
 
+        teamService.findById(invitation.getTeamId());
+
         return cancelIfExpired(invitation);
     }
 

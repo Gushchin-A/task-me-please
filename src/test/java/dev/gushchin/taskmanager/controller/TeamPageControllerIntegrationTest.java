@@ -26,10 +26,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 import dev.gushchin.taskmanager.IntegrationTestBase;
 import dev.gushchin.taskmanager.exception.InvitationEmailSendingException;
 import dev.gushchin.taskmanager.exception.TeamMemberNotFoundException;
+import dev.gushchin.taskmanager.exception.TeamNotFoundException;
 import dev.gushchin.taskmanager.model.Task;
 import dev.gushchin.taskmanager.model.TaskStatus;
 import dev.gushchin.taskmanager.model.Team;
@@ -41,6 +43,7 @@ import dev.gushchin.taskmanager.model.User;
 import dev.gushchin.taskmanager.repository.TeamInvitationRepository;
 import dev.gushchin.taskmanager.repository.TeamMemberRepository;
 import dev.gushchin.taskmanager.security.AuthUser;
+import dev.gushchin.taskmanager.service.CommentService;
 import dev.gushchin.taskmanager.service.InvitationEmailService;
 import dev.gushchin.taskmanager.service.TaskService;
 import dev.gushchin.taskmanager.service.TeamInvitationService;
@@ -79,6 +82,9 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
 
     @Autowired
     private TaskService taskService;
+
+    @Autowired
+    private CommentService commentService;
 
     @Autowired
     private TeamTagService teamTagService;
@@ -144,6 +150,143 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Задачи (1)")))
                 .andExpect(content().string(not(containsString("Задачи (2)"))));
+    }
+
+    @Test
+    void ownerShouldDeleteTeamAfterThreeConfirmations() throws Exception {
+        final TeamInvitation invitation =
+                teamInvitationService.create(team.getId(), "delete-team@test.com", owner.getId());
+        List<Task> tasks = taskService.findByTeamId(team.getId());
+        commentService.create(tasks.getFirst().getId(), owner.getId(), "Historical comment");
+        final int membersCount = dsl.fetchCount(TEAM_MEMBERS, TEAM_MEMBERS.TEAM_ID.eq(team.getId()));
+        final int tasksCount = dsl.fetchCount(TASKS, TASKS.TEAM_ID.eq(team.getId()));
+        final int tagsCount = dsl.fetchCount(TEAM_TAGS, TEAM_TAGS.TEAM_ID.eq(team.getId()));
+        final int commentsCount = dsl.fetchCount(COMMENTS);
+        MockHttpSession session = new MockHttpSession();
+
+        mockMvc.perform(get("/teams/" + team.getId() + "/delete")
+                        .session(session)
+                        .with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Вы уверены, что хотите удалить команду?")));
+
+        mockMvc.perform(post("/teams/" + team.getId() + "/delete")
+                        .session(session)
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("confirmation", "yes"))
+                .andExpect(status().isOk())
+                .andExpect(content()
+                        .string(containsString("Все участники потеряют доступ к команде и её задачам. Продолжить?")));
+
+        mockMvc.perform(post("/teams/" + team.getId() + "/delete")
+                        .session(session)
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("confirmation", "yes"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Это последнее подтверждение. Удалить команду?")));
+
+        mockMvc.perform(post("/teams/" + team.getId() + "/delete")
+                        .session(session)
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("confirmation", "yes"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams"));
+
+        assertThrows(TeamNotFoundException.class, () -> teamService.findById(team.getId()));
+        assertEquals(membersCount, dsl.fetchCount(TEAM_MEMBERS, TEAM_MEMBERS.TEAM_ID.eq(team.getId())));
+        assertEquals(tasksCount, dsl.fetchCount(TASKS, TASKS.TEAM_ID.eq(team.getId())));
+        assertEquals(tagsCount, dsl.fetchCount(TEAM_TAGS, TEAM_TAGS.TEAM_ID.eq(team.getId())));
+        assertEquals(commentsCount, dsl.fetchCount(COMMENTS));
+        assertEquals(
+                invitation.getId(),
+                dsl.selectFrom(TEAM_INVITATIONS)
+                        .where(TEAM_INVITATIONS.TEAM_ID.eq(team.getId()))
+                        .fetchOne()
+                        .getId());
+        assertFalse(tasks.isEmpty());
+
+        mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(member))))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/tasks/" + tasks.getFirst().getId()).with(user(new AuthUser(member))))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/invitations/" + invitation.getToken()).with(user(new AuthUser(owner))))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/teams/" + team.getId() + "/delete").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(view().name("teams/not-found"));
+    }
+
+    @Test
+    void directDeleteRequestShouldNotBypassConfirmations() throws Exception {
+        mockMvc.perform(post("/teams/" + team.getId() + "/delete")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("confirmation", "yes"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId()));
+
+        assertFalse(teamService.findById(team.getId()).isDeleted());
+    }
+
+    @Test
+    void noShouldCancelTeamDeletion() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+
+        mockMvc.perform(get("/teams/" + team.getId() + "/delete")
+                        .session(session)
+                        .with(user(new AuthUser(owner))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/teams/" + team.getId() + "/delete")
+                        .session(session)
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("confirmation", "no"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId()));
+
+        assertFalse(teamService.findById(team.getId()).isDeleted());
+    }
+
+    @Test
+    void memberShouldNotSeeOrOpenTeamDeletion() throws Exception {
+        mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(member))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("/teams/" + team.getId() + "/delete"))));
+
+        mockMvc.perform(get("/teams/" + team.getId() + "/delete").with(user(new AuthUser(member))))
+                .andExpect(status().isOk())
+                .andExpect(view().name("teams/not-found"));
+
+        mockMvc.perform(post("/teams/" + team.getId() + "/delete")
+                        .with(csrf())
+                        .with(user(new AuthUser(member)))
+                        .param("confirmation", "yes"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("teams/not-found"));
+
+        assertFalse(teamService.findById(team.getId()).isDeleted());
+    }
+
+    @Test
+    void deleteTeamShouldRequireCsrf() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+
+        mockMvc.perform(get("/teams/" + team.getId() + "/delete")
+                        .session(session)
+                        .with(user(new AuthUser(owner))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/teams/" + team.getId() + "/delete")
+                        .session(session)
+                        .with(user(new AuthUser(owner)))
+                        .param("confirmation", "yes"))
+                .andExpect(status().isForbidden());
+
+        assertFalse(teamService.findById(team.getId()).isDeleted());
     }
 
     @Test

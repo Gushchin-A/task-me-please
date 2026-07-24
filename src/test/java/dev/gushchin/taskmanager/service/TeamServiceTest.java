@@ -7,14 +7,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
 import dev.gushchin.taskmanager.exception.TeamNotFoundException;
 import dev.gushchin.taskmanager.model.Team;
 import dev.gushchin.taskmanager.model.TeamMember;
+import dev.gushchin.taskmanager.model.TeamMemberRole;
 import dev.gushchin.taskmanager.model.TeamTag;
 import dev.gushchin.taskmanager.model.User;
 import dev.gushchin.taskmanager.repository.TeamMemberRepository;
@@ -114,6 +117,16 @@ class TeamServiceTest {
     }
 
     @Test
+    void findByIdShouldThrowTeamNotFoundForDeletedTeam() {
+        Team deletedTeam = new Team();
+        deletedTeam.setId(5L);
+        deletedTeam.setDeleted(true);
+        when(teamRepository.findById(5L)).thenReturn(deletedTeam);
+
+        assertThrows(TeamNotFoundException.class, () -> teamService.findById(5L));
+    }
+
+    @Test
     void findAllShouldReturnOnlyNotDeletedTeams() {
         // given
         Team activeTeam = new Team();
@@ -138,23 +151,42 @@ class TeamServiceTest {
     }
 
     @Test
-    void deleteByIdShouldMarkTeamAsDeletedAndCallUpdate() {
+    void deleteShouldMarkTeamAsDeletedForOwner() {
         // given
+        final UUID ownerId = UUID.randomUUID();
         Team existingTeam = new Team();
         existingTeam.setId(7L);
         existingTeam.setName("Delete Me");
         existingTeam.setDeleted(false);
+        TeamMember owner = new TeamMember();
+        owner.setRole(TeamMemberRole.OWNER);
 
         when(teamRepository.findById(7L)).thenReturn(existingTeam);
+        when(teamMemberRepository.findByTeamIdAndUserId(7L, ownerId)).thenReturn(owner);
         when(teamRepository.update(any(Team.class))).thenAnswer(invocationOnMock -> invocationOnMock.getArgument(0));
 
         // when
-        teamService.deleteById(7L);
+        teamService.delete(7L, ownerId);
 
         // then
         assertTrue(existingTeam.isDeleted());
         verify(teamRepository).findById(7L);
         verify(teamRepository).update(existingTeam);
+    }
+
+    @Test
+    void deleteShouldRejectMember() {
+        final UUID memberId = UUID.randomUUID();
+        Team existingTeam = new Team();
+        existingTeam.setId(7L);
+        TeamMember member = new TeamMember();
+        member.setRole(TeamMemberRole.MEMBER);
+
+        when(teamRepository.findById(7L)).thenReturn(existingTeam);
+        when(teamMemberRepository.findByTeamIdAndUserId(7L, memberId)).thenReturn(member);
+
+        assertThrows(AccessDeniedForTaskException.class, () -> teamService.delete(7L, memberId));
+        verify(teamRepository, never()).update(any());
     }
 
     @Test

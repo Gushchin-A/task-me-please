@@ -664,6 +664,14 @@
                     @endfor
                 </ul>
             @endif
+
+            @if(page.canInvite())
+                <div>
+                    <a href="/teams/${page.team().getId()}/delete">
+                        Удалить команду
+                    </a>
+                </div>
+            @endif
         </section>
     `
 )
