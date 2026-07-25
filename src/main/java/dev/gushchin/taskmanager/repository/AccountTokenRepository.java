@@ -54,6 +54,18 @@ public class AccountTokenRepository {
                 .execute();
     }
 
+    public AccountToken markUsedIfActive(Long id, Instant usedAt) {
+        AccountTokensRecord record = dsl.update(ACCOUNT_TOKENS)
+                .set(ACCOUNT_TOKENS.USED_AT, usedAt.atOffset(ZoneOffset.UTC))
+                .where(ACCOUNT_TOKENS.ID.eq(id))
+                .and(ACCOUNT_TOKENS.USED_AT.isNull())
+                .and(ACCOUNT_TOKENS.EXPIRES_AT.gt(usedAt.atOffset(ZoneOffset.UTC)))
+                .returning()
+                .fetchOne();
+
+        return AccountTokenMapper.toModel(record);
+    }
+
     public void deleteAll() {
         dsl.deleteFrom(ACCOUNT_TOKENS).execute();
     }

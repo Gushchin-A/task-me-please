@@ -7,9 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.gushchin.taskmanager.IntegrationTestBase;
+import dev.gushchin.taskmanager.exception.InvalidAccountTokenException;
 import dev.gushchin.taskmanager.jooq.tables.records.AccountTokensRecord;
+import dev.gushchin.taskmanager.model.AccountToken;
 import dev.gushchin.taskmanager.model.AccountTokenType;
 import dev.gushchin.taskmanager.model.User;
 import java.time.Duration;
@@ -89,6 +93,61 @@ class AccountTokenServiceIntegrationTest extends IntegrationTestBase {
 
         assertNull(records.getFirst().getUsedAt());
         assertNull(records.getLast().getUsedAt());
+    }
+
+    @Test
+    void findValidShouldReturnMatchingActiveToken() {
+        String token =
+                accountTokenService.create(user.getId(), AccountTokenType.EMAIL_VERIFICATION, Duration.ofHours(24));
+
+        AccountToken accountToken = accountTokenService.findValid(token, AccountTokenType.EMAIL_VERIFICATION);
+
+        assertEquals(user.getId(), accountToken.getUserId());
+        assertEquals(AccountTokenType.EMAIL_VERIFICATION, accountToken.getType());
+        assertNull(accountToken.getUsedAt());
+    }
+
+    @Test
+    void findValidShouldRejectUnknownExpiredAndWrongTypeTokens() {
+        String expiredToken =
+                accountTokenService.create(user.getId(), AccountTokenType.EMAIL_VERIFICATION, Duration.ofSeconds(-1));
+        String passwordResetToken =
+                accountTokenService.create(user.getId(), AccountTokenType.PASSWORD_RESET, Duration.ofMinutes(30));
+
+        assertThrows(
+                InvalidAccountTokenException.class,
+                () -> accountTokenService.findValid("unknown-token", AccountTokenType.EMAIL_VERIFICATION));
+        assertThrows(
+                InvalidAccountTokenException.class,
+                () -> accountTokenService.findValid(expiredToken, AccountTokenType.EMAIL_VERIFICATION));
+        assertThrows(
+                InvalidAccountTokenException.class,
+                () -> accountTokenService.findValid(passwordResetToken, AccountTokenType.EMAIL_VERIFICATION));
+    }
+
+    @Test
+    void consumeShouldMakeTokenUnavailableForRepeatedUse() {
+        String token =
+                accountTokenService.create(user.getId(), AccountTokenType.PASSWORD_RESET, Duration.ofMinutes(30));
+
+        AccountToken usedToken = accountTokenService.consume(token, AccountTokenType.PASSWORD_RESET);
+
+        assertNotNull(usedToken.getUsedAt());
+        assertThrows(
+                InvalidAccountTokenException.class,
+                () -> accountTokenService.consume(token, AccountTokenType.PASSWORD_RESET));
+    }
+
+    @Test
+    void invalidTokenExceptionShouldNotExposeToken() {
+        String token = "secret-account-token";
+
+        InvalidAccountTokenException exception = assertThrows(
+                InvalidAccountTokenException.class,
+                () -> accountTokenService.findValid(token, AccountTokenType.EMAIL_VERIFICATION));
+
+        assertFalse(exception.getMessage().contains(token));
+        assertTrue(exception.getMessage().contains("invalid or expired"));
     }
 
     private void cleanDatabase() {

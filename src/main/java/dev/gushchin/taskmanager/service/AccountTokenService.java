@@ -1,5 +1,6 @@
 package dev.gushchin.taskmanager.service;
 
+import dev.gushchin.taskmanager.exception.InvalidAccountTokenException;
 import dev.gushchin.taskmanager.model.AccountToken;
 import dev.gushchin.taskmanager.model.AccountTokenType;
 import dev.gushchin.taskmanager.repository.AccountTokenRepository;
@@ -35,6 +36,29 @@ public class AccountTokenService {
         accountTokenRepository.save(accountToken);
 
         return token;
+    }
+
+    public AccountToken findValid(String token, AccountTokenType type) {
+        AccountToken accountToken = accountTokenRepository.findByTokenHash(hashToken(token));
+        if (accountToken == null
+                || accountToken.getType() != type
+                || accountToken.getUsedAt() != null
+                || !accountToken.getExpiresAt().isAfter(Instant.now())) {
+            throw new InvalidAccountTokenException();
+        }
+
+        return accountToken;
+    }
+
+    @Transactional
+    public AccountToken consume(String token, AccountTokenType type) {
+        AccountToken accountToken = findValid(token, type);
+        AccountToken usedToken = accountTokenRepository.markUsedIfActive(accountToken.getId(), Instant.now());
+        if (usedToken == null) {
+            throw new InvalidAccountTokenException();
+        }
+
+        return usedToken;
     }
 
     private String generateToken() {
