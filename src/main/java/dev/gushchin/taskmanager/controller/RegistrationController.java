@@ -7,22 +7,17 @@ import dev.gushchin.taskmanager.model.Team;
 import dev.gushchin.taskmanager.model.TeamInvitation;
 import dev.gushchin.taskmanager.model.User;
 import dev.gushchin.taskmanager.security.SafeRedirectAuthenticationSuccessHandler;
+import dev.gushchin.taskmanager.service.EmailVerificationService;
 import dev.gushchin.taskmanager.service.TeamInvitationService;
 import dev.gushchin.taskmanager.service.TeamService;
 import dev.gushchin.taskmanager.service.UserService;
 import dev.gushchin.taskmanager.view.AuthenticationInviteView;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -44,14 +39,17 @@ public class RegistrationController {
     private static final String REGISTRATION_PATH = "/registration";
     private static final String REDIRECT_PREFIX = "redirect:";
     private static final String REDIRECT_TASKS = "redirect:/tasks";
-    private static final String TASKS_PATH = "/tasks";
     private static final String REQUIRED_FIELDS_ERROR_MESSAGE = "Заполните обязательные поля.";
     private static final String SUCCESS_MESSAGE_ATTRIBUTE = "successMessage";
+    private static final String UNVERIFIED_EMAIL_ATTRIBUTE = "unverifiedEmail";
     private static final String USER_ALREADY_EXISTS_ERROR_MESSAGE = "Пользователь с таким email уже зарегистрирован.";
+    private static final String VERIFICATION_EMAIL_SESSION_ATTRIBUTE = "verificationEmail";
+    private static final String VERIFICATION_INVITE_SESSION_ATTRIBUTE = "verificationInvite";
+    private static final String VERIFICATION_PENDING_REDIRECT = "redirect:/verification-pending";
+    private static final String VERIFICATION_REDIRECT_SESSION_ATTRIBUTE = "verificationRedirect";
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
-    private final AuthenticationManager authenticationManager;
-    private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
+    private final EmailVerificationService emailVerificationService;
     private final TeamInvitationService teamInvitationService;
     private final TeamService teamService;
     private final UserService userService;
@@ -89,8 +87,7 @@ public class RegistrationController {
     }
 
     @PostMapping("/registration")
-    public String register(
-            HttpServletRequest request, HttpServletResponse response, RedirectAttributes redirectAttributes) {
+    public String register(HttpServletRequest request, RedirectAttributes redirectAttributes) {
         String email = request.getParameter("email");
         String name = request.getParameter("name");
         String password = request.getParameter("password");
@@ -104,14 +101,15 @@ public class RegistrationController {
         }
 
         try {
-            userService.create(email, name, password);
-            authenticateRegisteredUser(email, password, request, response);
+            emailVerificationService.register(email, name, password, getInvite(invite));
         } catch (UserAlreadyExistsException ex) {
             redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, USER_ALREADY_EXISTS_ERROR_MESSAGE);
             return REDIRECT_PREFIX + buildAuthUrl(REGISTRATION_PATH, redirect, invite);
         }
 
-        return REDIRECT_PREFIX + getRegistrationSuccessRedirect(redirect);
+        saveVerificationContext(request.getSession(), email, redirect, invite);
+
+        return VERIFICATION_PENDING_REDIRECT;
     }
 
     private void addAuthAttributes(Model model, CsrfToken csrfToken, String redirect, String invite) {
@@ -129,58 +127,9 @@ public class RegistrationController {
         if (!model.containsAttribute(ERROR_MESSAGE_ATTRIBUTE)) {
             model.addAttribute(ERROR_MESSAGE_ATTRIBUTE, null);
         }
-    }
-
-    private String validateRegistration(String email, String password) {
-        if (email == null || email.isBlank()) {
-            return REQUIRED_FIELDS_ERROR_MESSAGE;
+        if (!model.containsAttribute(UNVERIFIED_EMAIL_ATTRIBUTE)) {
+            model.addAttribute(UNVERIFIED_EMAIL_ATTRIBUTE, null);
         }
-
-        if (password == null || password.isBlank()) {
-            return PASSWORD_REQUIRED_ERROR_MESSAGE;
-        }
-
-        if (!EMAIL_PATTERN.matcher(email).matches()) {
-            return EMAIL_FORMAT_ERROR_MESSAGE;
-        }
-
-        return null;
-    }
-
-    private String buildAuthUrl(String path, String redirect, String invite) {
-        UriComponentsBuilder builder = UriComponentsBuilder.fromPath(path);
-        String safeRedirect = getSafeRedirect(redirect);
-        String inviteValue = getInvite(invite);
-
-        if (safeRedirect != null) {
-            builder.queryParam(SafeRedirectAuthenticationSuccessHandler.REDIRECT_PARAMETER, safeRedirect);
-        }
-
-        if (inviteValue != null) {
-            builder.queryParam(INVITE_PARAMETER, inviteValue);
-        }
-
-        return builder.build().encode().toUriString();
-    }
-
-    private void authenticateRegisteredUser(
-            String email, String password, HttpServletRequest request, HttpServletResponse response) {
-        Authentication authentication =
-                authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, password));
-        SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
-        securityContext.setAuthentication(authentication);
-        SecurityContextHolder.setContext(securityContext);
-        securityContextRepository.saveContext(securityContext, request, response);
-    }
-
-    private String getRegistrationSuccessRedirect(String redirect) {
-        String safeRedirect = getSafeRedirect(redirect);
-
-        if (safeRedirect != null) {
-            return safeRedirect;
-        }
-
-        return TASKS_PATH;
     }
 
     private String getSafeRedirect(String redirect) {
@@ -216,6 +165,44 @@ public class RegistrationController {
         } catch (TeamInvitationNotPendingException ex) {
             return null;
         }
+    }
+
+    private String validateRegistration(String email, String password) {
+        if (email == null || email.isBlank()) {
+            return REQUIRED_FIELDS_ERROR_MESSAGE;
+        }
+
+        if (password == null || password.isBlank()) {
+            return PASSWORD_REQUIRED_ERROR_MESSAGE;
+        }
+
+        if (!EMAIL_PATTERN.matcher(email).matches()) {
+            return EMAIL_FORMAT_ERROR_MESSAGE;
+        }
+
+        return null;
+    }
+
+    private String buildAuthUrl(String path, String redirect, String invite) {
+        UriComponentsBuilder builder = UriComponentsBuilder.fromPath(path);
+        String safeRedirect = getSafeRedirect(redirect);
+        String inviteValue = getInvite(invite);
+
+        if (safeRedirect != null) {
+            builder.queryParam(SafeRedirectAuthenticationSuccessHandler.REDIRECT_PARAMETER, safeRedirect);
+        }
+
+        if (inviteValue != null) {
+            builder.queryParam(INVITE_PARAMETER, inviteValue);
+        }
+
+        return builder.build().encode().toUriString();
+    }
+
+    private void saveVerificationContext(HttpSession session, String email, String redirect, String invite) {
+        session.setAttribute(VERIFICATION_EMAIL_SESSION_ATTRIBUTE, email);
+        session.setAttribute(VERIFICATION_REDIRECT_SESSION_ATTRIBUTE, getSafeRedirect(redirect));
+        session.setAttribute(VERIFICATION_INVITE_SESSION_ATTRIBUTE, getInvite(invite));
     }
 
     private boolean isAuthenticated(Authentication authentication) {

@@ -8,6 +8,7 @@ import dev.gushchin.taskmanager.model.AccountToken;
 import dev.gushchin.taskmanager.model.AccountTokenType;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jooq.DSLContext;
@@ -24,6 +25,15 @@ public class AccountTokenRepository {
                 .fetchOne();
 
         return AccountTokenMapper.toModel(record);
+    }
+
+    public List<AccountToken> findByUserIdAndType(UUID userId, AccountTokenType type) {
+        return dsl.selectFrom(ACCOUNT_TOKENS)
+                .where(ACCOUNT_TOKENS.USER_ID.eq(userId))
+                .and(ACCOUNT_TOKENS.TYPE.eq(type.name()))
+                .orderBy(ACCOUNT_TOKENS.CREATED_AT.asc())
+                .fetch()
+                .map(AccountTokenMapper::toModel);
     }
 
     public AccountToken save(AccountToken accountToken) {

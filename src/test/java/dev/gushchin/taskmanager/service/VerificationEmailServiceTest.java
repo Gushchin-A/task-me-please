@@ -21,14 +21,15 @@ class VerificationEmailServiceTest {
         User user = new User();
         user.setEmail("user@test.com");
 
-        verificationEmailService.sendVerification(user, "verification-token", Duration.ofHours(24));
+        verificationEmailService.sendVerification(user, "verification-token", Duration.ofHours(24), "invitation-token");
 
         ArgumentCaptor<String> textCaptor = ArgumentCaptor.forClass(String.class);
         verify(emailSender).send(eq("user@test.com"), eq("Подтвердите email в Task Me Please"), textCaptor.capture());
         String text = textCaptor.getValue();
 
         assertTrue(text.contains("Добро пожаловать в Task Me Please."));
-        assertTrue(text.contains("https://task-me-please.test/verify-email/verification-token"));
+        assertTrue(
+                text.contains("https://task-me-please.test/verify-email/verification-token?invite=invitation-token"));
         assertTrue(text.contains("Ссылка действует 24 часов."));
         assertTrue(text.contains("Если вы не регистрировались"));
     }

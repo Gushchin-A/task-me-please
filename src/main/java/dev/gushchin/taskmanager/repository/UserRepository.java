@@ -29,6 +29,13 @@ public class UserRepository {
         return UserMapper.toModel(record);
     }
 
+    public User findByEmailForUpdate(String email) {
+        UsersRecord record =
+                dsl.selectFrom(USERS).where(USERS.EMAIL.eq(email)).forUpdate().fetchOne();
+
+        return UserMapper.toModel(record);
+    }
+
     public List<User> findAll() {
         return dsl.selectFrom(USERS).fetch().map(UserMapper::toModel);
     }

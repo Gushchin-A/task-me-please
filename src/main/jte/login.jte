@@ -9,6 +9,7 @@
 @param String registrationUrl
 @param String successMessage
 @param String errorMessage
+@param String unverifiedEmail
 
 @template.layout.auth(
     title = "Вход",
@@ -47,5 +48,11 @@
                 Войти
             </button>
         </form>
+
+        @if(unverifiedEmail != null)
+            <a class="auth-submit" href="/verification-pending">
+                Перейти к повторной отправке
+            </a>
+        @endif
     `
 )

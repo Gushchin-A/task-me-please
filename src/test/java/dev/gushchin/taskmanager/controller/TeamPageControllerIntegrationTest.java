@@ -54,6 +54,7 @@ import dev.gushchin.taskmanager.service.UserService;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 import org.jooq.DSLContext;
 import org.junit.jupiter.api.AfterEach;
@@ -863,6 +864,11 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
     @Test
     void userWithoutTeamAccessShouldSeeNotFoundAfterLoginRedirect() throws Exception {
         User outsider = userService.create("outsider@test.com", "Outsider", "qwerty");
+        dsl.update(USERS)
+                .set(USERS.EMAIL_VERIFIED, true)
+                .set(USERS.EMAIL_VERIFIED_AT, OffsetDateTime.now())
+                .where(USERS.ID.eq(outsider.getId()))
+                .execute();
 
         MvcResult anonymousResult = mockMvc.perform(get("/teams/" + team.getId()))
                 .andExpect(status().isFound())
