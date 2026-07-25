@@ -1,0 +1,9 @@
+ALTER TABLE users
+    ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT TRUE,
+    ADD COLUMN email_verified_at TIMESTAMP WITH TIME ZONE;
+
+UPDATE users
+SET email_verified_at = CURRENT_TIMESTAMP;
+
+ALTER TABLE users
+    ALTER COLUMN email_verified SET DEFAULT FALSE;

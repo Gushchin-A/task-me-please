@@ -27,8 +27,16 @@ class InvitationEmailServiceTest {
         InvitationEmailService invitationEmailService = new InvitationEmailService(mailSender, appProperties);
         TeamInvitation invitation = createInvitation();
         Team team = new Team(10L, "Invite Team", UUID.randomUUID(), Instant.now(), Instant.now(), false);
-        User invitedBy =
-                new User(UUID.randomUUID(), "owner@test.com", "Owner", "password", Instant.now(), Instant.now(), false);
+        User invitedBy = new User(
+                UUID.randomUUID(),
+                "owner@test.com",
+                "Owner",
+                "password",
+                Instant.now(),
+                Instant.now(),
+                false,
+                null,
+                false);
 
         invitationEmailService.sendInvitation(invitation, team, invitedBy);
 

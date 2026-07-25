@@ -44,6 +44,7 @@ class UserServiceTest {
         assertEquals(email, createdUser.getEmail());
         assertEquals(name, createdUser.getName());
         assertEquals(password, createdUser.getPasswordHash());
+        assertFalse(createdUser.isEmailVerified());
         assertFalse(createdUser.isDeleted());
 
         verify(userRepository).findByEmail(email);

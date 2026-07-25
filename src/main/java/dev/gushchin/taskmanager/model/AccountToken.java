@@ -11,14 +11,12 @@ import lombok.Setter;
 @NoArgsConstructor
 @Getter
 @Setter
-public class User {
-    private UUID id;
-    private String email;
-    private String name;
-    private String passwordHash;
+public class AccountToken {
+    private Long id;
+    private UUID userId;
+    private AccountTokenType type;
+    private String tokenHash;
+    private Instant expiresAt;
+    private Instant usedAt;
     private Instant createdAt;
-    private Instant updatedAt;
-    private boolean emailVerified;
-    private Instant emailVerifiedAt;
-    private boolean deleted;
 }
