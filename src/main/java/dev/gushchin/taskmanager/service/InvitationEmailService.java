@@ -2,13 +2,11 @@ package dev.gushchin.taskmanager.service;
 
 import dev.gushchin.taskmanager.config.AppProperties;
 import dev.gushchin.taskmanager.exception.InvitationEmailSendingException;
+import dev.gushchin.taskmanager.exception.TransactionalEmailSendingException;
 import dev.gushchin.taskmanager.model.Team;
 import dev.gushchin.taskmanager.model.TeamInvitation;
 import dev.gushchin.taskmanager.model.User;
 import lombok.RequiredArgsConstructor;
-import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -16,19 +14,16 @@ import org.springframework.stereotype.Service;
 public class InvitationEmailService {
     private static final String INVITATION_PATH_PREFIX = "/invitations/";
 
-    private final JavaMailSender mailSender;
+    private final TransactionalEmailSender emailSender;
     private final AppProperties appProperties;
 
     public void sendInvitation(TeamInvitation invitation, Team team, User invitedBy) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(appProperties.getMail().getFrom());
-        message.setTo(invitation.getInvitedEmail());
-        message.setSubject("Приглашение в команду " + team.getName());
-        message.setText(buildText(invitation, team, invitedBy));
-
         try {
-            mailSender.send(message);
-        } catch (MailException ex) {
+            emailSender.send(
+                    invitation.getInvitedEmail(),
+                    "Приглашение в команду " + team.getName(),
+                    buildText(invitation, team, invitedBy));
+        } catch (TransactionalEmailSendingException ex) {
             throw new InvitationEmailSendingException(ex);
         }
     }

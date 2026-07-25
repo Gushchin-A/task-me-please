@@ -1,6 +1,5 @@
 package dev.gushchin.taskmanager.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -15,16 +14,14 @@ import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 
 class InvitationEmailServiceTest {
-    private final JavaMailSender mailSender = mock(JavaMailSender.class);
+    private final TransactionalEmailSender emailSender = mock(TransactionalEmailSender.class);
 
     @Test
     void sendInvitationShouldSendExpectedMessage() {
         AppProperties appProperties = createAppProperties();
-        InvitationEmailService invitationEmailService = new InvitationEmailService(mailSender, appProperties);
+        InvitationEmailService invitationEmailService = new InvitationEmailService(emailSender, appProperties);
         TeamInvitation invitation = createInvitation();
         Team team = new Team(10L, "Invite Team", UUID.randomUUID(), Instant.now(), Instant.now(), false);
         User invitedBy = new User(
@@ -40,18 +37,19 @@ class InvitationEmailServiceTest {
 
         invitationEmailService.sendInvitation(invitation, team, invitedBy);
 
-        ArgumentCaptor<SimpleMailMessage> messageCaptor = ArgumentCaptor.forClass(SimpleMailMessage.class);
-        verify(mailSender).send(messageCaptor.capture());
-        SimpleMailMessage message = messageCaptor.getValue();
+        ArgumentCaptor<String> textCaptor = ArgumentCaptor.forClass(String.class);
+        verify(emailSender)
+                .send(
+                        org.mockito.ArgumentMatchers.eq("invited@test.com"),
+                        org.mockito.ArgumentMatchers.eq("Приглашение в команду Invite Team"),
+                        textCaptor.capture());
+        String text = textCaptor.getValue();
 
-        assertEquals("no-reply@test.com", message.getFrom());
-        assertEquals("invited@test.com", message.getTo()[0]);
-        assertEquals("Приглашение в команду Invite Team", message.getSubject());
-        assertTrue(message.getText().contains("Вас пригласили в команду «Invite Team»."));
-        assertTrue(message.getText().contains("Пригласил: owner@test.com"));
-        assertFalse(message.getText().contains("Owner"));
-        assertTrue(message.getText().contains("Ссылка действует 30 дней."));
-        assertTrue(message.getText().contains("https://task-me-please.test/invitations/token-123"));
+        assertTrue(text.contains("Вас пригласили в команду «Invite Team»."));
+        assertTrue(text.contains("Пригласил: owner@test.com"));
+        assertFalse(text.contains("Owner"));
+        assertTrue(text.contains("Ссылка действует 30 дней."));
+        assertTrue(text.contains("https://task-me-please.test/invitations/token-123"));
     }
 
     private AppProperties createAppProperties() {
