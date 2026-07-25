@@ -5,7 +5,10 @@ import static dev.gushchin.taskmanager.jooq.Tables.ACCOUNT_TOKENS;
 import dev.gushchin.taskmanager.jooq.tables.records.AccountTokensRecord;
 import dev.gushchin.taskmanager.mapper.AccountTokenMapper;
 import dev.gushchin.taskmanager.model.AccountToken;
+import dev.gushchin.taskmanager.model.AccountTokenType;
+import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jooq.DSLContext;
 import org.springframework.stereotype.Repository;
@@ -39,6 +42,16 @@ public class AccountTokenRepository {
                 .fetchOne();
 
         return AccountTokenMapper.toModel(record);
+    }
+
+    public void invalidateActiveByUserIdAndType(UUID userId, AccountTokenType type, Instant usedAt) {
+        dsl.update(ACCOUNT_TOKENS)
+                .set(ACCOUNT_TOKENS.USED_AT, usedAt.atOffset(ZoneOffset.UTC))
+                .where(ACCOUNT_TOKENS.USER_ID.eq(userId))
+                .and(ACCOUNT_TOKENS.TYPE.eq(type.name()))
+                .and(ACCOUNT_TOKENS.USED_AT.isNull())
+                .and(ACCOUNT_TOKENS.EXPIRES_AT.gt(usedAt.atOffset(ZoneOffset.UTC)))
+                .execute();
     }
 
     public void deleteAll() {
