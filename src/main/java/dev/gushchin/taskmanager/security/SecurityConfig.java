@@ -35,6 +35,7 @@ public class SecurityConfig {
                                 REGISTRATION_PATH,
                                 RESEND_VERIFICATION_PATH,
                                 VERIFICATION_PENDING_PATH,
+                                "/reset-password/*",
                                 "/error")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/invitations/*", "/verify-email/*")
