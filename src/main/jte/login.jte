@@ -49,6 +49,10 @@
             </button>
         </form>
 
+        <p>
+            <a href="/forgot-password">Забыли пароль?</a>
+        </p>
+
         @if(unverifiedEmail != null)
             <a class="auth-submit" href="/verification-pending">
                 Перейти к повторной отправке

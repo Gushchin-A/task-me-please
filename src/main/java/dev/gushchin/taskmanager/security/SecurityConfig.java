@@ -15,6 +15,7 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfig {
+    private static final String FORGOT_PASSWORD_PATH = "/forgot-password";
     private static final String LOGIN_PATH = "/login";
     private static final String REGISTRATION_PATH = "/registration";
     private static final String RESEND_VERIFICATION_PATH = "/resend-verification";
@@ -29,6 +30,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http.authorizeHttpRequests(auth -> auth.requestMatchers(
                                 "/",
+                                FORGOT_PASSWORD_PATH,
                                 LOGIN_PATH,
                                 REGISTRATION_PATH,
                                 RESEND_VERIFICATION_PATH,
