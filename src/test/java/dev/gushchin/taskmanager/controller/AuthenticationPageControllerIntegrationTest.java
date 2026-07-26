@@ -2,6 +2,7 @@ package dev.gushchin.taskmanager.controller;
 
 import static dev.gushchin.taskmanager.jooq.Tables.ACCOUNT_TOKENS;
 import static dev.gushchin.taskmanager.jooq.Tables.COMMENTS;
+import static dev.gushchin.taskmanager.jooq.Tables.PERSISTENT_LOGINS;
 import static dev.gushchin.taskmanager.jooq.Tables.TASKS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAMS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAM_INVITATIONS;
@@ -42,6 +43,7 @@ import dev.gushchin.taskmanager.service.TeamMemberService;
 import dev.gushchin.taskmanager.service.TeamService;
 import dev.gushchin.taskmanager.service.TransactionalEmailSender;
 import dev.gushchin.taskmanager.service.UserService;
+import jakarta.servlet.http.Cookie;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.jooq.DSLContext;
@@ -97,7 +99,9 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Task Me Please")))
                 .andExpect(content().string(containsString("action=\"/login\"")))
-                .andExpect(content().string(containsString("name=\"username\"")));
+                .andExpect(content().string(containsString("name=\"username\"")))
+                .andExpect(content().string(containsString("name=\"remember-me\"")))
+                .andExpect(content().string(containsString("Запомнить меня")));
     }
 
     @Test
@@ -116,6 +120,108 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(post("/login").with(csrf()).param("username", EMAIL).param("password", PASSWORD))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/tasks"));
+    }
+
+    @Test
+    void loginWithoutRememberMeShouldCreateOnlySession() throws Exception {
+        createVerifiedUser(EMAIL);
+
+        mockMvc.perform(post("/login").with(csrf()).param("username", EMAIL).param("password", PASSWORD))
+                .andExpect(status().isFound())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie()
+                        .doesNotExist("remember-me"));
+
+        assertEquals(0, dsl.fetchCount(PERSISTENT_LOGINS));
+    }
+
+    @Test
+    void loginWithRememberMeShouldCreatePersistentLoginAndRestoreAuthentication() throws Exception {
+        createVerifiedUser(EMAIL);
+
+        MvcResult loginResult = mockMvc.perform(post("/login")
+                        .with(csrf())
+                        .param("username", EMAIL)
+                        .param("password", PASSWORD)
+                        .param("remember-me", "on"))
+                .andExpect(status().isFound())
+                .andReturn();
+        Cookie rememberMeCookie = loginResult.getResponse().getCookie("remember-me");
+
+        assertNotNull(rememberMeCookie);
+        assertTrue(rememberMeCookie.isHttpOnly());
+        assertEquals("Lax", rememberMeCookie.getAttribute("SameSite"));
+        assertEquals(30 * 24 * 60 * 60, rememberMeCookie.getMaxAge());
+        assertEquals(1, dsl.fetchCount(PERSISTENT_LOGINS));
+
+        mockMvc.perform(get("/tasks").cookie(rememberMeCookie))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Выйти из профиля")));
+    }
+
+    @Test
+    void rememberMeShouldNotRestoreDeletedUser() throws Exception {
+        User user = createVerifiedUser(EMAIL);
+        Cookie rememberMeCookie = loginWithRememberMe();
+        user.setDeleted(true);
+        userRepository.update(user);
+
+        mockMvc.perform(get("/tasks").cookie(rememberMeCookie))
+                .andExpect(status().isFound())
+                .andExpect(redirectedUrl("http://localhost/login"));
+    }
+
+    @Test
+    void expiredRememberMeTokenShouldNotRestoreAuthentication() throws Exception {
+        createVerifiedUser(EMAIL);
+        Cookie rememberMeCookie = loginWithRememberMe();
+        dsl.update(PERSISTENT_LOGINS)
+                .set(PERSISTENT_LOGINS.LAST_USED, OffsetDateTime.now().minusDays(31))
+                .execute();
+
+        mockMvc.perform(get("/tasks").cookie(rememberMeCookie))
+                .andExpect(status().isFound())
+                .andExpect(redirectedUrl("http://localhost/login"));
+    }
+
+    @Test
+    void missingPersistentTokenShouldNotRestoreAuthentication() throws Exception {
+        createVerifiedUser(EMAIL);
+        Cookie rememberMeCookie = loginWithRememberMe();
+        dsl.deleteFrom(PERSISTENT_LOGINS).execute();
+
+        mockMvc.perform(get("/tasks").cookie(rememberMeCookie))
+                .andExpect(status().isFound())
+                .andExpect(redirectedUrl("http://localhost/login"));
+    }
+
+    @Test
+    void modifiedRememberMeCookieShouldNotRestoreAuthentication() throws Exception {
+        createVerifiedUser(EMAIL);
+        loginWithRememberMe();
+        Cookie modifiedCookie = new Cookie("remember-me", "invalid-cookie");
+
+        mockMvc.perform(get("/tasks").cookie(modifiedCookie))
+                .andExpect(status().isFound())
+                .andExpect(redirectedUrl("http://localhost/login"));
+    }
+
+    @Test
+    void logoutWithRememberMeShouldDeletePersistentLogin() throws Exception {
+        createVerifiedUser(EMAIL);
+        Cookie rememberMeCookie = loginWithRememberMe();
+        MvcResult restoredResult = mockMvc.perform(get("/tasks").cookie(rememberMeCookie))
+                .andExpect(status().isOk())
+                .andReturn();
+        MockHttpSession restoredSession =
+                (MockHttpSession) restoredResult.getRequest().getSession();
+
+        mockMvc.perform(post("/logout").with(csrf()).session(restoredSession).cookie(rememberMeCookie))
+                .andExpect(status().isFound())
+                .andExpect(redirectedUrl("/login"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie()
+                        .maxAge("remember-me", 0));
+
+        assertEquals(0, dsl.fetchCount(PERSISTENT_LOGINS));
     }
 
     @Test
@@ -138,11 +244,18 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
     void loginShouldShowSeparateMessageForUnverifiedUser() throws Exception {
         userService.create(EMAIL, "Auth user", PASSWORD);
 
-        MvcResult result = mockMvc.perform(
-                        post("/login").with(csrf()).param("username", EMAIL).param("password", PASSWORD))
+        MvcResult result = mockMvc.perform(post("/login")
+                        .with(csrf())
+                        .param("username", EMAIL)
+                        .param("password", PASSWORD)
+                        .param("remember-me", "on"))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/login"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie()
+                        .maxAge("remember-me", 0))
                 .andReturn();
+
+        assertEquals(0, dsl.fetchCount(PERSISTENT_LOGINS));
 
         mockMvc.perform(get("/login")
                         .session((MockHttpSession) result.getRequest().getSession()))
@@ -652,7 +765,20 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
         return userRepository.update(user);
     }
 
+    private Cookie loginWithRememberMe() throws Exception {
+        MvcResult loginResult = mockMvc.perform(post("/login")
+                        .with(csrf())
+                        .param("username", EMAIL)
+                        .param("password", PASSWORD)
+                        .param("remember-me", "on"))
+                .andExpect(status().isFound())
+                .andReturn();
+
+        return loginResult.getResponse().getCookie("remember-me");
+    }
+
     private void cleanDatabase() {
+        dsl.deleteFrom(PERSISTENT_LOGINS).execute();
         dsl.deleteFrom(ACCOUNT_TOKENS).execute();
         dsl.deleteFrom(COMMENTS).execute();
         dsl.deleteFrom(TASKS).execute();

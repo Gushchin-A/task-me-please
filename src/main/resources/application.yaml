@@ -27,6 +27,8 @@ app:
   base-url: ${APP_BASE_URL:http://localhost:8181}
   mail:
     from: ${MAIL_FROM:no-reply@task-me-please.local}
+  security:
+    remember-me-key: ${REMEMBER_ME_KEY}
 
 server:
   port: ${PORT:8181}

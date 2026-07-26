@@ -44,6 +44,11 @@
                 <input type="password" name="password" required>
             </div>
 
+            <label>
+                <input type="checkbox" name="remember-me">
+                Запомнить меня
+            </label>
+
             <button class="auth-submit" type="submit">
                 Войти
             </button>
