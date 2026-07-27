@@ -12,6 +12,7 @@ import dev.gushchin.taskmanager.model.AccountTokenType;
 import dev.gushchin.taskmanager.model.User;
 import dev.gushchin.taskmanager.service.UserService;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import org.jooq.DSLContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,7 +43,7 @@ class AccountTokenRepositoryIntegrationTest extends IntegrationTestBase {
     @Test
     void saveShouldPersistAccountToken() {
         User user = userService.create("token-owner@test.com", "Owner", "qwerty");
-        Instant createdAt = Instant.now();
+        Instant createdAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
         Instant expiresAt = createdAt.plusSeconds(3600);
         AccountToken accountToken = new AccountToken(
                 null,
