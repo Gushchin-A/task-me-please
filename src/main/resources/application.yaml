@@ -16,8 +16,11 @@ spring:
       mail:
         smtp:
           auth: ${SMTP_AUTH:false}
+          connectiontimeout: 5000
           starttls:
             enable: ${SMTP_STARTTLS_ENABLE:false}
+          timeout: 5000
+          writetimeout: 5000
 
   output:
     ansi:
