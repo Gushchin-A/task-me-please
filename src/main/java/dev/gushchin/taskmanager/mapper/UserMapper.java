@@ -19,6 +19,10 @@ public final class UserMapper {
                 record.getPasswordHash(),
                 record.getCreatedAt().toInstant(),
                 record.getUpdatedAt().toInstant(),
+                Boolean.TRUE.equals(record.getEmailVerified()),
+                record.getEmailVerifiedAt() == null
+                        ? null
+                        : record.getEmailVerifiedAt().toInstant(),
                 Boolean.TRUE.equals(record.getIsDeleted()));
     }
 }

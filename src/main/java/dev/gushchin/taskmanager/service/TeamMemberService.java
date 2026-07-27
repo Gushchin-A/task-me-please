@@ -41,6 +41,15 @@ public class TeamMemberService {
         return teamMember;
     }
 
+    public boolean isActiveMember(Long teamId, UUID userId) {
+        teamService.findById(teamId);
+        userService.findById(userId);
+
+        TeamMember teamMember = teamMemberRepository.findByTeamIdAndUserId(teamId, userId);
+
+        return teamMember != null && !teamMember.isDeleted();
+    }
+
     public TeamMember addMember(Long teamId, UUID userId) {
         teamService.findById(teamId);
         userService.findById(userId);
@@ -51,6 +60,10 @@ public class TeamMemberService {
         }
 
         Instant now = Instant.now();
+
+        if (existingTeamMember != null) {
+            return teamMemberRepository.restoreMember(teamId, userId, now);
+        }
 
         TeamMember teamMember =
                 new TeamMember(teamId, userId, TeamMemberRole.MEMBER, TeamTaskVisibility.OWN_TASKS, now);
@@ -73,5 +86,25 @@ public class TeamMemberService {
         }
 
         return teamMemberRepository.updateTaskVisibility(teamId, userId, taskVisibility);
+    }
+
+    public TeamMember removeMember(Long teamId, UUID userId, UUID currentUserId) {
+        TeamMember currentMember = findById(teamId, currentUserId);
+
+        if (currentMember.getRole() != TeamMemberRole.OWNER) {
+            throw new AccessDeniedForTaskException();
+        }
+
+        TeamMember targetMember = findById(teamId, userId);
+
+        if (targetMember.getRole() == TeamMemberRole.OWNER) {
+            throw new AccessDeniedForTaskException();
+        }
+
+        if (targetMember.getUserId().equals(currentUserId)) {
+            throw new AccessDeniedForTaskException();
+        }
+
+        return teamMemberRepository.softDelete(teamId, userId);
     }
 }

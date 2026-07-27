@@ -3,10 +3,10 @@ package dev.gushchin.taskmanager.service;
 import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
 import dev.gushchin.taskmanager.exception.TaskNotFoundException;
 import dev.gushchin.taskmanager.model.Task;
-import dev.gushchin.taskmanager.model.TaskCategory;
 import dev.gushchin.taskmanager.model.TaskRoleFilter;
 import dev.gushchin.taskmanager.model.TaskSort;
 import dev.gushchin.taskmanager.model.TaskStatus;
+import dev.gushchin.taskmanager.model.TeamTag;
 import dev.gushchin.taskmanager.repository.TaskRepository;
 import dev.gushchin.taskmanager.view.TaskWithTeamView;
 import dev.gushchin.taskmanager.view.TeamTasksStats;
@@ -25,6 +25,8 @@ import org.springframework.stereotype.Service;
 public class TaskService {
     private final TaskRepository taskRepository;
     private final TaskPermissionService taskPermissionService;
+    private final TeamTagService teamTagService;
+    private final TeamMemberService teamMemberService;
 
     public List<Task> findByTeamId(Long teamId) {
         return taskRepository.findByTeamId(teamId).stream()
@@ -34,6 +36,11 @@ public class TaskService {
 
     public List<Task> findByTeamIds(List<Long> teamIds) {
         return teamIds.stream().flatMap(teamId -> findByTeamId(teamId).stream()).toList();
+    }
+
+    public List<Task> findVisibleByTeamId(Long teamId, UUID userId) {
+        List<Task> tasks = findByTeamId(teamId);
+        return filterByVisibility(tasks, userId);
     }
 
     public Task findById(Long id) {
@@ -63,7 +70,11 @@ public class TaskService {
             String title,
             String description,
             LocalDate deadlineDate,
-            TaskCategory category) {
+            Long tagId) {
+        teamMemberService.findById(teamId, authorId);
+        teamMemberService.findById(teamId, assigneeId);
+        teamTagService.findByIdForTeam(tagId, teamId);
+
         Instant now = Instant.now();
 
         Instant deadlineAt =
@@ -78,7 +89,7 @@ public class TaskService {
                 description,
                 deadlineAt,
                 TaskStatus.OPEN,
-                category,
+                tagId,
                 now,
                 now,
                 false,
@@ -171,6 +182,14 @@ public class TaskService {
                 .toList();
     }
 
+    public List<Task> filterByTagId(List<Task> tasks, Long tagId) {
+        if (tagId == null) {
+            return tasks;
+        }
+
+        return tasks.stream().filter(task -> tagId.equals(task.getTagId())).toList();
+    }
+
     public List<Task> sortTasks(List<Task> tasks, TaskSort sort) {
         if (sort == null) {
             return tasks.stream().sorted(getDefaultTaskOrder()).toList();
@@ -183,12 +202,12 @@ public class TaskService {
                     .toList();
         }
 
-        if (sort == TaskSort.CATEGORY) {
-            return tasks.stream()
-                    .sorted(Comparator.comparing(
-                                    (Task task) -> task.getCategory().name())
-                            .thenComparing(getDefaultTaskOrder()))
-                    .toList();
+        if (sort == TaskSort.TAG) {
+            Comparator<Task> order = Comparator.comparing(
+                            (Task task) -> getTagName(task.getTagId()), String.CASE_INSENSITIVE_ORDER)
+                    .thenComparing(getDefaultTaskOrder());
+
+            return tasks.stream().sorted(order).toList();
         }
 
         return tasks.stream().sorted(getDefaultTaskOrder()).toList();
@@ -204,9 +223,9 @@ public class TaskService {
                             (TaskWithTeamView taskCard) -> taskCard.task().deadlineAt(),
                             Comparator.nullsLast(Comparator.naturalOrder()))
                     .thenComparing(getDefaultTaskCardOrder());
-        } else if (sort == TaskSort.CATEGORY) {
-            order = Comparator.comparing((TaskWithTeamView taskCard) ->
-                            taskCard.task().category().name())
+        } else if (sort == TaskSort.TAG) {
+            order = Comparator.comparing(
+                            (TaskWithTeamView taskCard) -> taskCard.task().tagName(), String.CASE_INSENSITIVE_ORDER)
                     .thenComparing(getDefaultTaskCardOrder());
         } else if (sort == TaskSort.TEAM) {
             order = Comparator.comparing(TaskWithTeamView::teamName).thenComparing(getDefaultTaskCardOrder());
@@ -245,18 +264,20 @@ public class TaskService {
         return taskRepository.updateStatus(task.getId(), status, Instant.now());
     }
 
-    public Task updateCategory(Long id, TaskCategory category, UUID userId) {
+    public Task updateTag(Long id, Long tagId, UUID userId) {
         Task task = findByIdForUser(id, userId);
 
         checkCanUpdateTask(task, userId);
+        teamTagService.findByIdForTeam(tagId, task.getTeamId());
 
-        return taskRepository.updateCategory(task.getId(), category, Instant.now());
+        return taskRepository.updateTag(task.getId(), tagId, Instant.now());
     }
 
     public Task updateAuthor(Long id, UUID authorId, UUID userId) {
         Task task = findByIdForUser(id, userId);
 
         checkCanUpdateTask(task, userId);
+        teamMemberService.findById(task.getTeamId(), authorId);
 
         return taskRepository.updateAuthor(task.getId(), authorId, Instant.now());
     }
@@ -265,6 +286,7 @@ public class TaskService {
         Task task = findByIdForUser(id, userId);
 
         checkCanUpdateTask(task, userId);
+        teamMemberService.findById(task.getTeamId(), assigneeId);
 
         return taskRepository.updateAssignee(task.getId(), assigneeId, Instant.now());
     }
@@ -285,18 +307,20 @@ public class TaskService {
             String title,
             String description,
             LocalDate deadlineDate,
-            TaskCategory category,
+            Long tagId,
             UUID assigneeId,
             UUID userId) {
         Task task = findByIdForUser(id, userId);
 
         checkCanUpdateTask(task, userId);
+        teamMemberService.findById(task.getTeamId(), assigneeId);
+        teamTagService.findByIdForTeam(tagId, task.getTeamId());
 
         Instant deadlineAt =
                 deadlineDate == null ? null : deadlineDate.atStartOfDay().toInstant(ZoneOffset.UTC);
 
         return taskRepository.updateDetails(
-                task.getId(), title, description, deadlineAt, category, assigneeId, Instant.now());
+                task.getId(), title, description, deadlineAt, tagId, assigneeId, Instant.now());
     }
 
     public Task archive(Long id, UUID userId) {
@@ -353,5 +377,11 @@ public class TaskService {
 
     public boolean canBeArchived(Task task) {
         return taskPermissionService.canBeArchived(task);
+    }
+
+    private String getTagName(Long tagId) {
+        TeamTag teamTag = teamTagService.findById(tagId);
+
+        return teamTag.getName();
     }
 }

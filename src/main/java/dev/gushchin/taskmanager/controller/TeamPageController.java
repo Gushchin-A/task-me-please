@@ -1,8 +1,12 @@
 package dev.gushchin.taskmanager.controller;
 
+import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
+import dev.gushchin.taskmanager.exception.TeamInvitationAlreadyPendingException;
+import dev.gushchin.taskmanager.exception.TeamInvitationNotFoundException;
+import dev.gushchin.taskmanager.exception.TeamInvitationNotPendingException;
 import dev.gushchin.taskmanager.exception.TeamMemberAlreadyExistsException;
 import dev.gushchin.taskmanager.exception.TeamMemberNotFoundException;
-import dev.gushchin.taskmanager.exception.UserNotFoundByEmailException;
+import dev.gushchin.taskmanager.exception.TeamNotFoundException;
 import dev.gushchin.taskmanager.model.Task;
 import dev.gushchin.taskmanager.model.TaskListMode;
 import dev.gushchin.taskmanager.model.TaskSort;
@@ -10,19 +14,24 @@ import dev.gushchin.taskmanager.model.TaskStatus;
 import dev.gushchin.taskmanager.model.Team;
 import dev.gushchin.taskmanager.model.TeamMember;
 import dev.gushchin.taskmanager.model.TeamMemberRole;
+import dev.gushchin.taskmanager.model.TeamTag;
 import dev.gushchin.taskmanager.model.TeamTaskVisibility;
 import dev.gushchin.taskmanager.model.User;
 import dev.gushchin.taskmanager.security.AuthUser;
 import dev.gushchin.taskmanager.service.TaskService;
+import dev.gushchin.taskmanager.service.TeamInvitationService;
 import dev.gushchin.taskmanager.service.TeamMemberService;
 import dev.gushchin.taskmanager.service.TeamService;
+import dev.gushchin.taskmanager.service.TeamTagService;
 import dev.gushchin.taskmanager.service.UserService;
+import dev.gushchin.taskmanager.view.TaskParticipantView;
 import dev.gushchin.taskmanager.view.TaskView;
+import dev.gushchin.taskmanager.view.TeamInvitationView;
 import dev.gushchin.taskmanager.view.TeamMemberView;
 import dev.gushchin.taskmanager.view.TeamPageView;
-import dev.gushchin.taskmanager.view.TeamPageView.TeamPageCounts;
-import dev.gushchin.taskmanager.view.TeamPageView.TeamPageFilters;
 import dev.gushchin.taskmanager.view.TeamTasksStats;
+import jakarta.servlet.http.HttpSession;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -43,13 +52,25 @@ public class TeamPageController {
     private static final String CSRF_ATTRIBUTE = "_csrf";
     private static final String ERROR_MESSAGE_ATTRIBUTE = "errorMessage";
     private static final String INVITE_PATH_SUFFIX = "/invite";
+    private static final String DELETE_CONFIRMATION_TEAM_ID_SESSION_ATTRIBUTE = "deleteConfirmationTeamId";
+    private static final String DELETE_CONFIRMATION_STEP_SESSION_ATTRIBUTE = "deleteConfirmationStep";
+    private static final String DELETE_TEAM_VIEW = "teams/delete";
+    private static final int FINAL_DELETE_CONFIRMATION_STEP = 3;
+    private static final String MEMBERS_PATH_SUFFIX = "/members";
     private static final String NOT_FOUND_VIEW = "teams/not-found";
     private static final String OWNER_INVITE_REQUIRED_MESSAGE_PREFIX =
             "Только owner команды может приглашать новых участников. ";
     private static final String OWNER_INVITE_REQUIRED_MESSAGE_SUFFIX = "Вы можете пока только просматривать команду.";
     private static final String OWNER_INVITE_REQUIRED_MESSAGE =
             OWNER_INVITE_REQUIRED_MESSAGE_PREFIX + OWNER_INVITE_REQUIRED_MESSAGE_SUFFIX;
+    private static final String OWNER_REMOVE_REQUIRED_MESSAGE = "Только owner команды может удалять участников.";
+    private static final String PENDING_INVITATION_CANCEL_SUCCESS_MESSAGE = "Приглашение отменено.";
+    private static final String PENDING_INVITATION_EXISTS_MESSAGE = "Приглашение на этот email уже отправлено.";
+    private static final String PENDING_INVITATION_REQUIRED_MESSAGE = "Отменить можно только ожидающее приглашение.";
     private static final String REDIRECT_TEAMS_PREFIX = "redirect:/teams/";
+    private static final String REDIRECT_TEAMS = "redirect:/teams";
+    private static final String REMOVE_MEMBER_ERROR_MESSAGE = "Участника не удалось удалить.";
+    private static final String REMOVE_MEMBER_SUCCESS_MESSAGE = "Участник удалён из команды.";
     private static final String SUCCESS_MESSAGE_ATTRIBUTE = "successMessage";
     private static final String TEAM_ATTRIBUTE = "team";
     private static final String PAGE_ATTRIBUTE = "page";
@@ -58,14 +79,17 @@ public class TeamPageController {
     private final TeamService teamService;
     private final TaskService taskService;
     private final UserService userService;
+    private final TeamInvitationService teamInvitationService;
     private final TeamMemberService teamMemberService;
+    private final TeamTagService teamTagService;
 
     @GetMapping("/teams")
-    public String teamsPage(@AuthenticationPrincipal AuthUser authUser, Model model) {
+    public String teamsPage(@AuthenticationPrincipal AuthUser authUser, Model model, CsrfToken csrfToken) {
         List<Team> teams = teamService.findByUserId(authUser.getId());
 
         model.addAttribute("teams", teams);
         model.addAttribute(ERROR_MESSAGE_ATTRIBUTE, null);
+        model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
 
         return "teams/index";
     }
@@ -96,21 +120,20 @@ public class TeamPageController {
         TaskSort sort = request.getSort();
         UUID authorId = request.getAuthorId();
         UUID assigneeId = request.getAssigneeId();
+        Long tagId = request.getTagId();
 
         Team team = teamService.findById(id);
-        List<Task> allTasks = taskService.findByTeamId(id);
-        List<Task> visibleTasks = taskService.filterByVisibility(allTasks, authUser.getId());
+        List<Task> visibleTasks = taskService.findVisibleByTeamId(id, authUser.getId());
         List<Task> modeFilteredTasks = taskService.filterByArchived(visibleTasks, false);
+        List<TeamTag> tags = teamTagService.findByTeamId(id);
         List<TeamMember> teamMembers = teamMemberService.findByTeamId(id);
 
-        List<User> members = teamMembers.stream()
-                .map(teamMember -> userService.findById(teamMember.getUserId()))
-                .toList();
+        List<TaskParticipantView> members = toTaskParticipants(id, teamMembers);
 
         TeamTasksStats stats = taskService.getStats(modeFilteredTasks);
-
         List<Task> statusFilteredTasks = taskService.filterByStatus(modeFilteredTasks, status);
-        List<Task> authorFilteredTasks = taskService.filterByAuthorId(statusFilteredTasks, authorId);
+        List<Task> tagFilteredTasks = taskService.filterByTagId(statusFilteredTasks, tagId);
+        List<Task> authorFilteredTasks = taskService.filterByAuthorId(tagFilteredTasks, authorId);
         List<Task> assigneeFilteredTasks = taskService.filterByAssigneeId(authorFilteredTasks, assigneeId);
         List<Task> sortedTasks = taskService.sortTasks(assigneeFilteredTasks, sort);
 
@@ -123,10 +146,11 @@ public class TeamPageController {
         TeamPageView page = new TeamPageView(
                 team,
                 taskViews,
-                members,
-                new TeamPageCounts(modeFilteredTasks.size(), sortedTasks.size(), teamMembers.size()),
+                new TeamPageView.TeamPageResources(
+                        members, getFilterParticipants(id, modeFilteredTasks, members), tags),
+                new TeamPageView.TeamPageCounts(modeFilteredTasks.size(), sortedTasks.size(), teamMembers.size()),
                 stats,
-                new TeamPageFilters(status, sort, authorId, assigneeId),
+                new TeamPageView.TeamPageFilters(status, sort, authorId, assigneeId, tagId),
                 canInvite,
                 TaskListMode.ACTIVE);
 
@@ -155,31 +179,25 @@ public class TeamPageController {
         TaskSort sort = request.getSort();
         UUID authorId = request.getAuthorId();
         UUID assigneeId = request.getAssigneeId();
+        Long tagId = request.getTagId();
 
         Team team = teamService.findById(id);
-        List<Task> allTasks = taskService.findByTeamId(id);
-        List<Task> visibleTasks = taskService.filterByVisibility(allTasks, authUser.getId());
+        List<Task> visibleTasks = taskService.findVisibleByTeamId(id, authUser.getId());
         List<Task> modeFilteredTasks = taskService.filterByArchived(visibleTasks, true);
+        List<TeamTag> tags = teamTagService.findByTeamId(id);
         List<TeamMember> teamMembers = teamMemberService.findByTeamId(id);
 
-        List<User> members = teamMembers.stream()
-                .map(teamMember -> userService.findById(teamMember.getUserId()))
-                .toList();
+        List<TaskParticipantView> members = toTaskParticipants(id, teamMembers);
 
         TeamTasksStats stats = taskService.getStats(modeFilteredTasks);
-
         List<Task> statusFilteredTasks = taskService.filterByStatus(modeFilteredTasks, status);
-        List<Task> authorFilteredTasks = taskService.filterByAuthorId(statusFilteredTasks, authorId);
+        List<Task> tagFilteredTasks = taskService.filterByTagId(statusFilteredTasks, tagId);
+        List<Task> authorFilteredTasks = taskService.filterByAuthorId(tagFilteredTasks, authorId);
         List<Task> assigneeFilteredTasks = taskService.filterByAssigneeId(authorFilteredTasks, assigneeId);
         List<Task> sortedTasks = taskService.sortTasks(assigneeFilteredTasks, sort);
 
         List<TaskView> taskViews = sortedTasks.stream()
-                .map(task -> {
-                    User author = userService.findById(task.getAuthorId());
-                    User assignee = userService.findById(task.getAssigneeId());
-
-                    return TaskView.from(task, author.getName(), assignee.getName());
-                })
+                .map(task -> toTaskView(task, authUser.getId()))
                 .toList();
 
         boolean canInvite = currentMember.getRole() == TeamMemberRole.OWNER;
@@ -187,10 +205,11 @@ public class TeamPageController {
         TeamPageView page = new TeamPageView(
                 team,
                 taskViews,
-                members,
-                new TeamPageCounts(modeFilteredTasks.size(), sortedTasks.size(), members.size()),
+                new TeamPageView.TeamPageResources(
+                        members, getFilterParticipants(id, modeFilteredTasks, members), tags),
+                new TeamPageView.TeamPageCounts(modeFilteredTasks.size(), sortedTasks.size(), teamMembers.size()),
                 stats,
-                new TeamPageFilters(status, sort, authorId, assigneeId),
+                new TeamPageView.TeamPageFilters(status, sort, authorId, assigneeId, tagId),
                 canInvite,
                 TaskListMode.ARCHIVE);
 
@@ -212,7 +231,7 @@ public class TeamPageController {
         }
 
         Team team = teamService.findById(id);
-        List<Task> tasks = taskService.findByTeamId(id);
+        List<Task> tasks = taskService.findVisibleByTeamId(id, authUser.getId());
         List<TeamMember> members = teamMemberService.findByTeamId(id);
 
         boolean canManageVisibility = currentMember.getRole() == TeamMemberRole.OWNER;
@@ -261,6 +280,7 @@ public class TeamPageController {
         model.addAttribute("canSeeMemberPrivateData", canSeeMemberPrivateData);
         model.addAttribute("taskVisibilities", TeamTaskVisibility.values());
         model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
+        addEmptyFlashAttributes(model);
 
         return "teams/members";
     }
@@ -282,6 +302,14 @@ public class TeamPageController {
         model.addAttribute(TEAM_ATTRIBUTE, team);
         model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
         model.addAttribute(CAN_INVITE_ATTRIBUTE, canInvite);
+        model.addAttribute("invitationExpirationDays", TeamInvitationService.EXPIRATION_DAYS);
+        model.addAttribute(
+                "invitations",
+                canInvite
+                        ? teamInvitationService.findByTeamId(id, authUser.getId()).stream()
+                                .map(TeamInvitationView::from)
+                                .toList()
+                        : List.of());
 
         if (!model.containsAttribute(SUCCESS_MESSAGE_ATTRIBUTE)) {
             model.addAttribute(SUCCESS_MESSAGE_ATTRIBUTE, null);
@@ -298,6 +326,43 @@ public class TeamPageController {
         return "teams/invite";
     }
 
+    @GetMapping("/teams/{id}/delete")
+    public String deleteTeamPage(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long id,
+            Model model,
+            CsrfToken csrfToken,
+            HttpSession session) {
+        if (!isTeamOwner(id, authUser.getId())) {
+            return NOT_FOUND_VIEW;
+        }
+
+        session.setAttribute(DELETE_CONFIRMATION_TEAM_ID_SESSION_ATTRIBUTE, id);
+        session.setAttribute(DELETE_CONFIRMATION_STEP_SESSION_ATTRIBUTE, 1);
+
+        return showDeleteTeamStep(id, 1, model, csrfToken);
+    }
+
+    @PostMapping("/teams/{id}/delete")
+    public String confirmDeleteTeam(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long id,
+            @RequestParam String confirmation,
+            Model model,
+            CsrfToken csrfToken,
+            HttpSession session) {
+        String result;
+
+        if (!isTeamOwner(id, authUser.getId())) {
+            clearDeleteConfirmation(session);
+            result = NOT_FOUND_VIEW;
+        } else {
+            result = processDeleteConfirmation(id, authUser.getId(), confirmation, model, csrfToken, session);
+        }
+
+        return result;
+    }
+
     @PostMapping("/teams/{teamId}/members/{userId}/visibility")
     public String updateMemberTaskVisibility(
             @AuthenticationPrincipal AuthUser authUser,
@@ -306,7 +371,64 @@ public class TeamPageController {
             @RequestParam TeamTaskVisibility taskVisibility) {
         teamMemberService.updateTaskVisibility(teamId, userId, taskVisibility, authUser.getId());
 
-        return REDIRECT_TEAMS_PREFIX + teamId + "/members";
+        return REDIRECT_TEAMS_PREFIX + teamId + MEMBERS_PATH_SUFFIX;
+    }
+
+    @PostMapping("/teams/{teamId}/members/{userId}/remove")
+    public String removeMember(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long teamId,
+            @PathVariable UUID userId,
+            RedirectAttributes redirectAttributes) {
+        try {
+            teamMemberService.removeMember(teamId, userId, authUser.getId());
+            redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, REMOVE_MEMBER_SUCCESS_MESSAGE);
+        } catch (AccessDeniedForTaskException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, OWNER_REMOVE_REQUIRED_MESSAGE);
+        } catch (TeamMemberNotFoundException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, REMOVE_MEMBER_ERROR_MESSAGE);
+        }
+
+        return REDIRECT_TEAMS_PREFIX + teamId + MEMBERS_PATH_SUFFIX;
+    }
+
+    @PostMapping("/teams/{teamId}/invitations/{invitationId}/cancel")
+    public String cancelInvitation(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long teamId,
+            @PathVariable Long invitationId,
+            RedirectAttributes redirectAttributes) {
+        try {
+            teamInvitationService.cancel(invitationId, teamId, authUser.getId());
+            redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, PENDING_INVITATION_CANCEL_SUCCESS_MESSAGE);
+        } catch (AccessDeniedForTaskException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, OWNER_INVITE_REQUIRED_MESSAGE);
+        } catch (TeamInvitationNotFoundException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, PENDING_INVITATION_REQUIRED_MESSAGE);
+        } catch (TeamInvitationNotPendingException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, PENDING_INVITATION_REQUIRED_MESSAGE);
+        }
+
+        return REDIRECT_TEAMS_PREFIX + teamId + INVITE_PATH_SUFFIX;
+    }
+
+    @PostMapping("/teams/{teamId}/invitations/{invitationId}/resend")
+    public String resendInvitation(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long teamId,
+            @PathVariable Long invitationId,
+            RedirectAttributes redirectAttributes) {
+        try {
+            teamInvitationService.resend(invitationId, teamId, authUser.getId());
+        } catch (AccessDeniedForTaskException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, OWNER_INVITE_REQUIRED_MESSAGE);
+        } catch (TeamInvitationNotFoundException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, PENDING_INVITATION_REQUIRED_MESSAGE);
+        } catch (TeamInvitationNotPendingException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, PENDING_INVITATION_REQUIRED_MESSAGE);
+        }
+
+        return REDIRECT_TEAMS_PREFIX + teamId + INVITE_PATH_SUFFIX;
     }
 
     @PostMapping("/teams/{id}/members")
@@ -328,34 +450,97 @@ public class TeamPageController {
         if (currentMember.getRole() != TeamMemberRole.OWNER) {
             redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, OWNER_INVITE_REQUIRED_MESSAGE);
         } else {
-            addMemberByEmail(id, email, redirectAttributes);
+            createInvitation(id, email, authUser.getId(), redirectAttributes);
         }
 
         return redirect;
     }
 
     @PostMapping("/teams")
-    public String createTeam(@AuthenticationPrincipal AuthUser authUser, @RequestParam String name) {
-        teamService.create(name, authUser.getId());
+    public String createTeam(
+            @AuthenticationPrincipal AuthUser authUser,
+            @RequestParam String name,
+            @RequestParam(required = false) List<String> tags) {
+        teamService.create(name, authUser.getId(), tags);
 
-        return "redirect:/teams";
+        return REDIRECT_TEAMS;
     }
 
-    private void addMemberByEmail(Long teamId, String email, RedirectAttributes redirectAttributes) {
+    private void createInvitation(
+            Long teamId, String email, UUID currentUserId, RedirectAttributes redirectAttributes) {
         try {
-            User user = userService.findByEmail(email);
-            teamMemberService.addMember(teamId, user.getId());
-            redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Пользователь добавлен в команду.");
-        } catch (UserNotFoundByEmailException ex) {
-            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, "Пользователь с такой почтой не найден.");
+            teamInvitationService.createAndSend(teamId, email, currentUserId);
+            redirectAttributes.addFlashAttribute(
+                    SUCCESS_MESSAGE_ATTRIBUTE, "Приглашение создано. Ссылку-приглашение можно отправить лично.");
         } catch (TeamMemberAlreadyExistsException ex) {
             redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, "Пользователь уже состоит в этой команде.");
+        } catch (TeamInvitationAlreadyPendingException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, PENDING_INVITATION_EXISTS_MESSAGE);
         }
     }
 
+    private void addEmptyFlashAttributes(Model model) {
+        if (!model.containsAttribute(SUCCESS_MESSAGE_ATTRIBUTE)) {
+            model.addAttribute(SUCCESS_MESSAGE_ATTRIBUTE, null);
+        }
+
+        if (!model.containsAttribute(ERROR_MESSAGE_ATTRIBUTE)) {
+            model.addAttribute(ERROR_MESSAGE_ATTRIBUTE, null);
+        }
+    }
+
+    private boolean isTeamOwner(Long teamId, UUID currentUserId) {
+        try {
+            return teamMemberService.findById(teamId, currentUserId).getRole() == TeamMemberRole.OWNER;
+        } catch (TeamMemberNotFoundException | TeamNotFoundException ex) {
+            return false;
+        }
+    }
+
+    private String processDeleteConfirmation(
+            Long teamId,
+            UUID currentUserId,
+            String confirmation,
+            Model model,
+            CsrfToken csrfToken,
+            HttpSession session) {
+        Long confirmationTeamId = (Long) session.getAttribute(DELETE_CONFIRMATION_TEAM_ID_SESSION_ATTRIBUTE);
+        Integer confirmationStep = (Integer) session.getAttribute(DELETE_CONFIRMATION_STEP_SESSION_ATTRIBUTE);
+        String result;
+
+        if (!teamId.equals(confirmationTeamId) || confirmationStep == null || !"yes".equals(confirmation)) {
+            clearDeleteConfirmation(session);
+            result = REDIRECT_TEAMS_PREFIX + teamId;
+        } else if (confirmationStep < FINAL_DELETE_CONFIRMATION_STEP) {
+            int nextStep = confirmationStep + 1;
+            session.setAttribute(DELETE_CONFIRMATION_STEP_SESSION_ATTRIBUTE, nextStep);
+            result = showDeleteTeamStep(teamId, nextStep, model, csrfToken);
+        } else {
+            teamService.delete(teamId, currentUserId);
+            clearDeleteConfirmation(session);
+            result = REDIRECT_TEAMS;
+        }
+
+        return result;
+    }
+
+    private String showDeleteTeamStep(Long teamId, int step, Model model, CsrfToken csrfToken) {
+        model.addAttribute(TEAM_ATTRIBUTE, teamService.findById(teamId));
+        model.addAttribute("step", step);
+        model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
+
+        return DELETE_TEAM_VIEW;
+    }
+
+    private void clearDeleteConfirmation(HttpSession session) {
+        session.removeAttribute(DELETE_CONFIRMATION_TEAM_ID_SESSION_ATTRIBUTE);
+        session.removeAttribute(DELETE_CONFIRMATION_STEP_SESSION_ATTRIBUTE);
+    }
+
     private TaskView toTaskView(Task task, UUID userId) {
-        User author = userService.findById(task.getAuthorId());
-        User assignee = userService.findById(task.getAssigneeId());
+        TaskParticipantView author = toTaskParticipant(task.getTeamId(), task.getAuthorId());
+        TaskParticipantView assignee = toTaskParticipant(task.getTeamId(), task.getAssigneeId());
+        TeamTag tag = teamTagService.findById(task.getTagId());
 
         boolean canUpdateTask = taskService.canUpdateTask(task, userId);
         boolean canUpdateStatus = taskService.canUpdateStatus(task, userId);
@@ -366,6 +551,39 @@ public class TeamPageController {
         TaskView.TaskState state = new TaskView.TaskState(
                 task.isArchived(), canUpdateTask, canUpdateStatus, canArchive, canRestore, showAuthorChangeWarning);
 
-        return TaskView.from(task, author.getName(), assignee.getName(), state);
+        return TaskView.from(task, tag.getName(), author, assignee, state);
+    }
+
+    private List<TaskParticipantView> toTaskParticipants(Long teamId, List<TeamMember> teamMembers) {
+        return teamMembers.stream()
+                .map(teamMember -> toTaskParticipant(teamId, teamMember.getUserId()))
+                .toList();
+    }
+
+    private TaskParticipantView toTaskParticipant(Long teamId, UUID userId) {
+        User user = userService.findById(userId);
+
+        return new TaskParticipantView(user.getId(), user.getName(), !teamMemberService.isActiveMember(teamId, userId));
+    }
+
+    private List<TaskParticipantView> getFilterParticipants(
+            Long teamId, List<Task> tasks, List<TaskParticipantView> activeParticipants) {
+        List<TaskParticipantView> filterParticipants = new ArrayList<>(activeParticipants);
+
+        for (Task task : tasks) {
+            addFilterParticipant(filterParticipants, toTaskParticipant(teamId, task.getAuthorId()));
+            addFilterParticipant(filterParticipants, toTaskParticipant(teamId, task.getAssigneeId()));
+        }
+
+        return filterParticipants;
+    }
+
+    private void addFilterParticipant(List<TaskParticipantView> filterParticipants, TaskParticipantView participant) {
+        boolean alreadyAdded = filterParticipants.stream()
+                .anyMatch(existingParticipant -> existingParticipant.id().equals(participant.id()));
+
+        if (!alreadyAdded) {
+            filterParticipants.add(participant);
+        }
     }
 }

@@ -1,18 +1,19 @@
-@import dev.gushchin.taskmanager.model.TaskCategory
 @import dev.gushchin.taskmanager.model.Team
-@import dev.gushchin.taskmanager.model.User
+@import dev.gushchin.taskmanager.model.TeamTag
+@import dev.gushchin.taskmanager.view.TaskParticipantView
 @import dev.gushchin.taskmanager.view.TaskView
 @import java.util.List
 @import org.springframework.security.web.csrf.CsrfToken
 
 @param TaskView task
 @param Team team
-@param List<User> members
-@param TaskCategory[] categories
+@param List<TaskParticipantView> members
+@param List<TeamTag> tags
 @param CsrfToken _csrf
 
 @template.layout.page(
     title = "Редактировать задачу",
+    _csrf = _csrf,
     content = @`
         <section>
             <a href="/tasks/${task.id()}">
@@ -21,24 +22,41 @@
 
             <h1>Редактировать задачу</h1>
 
-            <form method="post" action="/tasks/${task.id()}/edit">
-                <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+            <form
+                method="post"
+                action="/tasks/${task.id()}/edit"
+            >
+                <input
+                    type="hidden"
+                    name="${_csrf.getParameterName()}"
+                    value="${_csrf.getToken()}"
+                >
 
                 <div>
                     <label>Название</label>
-                    <input type="text" name="title" value="${task.title()}" required>
+
+                    <input
+                        type="text"
+                        name="title"
+                        value="${task.title()}"
+                        required
+                    >
                 </div>
 
                 <div>
                     <label>Описание</label>
-                    <textarea name="description">${task.description()}</textarea>
+
+                    <textarea name="description">@if(task.description() != null)${task.description()}@endif</textarea>
                 </div>
 
                 <div>
                     <label>Дедлайн</label>
 
                     @if(task.deadlineAt() == null)
-                        <input type="date" name="deadlineDate">
+                        <input
+                            type="date"
+                            name="deadlineDate"
+                        >
                     @else
                         <input
                             type="date"
@@ -49,15 +67,18 @@
                 </div>
 
                 <div>
-                    <label>Категория</label>
+                    <label>Тег</label>
 
-                    <select name="category" required>
-                        @for(TaskCategory category : categories)
+                    <select
+                        name="tagId"
+                        required
+                    >
+                        @for(TeamTag tag : tags)
                             <option
-                                value="${category.name()}"
-                                selected="${category == task.category()}"
+                                value="${tag.getId()}"
+                                selected="${tag.getId().equals(task.tagId())}"
                             >
-                                ${category.name()}
+                                ${tag.getName()}
                             </option>
                         @endfor
                     </select>
@@ -66,19 +87,24 @@
                 <div>
                     <label>Исполнитель</label>
 
-                    <select name="assigneeId" required>
-                        @for(User member : members)
+                    <select
+                        name="assigneeId"
+                        required
+                    >
+                        @for(TaskParticipantView member : members)
                             <option
-                                value="${member.getId().toString()}"
-                                selected="${member.getId().equals(task.assigneeId())}"
+                                value="${member.id().toString()}"
+                                selected="${member.id().equals(task.assigneeId())}"
                             >
-                                ${member.getName()}
+                                ${member.name()}
                             </option>
                         @endfor
                     </select>
                 </div>
 
-                <p>Команда: ${team.getName()}</p>
+                <p>
+                    Команда: ${team.getName()}
+                </p>
 
                 <button type="submit">
                     Сохранить

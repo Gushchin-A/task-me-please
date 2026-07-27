@@ -18,5 +18,7 @@ public class User {
     private String passwordHash;
     private Instant createdAt;
     private Instant updatedAt;
+    private boolean emailVerified;
+    private Instant emailVerifiedAt;
     private boolean deleted;
 }

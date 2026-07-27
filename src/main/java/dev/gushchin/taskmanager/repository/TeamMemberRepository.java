@@ -72,6 +72,33 @@ public class TeamMemberRepository {
         return TeamMemberMapper.toModel(record);
     }
 
+    public TeamMember restoreMember(Long teamId, UUID userId, Instant now) {
+        TeamMembersRecord record = dsl.update(TEAM_MEMBERS)
+                .set(TEAM_MEMBERS.ROLE, "MEMBER")
+                .set(TEAM_MEMBERS.TASK_VISIBILITY, TeamTaskVisibility.OWN_TASKS.name())
+                .set(TEAM_MEMBERS.JOINED_AT, now.atOffset(ZoneOffset.UTC))
+                .set(TEAM_MEMBERS.UPDATED_AT, now.atOffset(ZoneOffset.UTC))
+                .set(TEAM_MEMBERS.IS_DELETED, false)
+                .where(TEAM_MEMBERS.TEAM_ID.eq(teamId))
+                .and(TEAM_MEMBERS.USER_ID.eq(userId))
+                .returning()
+                .fetchOne();
+
+        return TeamMemberMapper.toModel(record);
+    }
+
+    public TeamMember softDelete(Long teamId, UUID userId) {
+        TeamMembersRecord record = dsl.update(TEAM_MEMBERS)
+                .set(TEAM_MEMBERS.IS_DELETED, true)
+                .set(TEAM_MEMBERS.UPDATED_AT, Instant.now().atOffset(ZoneOffset.UTC))
+                .where(TEAM_MEMBERS.TEAM_ID.eq(teamId))
+                .and(TEAM_MEMBERS.USER_ID.eq(userId))
+                .returning()
+                .fetchOne();
+
+        return TeamMemberMapper.toModel(record);
+    }
+
     public void deleteAll() {
         dsl.deleteFrom(TEAM_MEMBERS).execute();
     }

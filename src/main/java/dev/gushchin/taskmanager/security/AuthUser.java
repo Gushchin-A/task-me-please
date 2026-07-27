@@ -27,4 +27,9 @@ public record AuthUser(User user) implements UserDetails {
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of();
     }
+
+    @Override
+    public boolean isEnabled() {
+        return user.isEmailVerified() && !user.isDeleted();
+    }
 }

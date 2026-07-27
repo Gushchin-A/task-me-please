@@ -1,10 +1,10 @@
-@import dev.gushchin.taskmanager.model.TaskCategory
 @import dev.gushchin.taskmanager.model.TaskRoleFilter
 @import dev.gushchin.taskmanager.model.TaskSort
 @import dev.gushchin.taskmanager.model.TaskStatus
 @import dev.gushchin.taskmanager.model.Team
-@import dev.gushchin.taskmanager.model.User
+@import dev.gushchin.taskmanager.model.TeamTag
 @import dev.gushchin.taskmanager.view.MyTasksPageView
+@import dev.gushchin.taskmanager.view.TaskParticipantView
 @import dev.gushchin.taskmanager.view.TaskWithTeamView
 @import org.springframework.security.web.csrf.CsrfToken
 
@@ -13,6 +13,7 @@
 
 @template.layout.page(
     title = "Мои задачи",
+    _csrf = _csrf,
     content = @`
         <section>
             <h1>Мои задачи</h1>
@@ -129,25 +130,25 @@
                 @endfor
             </div>
 
-            <div>
-                <span>Сортировка:</span>
+			<div>
+				<span>Сортировка:</span>
 
-                <a href="${page.sortUrl(TaskSort.DEADLINE)}">
-                    @if(page.selectedSort() == TaskSort.DEADLINE)
-                        <strong>Дедлайн</strong>
-                    @else
-                        Дедлайн
-                    @endif
-                </a>
+				<a href="${page.sortUrl(TaskSort.DEADLINE)}">
+					@if(page.selectedSort() == TaskSort.DEADLINE)
+						<strong>Дедлайн</strong>
+					@else
+						Дедлайн
+					@endif
+				</a>
 
-                <a href="${page.sortUrl(TaskSort.CATEGORY)}">
-                    @if(page.selectedSort() == TaskSort.CATEGORY)
-                        <strong>Сервис</strong>
-                    @else
-                        Сервис
-                    @endif
-                </a>
-            </div>
+				<a href="${page.sortUrl(TaskSort.TAG)}">
+					@if(page.selectedSort() == TaskSort.TAG)
+						<strong>Тег</strong>
+					@else
+						Тег
+					@endif
+				</a>
+			</div>
 
             @if(page.tasks().isEmpty())
                 <p>Задачи по выбранным фильтрам отсутствуют.</p>
@@ -239,8 +240,14 @@
                             <div>
                                 <span>Автор:</span>
 
-                                @if(!taskCard.task().canUpdateTask() || taskCard.members().size() == 1)
-                                    <span>${taskCard.task().authorName()}</span>
+                                @if(!taskCard.task().canUpdateTask())
+                                    @if(taskCard.task().authorRemovedFromTeam())
+                                        <span style="color: red;" title="Пользователь был удалён из команды">
+                                            ${taskCard.task().authorName()}
+                                        </span>
+                                    @else
+                                        <span>${taskCard.task().authorName()}</span>
+                                    @endif
                                 @else
                                     <form
                                         method="post"
@@ -276,15 +283,17 @@
                                                     onchange="showInlineSavePanel(this)"
                                                     onmouseenter="document.getElementById('author-warning-${taskCard.task().id()}').style.display = 'block';"
                                                     onmouseleave="document.getElementById('author-warning-${taskCard.task().id()}').style.display = 'none';"
+                                                    style="${taskCard.task().participants().author().removedFromTeamStyle()}"
+                                                    title="${taskCard.task().participants().author().removedFromTeamTitle()}"
                                                 >
                                                     <option value="${taskCard.task().authorId().toString()}" selected>
                                                         ${taskCard.task().authorName()}
                                                     </option>
 
-                                                    @for(User member : taskCard.members())
-                                                        @if(!member.getId().equals(taskCard.task().authorId()))
-                                                            <option value="${member.getId().toString()}">
-                                                                ${member.getName()}
+                                                    @for(TaskParticipantView member : taskCard.members())
+                                                        @if(!member.id().equals(taskCard.task().authorId()))
+                                                            <option value="${member.id().toString()}">
+                                                                ${member.name()}
                                                             </option>
                                                         @endif
                                                     @endfor
@@ -314,15 +323,17 @@
                                                 data-inline-control
                                                 data-original-value="${taskCard.task().authorId().toString()}"
                                                 onchange="showInlineSavePanel(this)"
+                                                style="${taskCard.task().participants().author().removedFromTeamStyle()}"
+                                                title="${taskCard.task().participants().author().removedFromTeamTitle()}"
                                             >
                                                 <option value="${taskCard.task().authorId().toString()}" selected>
                                                     ${taskCard.task().authorName()}
                                                 </option>
 
-                                                @for(User member : taskCard.members())
-                                                    @if(!member.getId().equals(taskCard.task().authorId()))
-                                                        <option value="${member.getId().toString()}">
-                                                            ${member.getName()}
+                                                @for(TaskParticipantView member : taskCard.members())
+                                                    @if(!member.id().equals(taskCard.task().authorId()))
+                                                        <option value="${member.id().toString()}">
+                                                            ${member.name()}
                                                         </option>
                                                     @endif
                                                 @endfor
@@ -345,8 +356,14 @@
                             <div>
                                 <span>Исполнитель:</span>
 
-                                @if(!taskCard.task().canUpdateTask() || taskCard.members().size() == 1)
-                                    <span>${taskCard.task().assigneeName()}</span>
+                                @if(!taskCard.task().canUpdateTask())
+                                    @if(taskCard.task().assigneeRemovedFromTeam())
+                                        <span style="color: red;" title="Пользователь был удалён из команды">
+                                            ${taskCard.task().assigneeName()}
+                                        </span>
+                                    @else
+                                        <span>${taskCard.task().assigneeName()}</span>
+                                    @endif
                                 @else
                                     <form
                                         method="post"
@@ -378,15 +395,17 @@
                                             data-inline-control
                                             data-original-value="${taskCard.task().assigneeId().toString()}"
                                             onchange="showInlineSavePanel(this)"
+                                            style="${taskCard.task().participants().assignee().removedFromTeamStyle()}"
+                                            title="${taskCard.task().participants().assignee().removedFromTeamTitle()}"
                                         >
                                             <option value="${taskCard.task().assigneeId().toString()}" selected>
                                                 ${taskCard.task().assigneeName()}
                                             </option>
 
-                                            @for(User member : taskCard.members())
-                                                @if(!member.getId().equals(taskCard.task().assigneeId()))
-                                                    <option value="${member.getId().toString()}">
-                                                        ${member.getName()}
+                                            @for(TaskParticipantView member : taskCard.members())
+                                                @if(!member.id().equals(taskCard.task().assigneeId()))
+                                                    <option value="${member.id().toString()}">
+                                                        ${member.name()}
                                                     </option>
                                                 @endif
                                             @endfor
@@ -477,65 +496,93 @@
                             </div>
 
                             <div>
-                                <span>Категория:</span>
+                                <span>Тег:</span>
 
                                 @if(taskCard.task().canUpdateTask())
                                     <form
                                         method="post"
-                                        action="/tasks/${taskCard.task().id()}/category"
+                                        action="/tasks/${taskCard.task().id()}/tag"
                                         style="display: inline;"
                                         data-inline-update-form="true"
                                     >
-                                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
-                                        <input type="hidden" name="returnTo" value="tasks">
+                                        <input
+                                            type="hidden"
+                                            name="${_csrf.getParameterName()}"
+                                            value="${_csrf.getToken()}"
+                                        >
+
+                                        <input
+                                            type="hidden"
+                                            name="returnTo"
+                                            value="tasks"
+                                        >
 
                                         @if(page.selectedStatus() != null)
-                                            <input type="hidden" name="selectedStatus" value="${page.selectedStatus().name()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedStatus"
+                                                value="${page.selectedStatus().name()}"
+                                            >
                                         @endif
 
                                         @if(page.selectedSort() != null)
-                                            <input type="hidden" name="selectedSort" value="${page.selectedSort().name()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedSort"
+                                                value="${page.selectedSort().name()}"
+                                            >
                                         @endif
 
                                         @if(page.selectedTeamId() != null)
-                                            <input type="hidden" name="selectedTeamId" value="${page.selectedTeamId()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedTeamId"
+                                                value="${page.selectedTeamId()}"
+                                            >
                                         @endif
 
                                         @if(page.selectedRole() != null)
-                                            <input type="hidden" name="selectedRole" value="${page.selectedRole().name()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedRole"
+                                                value="${page.selectedRole().name()}"
+                                            >
                                         @endif
 
                                         <select
-                                            name="category"
+                                            name="tagId"
                                             data-inline-control
-                                            data-original-value="${taskCard.task().category().name()}"
+                                            data-original-value="${taskCard.task().tagId()}"
                                             onchange="showInlineSavePanel(this)"
                                         >
-                                            <option value="${taskCard.task().category().name()}" selected>
-                                                ${taskCard.task().category().name()}
-                                            </option>
-
-                                            @for(TaskCategory category : TaskCategory.values())
-                                                @if(category != taskCard.task().category())
-                                                    <option value="${category.name()}">
-                                                        ${category.name()}
-                                                    </option>
-                                                @endif
+                                            @for(TeamTag tag : taskCard.tags())
+                                                <option
+                                                    value="${tag.getId()}"
+                                                    selected="${tag.getId().equals(taskCard.task().tagId())}"
+                                                >
+                                                    ${tag.getName()}
+                                                </option>
                                             @endfor
                                         </select>
 
-                                        <span data-inline-actions style="display: none;">
+                                        <span
+                                            data-inline-actions
+                                            style="display: none;"
+                                        >
                                             <button type="submit">
                                                 Сохранить
                                             </button>
 
-                                            <button type="button" onclick="cancelInlineUpdate(this)">
+                                            <button
+                                                type="button"
+                                                onclick="cancelInlineUpdate(this)"
+                                            >
                                                 Отмена
                                             </button>
                                         </span>
                                     </form>
                                 @else
-                                    <span>${taskCard.task().category().name()}</span>
+                                    <span>${taskCard.task().tagName()}</span>
                                 @endif
                             </div>
 

@@ -29,6 +29,13 @@ public class UserRepository {
         return UserMapper.toModel(record);
     }
 
+    public User findByEmailForUpdate(String email) {
+        UsersRecord record =
+                dsl.selectFrom(USERS).where(USERS.EMAIL.eq(email)).forUpdate().fetchOne();
+
+        return UserMapper.toModel(record);
+    }
+
     public List<User> findAll() {
         return dsl.selectFrom(USERS).fetch().map(UserMapper::toModel);
     }
@@ -41,6 +48,12 @@ public class UserRepository {
                 .set(USERS.PASSWORD_HASH, user.getPasswordHash())
                 .set(USERS.CREATED_AT, user.getCreatedAt().atOffset(ZoneOffset.UTC))
                 .set(USERS.UPDATED_AT, user.getUpdatedAt().atOffset(ZoneOffset.UTC))
+                .set(USERS.EMAIL_VERIFIED, user.isEmailVerified())
+                .set(
+                        USERS.EMAIL_VERIFIED_AT,
+                        user.getEmailVerifiedAt() == null
+                                ? null
+                                : user.getEmailVerifiedAt().atOffset(ZoneOffset.UTC))
                 .set(USERS.IS_DELETED, user.isDeleted())
                 .returning()
                 .fetchOne();
@@ -55,6 +68,12 @@ public class UserRepository {
                 .set(USERS.PASSWORD_HASH, user.getPasswordHash())
                 .set(USERS.CREATED_AT, user.getCreatedAt().atOffset(ZoneOffset.UTC))
                 .set(USERS.UPDATED_AT, user.getUpdatedAt().atOffset(ZoneOffset.UTC))
+                .set(USERS.EMAIL_VERIFIED, user.isEmailVerified())
+                .set(
+                        USERS.EMAIL_VERIFIED_AT,
+                        user.getEmailVerifiedAt() == null
+                                ? null
+                                : user.getEmailVerifiedAt().atOffset(ZoneOffset.UTC))
                 .set(USERS.IS_DELETED, user.isDeleted())
                 .where(USERS.ID.eq(user.getId()))
                 .returning()

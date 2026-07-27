@@ -1,7 +1,6 @@
 package dev.gushchin.taskmanager.view;
 
 import dev.gushchin.taskmanager.model.Task;
-import dev.gushchin.taskmanager.model.TaskCategory;
 import dev.gushchin.taskmanager.model.TaskStatus;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -16,25 +15,40 @@ public record TaskView(
         String description,
         TaskTimeline timeline,
         TaskStatus status,
-        TaskCategory category,
+        TaskTag tag,
         TaskParticipants participants,
         TaskState state) {
     private static final DateTimeFormatter DEADLINE_FORMATTER =
             DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.forLanguageTag("ru"));
 
-    public static TaskView from(Task task, String authorName, String assigneeName) {
-        return from(task, authorName, assigneeName, new TaskState(task.isArchived(), true, true, true, true, false));
+    public static TaskView from(Task task, String tagName, String authorName, String assigneeName) {
+        return from(
+                task,
+                tagName,
+                new TaskParticipantView(task.getAuthorId(), authorName, false),
+                new TaskParticipantView(task.getAssigneeId(), assigneeName, false),
+                new TaskState(task.isArchived(), true, true, true, true, false));
     }
 
-    public static TaskView from(Task task, String authorName, String assigneeName, TaskState state) {
+    public static TaskView from(Task task, String tagName, String authorName, String assigneeName, TaskState state) {
+        return from(
+                task,
+                tagName,
+                new TaskParticipantView(task.getAuthorId(), authorName, false),
+                new TaskParticipantView(task.getAssigneeId(), assigneeName, false),
+                state);
+    }
+
+    public static TaskView from(
+            Task task, String tagName, TaskParticipantView author, TaskParticipantView assignee, TaskState state) {
         return new TaskView(
                 task.getId(),
                 task.getTitle(),
                 task.getDescription(),
                 new TaskTimeline(task.getDeadlineAt(), task.getCreatedAt()),
                 task.getStatus(),
-                task.getCategory(),
-                new TaskParticipants(task.getAuthorId(), authorName, task.getAssigneeId(), assigneeName),
+                new TaskTag(task.getTagId(), tagName),
+                new TaskParticipants(author, assignee),
                 state);
     }
 
@@ -46,20 +60,36 @@ public record TaskView(
         return timeline.createdAt();
     }
 
+    public Long tagId() {
+        return tag.id();
+    }
+
+    public String tagName() {
+        return tag.name();
+    }
+
     public UUID authorId() {
-        return participants.authorId();
+        return participants.author().id();
     }
 
     public String authorName() {
-        return participants.authorName();
+        return participants.author().name();
+    }
+
+    public boolean authorRemovedFromTeam() {
+        return participants.author().removedFromTeam();
     }
 
     public UUID assigneeId() {
-        return participants.assigneeId();
+        return participants.assignee().id();
     }
 
     public String assigneeName() {
-        return participants.assigneeName();
+        return participants.assignee().name();
+    }
+
+    public boolean assigneeRemovedFromTeam() {
+        return participants.assignee().removedFromTeam();
     }
 
     public boolean archived() {
@@ -131,7 +161,9 @@ public record TaskView(
 
     public record TaskTimeline(Instant deadlineAt, Instant createdAt) {}
 
-    public record TaskParticipants(UUID authorId, String authorName, UUID assigneeId, String assigneeName) {}
+    public record TaskTag(Long id, String name) {}
+
+    public record TaskParticipants(TaskParticipantView author, TaskParticipantView assignee) {}
 
     public record TaskState(
             boolean archived,

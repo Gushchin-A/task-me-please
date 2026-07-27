@@ -53,7 +53,7 @@ public class UserService {
         String passwordHash = passwordEncoder.encode(password);
         String userName = name == null || name.isBlank() ? email : name;
 
-        User user = new User(UUID.randomUUID(), email, userName, passwordHash, now, now, false);
+        User user = new User(UUID.randomUUID(), email, userName, passwordHash, now, now, false, null, false);
 
         return userRepository.save(user);
     }

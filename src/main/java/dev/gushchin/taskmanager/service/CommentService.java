@@ -36,7 +36,7 @@ public class CommentService {
     }
 
     public Comment create(Long taskId, UUID userId, String message) {
-        taskService.findById(taskId);
+        taskService.findByIdForUser(taskId, userId);
         userService.findById(userId);
 
         Instant now = Instant.now();
@@ -63,6 +63,8 @@ public class CommentService {
     }
 
     private void checkCanUpdateComment(Comment comment, UUID userId) {
+        taskService.findByIdForUser(comment.getTaskId(), userId);
+
         if (!comment.getUserId().equals(userId)) {
             throw new AccessDeniedForTaskException();
         }

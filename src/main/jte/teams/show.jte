@@ -1,7 +1,7 @@
-@import dev.gushchin.taskmanager.model.TaskCategory
+@import dev.gushchin.taskmanager.model.TeamTag
 @import dev.gushchin.taskmanager.model.TaskSort
 @import dev.gushchin.taskmanager.model.TaskStatus
-@import dev.gushchin.taskmanager.model.User
+@import dev.gushchin.taskmanager.view.TaskParticipantView
 @import dev.gushchin.taskmanager.view.TaskView
 @import dev.gushchin.taskmanager.view.TeamPageView
 @import org.springframework.security.web.csrf.CsrfToken
@@ -11,6 +11,7 @@
 
 @template.layout.page(
     title = page.team().getName(),
+    _csrf = _csrf,
     content = @`
         <section>
             <h1>${page.team().getName()}</h1>
@@ -103,12 +104,16 @@
                     @endif
                 </a>
 
-                @for(User member : page.members())
-                    <a href="${page.assigneeUrl(member.getId())}">
-                        @if(page.selectedAssigneeId() != null && page.selectedAssigneeId().equals(member.getId()))
-                            <strong>${member.getName()}</strong>
+                @for(TaskParticipantView member : page.filterMembers())
+                    <a
+                        href="${page.assigneeUrl(member.id())}"
+                        style="${member.removedFromTeamStyle()}"
+                        title="${member.removedFromTeamTitle()}"
+                    >
+                        @if(page.selectedAssigneeId() != null && page.selectedAssigneeId().equals(member.id()))
+                            <strong>${member.name()}</strong>
                         @else
-                            ${member.getName()}
+                            ${member.name()}
                         @endif
                     </a>
                 @endfor
@@ -123,12 +128,36 @@
                     @endif
                 </a>
 
-                @for(User member : page.members())
-                    <a href="${page.authorUrl(member.getId())}">
-                        @if(page.selectedAuthorId() != null && page.selectedAuthorId().equals(member.getId()))
-                            <strong>${member.getName()}</strong>
+                @for(TaskParticipantView member : page.filterMembers())
+                    <a
+                        href="${page.authorUrl(member.id())}"
+                        style="${member.removedFromTeamStyle()}"
+                        title="${member.removedFromTeamTitle()}"
+                    >
+                        @if(page.selectedAuthorId() != null && page.selectedAuthorId().equals(member.id()))
+                            <strong>${member.name()}</strong>
                         @else
-                            ${member.getName()}
+                            ${member.name()}
+                        @endif
+                    </a>
+                @endfor
+
+                <span>По тегу:</span>
+
+                <a href="${page.allTagsUrl()}">
+                    @if(page.selectedTagId() == null)
+                        <strong>Все</strong>
+                    @else
+                        Все
+                    @endif
+                </a>
+
+                @for(TeamTag tag : page.tags())
+                    <a href="${page.tagUrl(tag.getId())}">
+                        @if(page.selectedTagId() != null && page.selectedTagId().equals(tag.getId()))
+                            <strong>${tag.getName()}</strong>
+                        @else
+                            ${tag.getName()}
                         @endif
                     </a>
                 @endfor
@@ -145,11 +174,11 @@
                     @endif
                 </a>
 
-                <a href="${page.sortUrl(TaskSort.CATEGORY)}">
-                    @if(page.selectedSort() == TaskSort.CATEGORY)
-                        <strong>Сервис</strong>
+                <a href="${page.sortUrl(TaskSort.TAG)}">
+                    @if(page.selectedSort() == TaskSort.TAG)
+                        <strong>Тег</strong>
                     @else
-                        Сервис
+                        Тег
                     @endif
                 </a>
             </div>
@@ -198,14 +227,26 @@
                                         style="display: inline;"
                                         data-inline-update-form="true"
                                     >
-                                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                                        <input
+                                            type="hidden"
+                                            name="${_csrf.getParameterName()}"
+                                            value="${_csrf.getToken()}"
+                                        >
 
                                         @if(page.selectedStatus() != null)
-                                            <input type="hidden" name="selectedStatus" value="${page.selectedStatus().name()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedStatus"
+                                                value="${page.selectedStatus().name()}"
+                                            >
                                         @endif
 
                                         @if(page.selectedSort() != null)
-                                            <input type="hidden" name="selectedSort" value="${page.selectedSort().name()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedSort"
+                                                value="${page.selectedSort().name()}"
+                                            >
                                         @endif
 
                                         <select
@@ -214,7 +255,10 @@
                                             data-original-value="${task.status().name()}"
                                             onchange="showInlineSavePanel(this)"
                                         >
-                                            <option value="${task.status().name()}" selected>
+                                            <option
+                                                value="${task.status().name()}"
+                                                selected
+                                            >
                                                 ${task.status().name()}
                                             </option>
 
@@ -227,12 +271,18 @@
                                             @endfor
                                         </select>
 
-                                        <span data-inline-actions style="display: none;">
+                                        <span
+                                            data-inline-actions
+                                            style="display: none;"
+                                        >
                                             <button type="submit">
                                                 Сохранить
                                             </button>
 
-                                            <button type="button" onclick="cancelInlineUpdate(this)">
+                                            <button
+                                                type="button"
+                                                onclick="cancelInlineUpdate(this)"
+                                            >
                                                 Отмена
                                             </button>
                                         </span>
@@ -245,8 +295,14 @@
                             <div>
                                 <span>Автор:</span>
 
-                                @if(!task.canUpdateTask() || page.members().size() == 1)
-                                    <span>${task.authorName()}</span>
+                                @if(!task.canUpdateTask())
+                                    @if(task.authorRemovedFromTeam())
+                                        <span style="color: red;" title="Пользователь был удалён из команды">
+                                            ${task.authorName()}
+                                        </span>
+                                    @else
+                                        <span>${task.authorName()}</span>
+                                    @endif
                                 @else
                                     <form
                                         method="post"
@@ -254,18 +310,35 @@
                                         style="display: inline;"
                                         data-inline-update-form="true"
                                     >
-                                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                                        <input
+                                            type="hidden"
+                                            name="${_csrf.getParameterName()}"
+                                            value="${_csrf.getToken()}"
+                                        >
 
                                         @if(page.selectedStatus() != null)
-                                            <input type="hidden" name="selectedStatus" value="${page.selectedStatus().name()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedStatus"
+                                                value="${page.selectedStatus().name()}"
+                                            >
                                         @endif
 
                                         @if(page.selectedSort() != null)
-                                            <input type="hidden" name="selectedSort" value="${page.selectedSort().name()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedSort"
+                                                value="${page.selectedSort().name()}"
+                                            >
                                         @endif
 
                                         @if(task.showAuthorChangeWarning())
-                                            <span style="position: relative; display: inline-block;">
+                                            <span
+                                                style="
+                                                    position: relative;
+                                                    display: inline-block;
+                                                "
+                                            >
                                                 <select
                                                     name="authorId"
                                                     data-inline-control
@@ -273,15 +346,20 @@
                                                     onchange="showInlineSavePanel(this)"
                                                     onmouseenter="document.getElementById('author-warning-${task.id()}').style.display = 'block';"
                                                     onmouseleave="document.getElementById('author-warning-${task.id()}').style.display = 'none';"
+                                                    style="${task.participants().author().removedFromTeamStyle()}"
+                                                    title="${task.participants().author().removedFromTeamTitle()}"
                                                 >
-                                                    <option value="${task.authorId().toString()}" selected>
+                                                    <option
+                                                        value="${task.authorId().toString()}"
+                                                        selected
+                                                    >
                                                         ${task.authorName()}
                                                     </option>
 
-                                                    @for(User member : page.members())
-                                                        @if(!member.getId().equals(task.authorId()))
-                                                            <option value="${member.getId().toString()}">
-                                                                ${member.getName()}
+                                                    @for(TaskParticipantView member : page.members())
+                                                        @if(!member.id().equals(task.authorId()))
+                                                            <option value="${member.id().toString()}">
+                                                                ${member.name()}
                                                             </option>
                                                         @endif
                                                     @endfor
@@ -302,7 +380,8 @@
                                                         z-index: 10;
                                                     "
                                                 >
-                                                    После смены автора предыдущий автор потеряет право редактировать задачу.
+                                                    После смены автора предыдущий автор
+                                                    потеряет право редактировать задачу.
                                                 </span>
                                             </span>
                                         @else
@@ -311,27 +390,38 @@
                                                 data-inline-control
                                                 data-original-value="${task.authorId().toString()}"
                                                 onchange="showInlineSavePanel(this)"
+                                                style="${task.participants().author().removedFromTeamStyle()}"
+                                                title="${task.participants().author().removedFromTeamTitle()}"
                                             >
-                                                <option value="${task.authorId().toString()}" selected>
+                                                <option
+                                                    value="${task.authorId().toString()}"
+                                                    selected
+                                                >
                                                     ${task.authorName()}
                                                 </option>
 
-                                                @for(User member : page.members())
-                                                    @if(!member.getId().equals(task.authorId()))
-                                                        <option value="${member.getId().toString()}">
-                                                            ${member.getName()}
+                                                @for(TaskParticipantView member : page.members())
+                                                    @if(!member.id().equals(task.authorId()))
+                                                        <option value="${member.id().toString()}">
+                                                            ${member.name()}
                                                         </option>
                                                     @endif
                                                 @endfor
                                             </select>
                                         @endif
 
-                                        <span data-inline-actions style="display: none;">
+                                        <span
+                                            data-inline-actions
+                                            style="display: none;"
+                                        >
                                             <button type="submit">
                                                 Сохранить
                                             </button>
 
-                                            <button type="button" onclick="cancelInlineUpdate(this)">
+                                            <button
+                                                type="button"
+                                                onclick="cancelInlineUpdate(this)"
+                                            >
                                                 Отмена
                                             </button>
                                         </span>
@@ -342,8 +432,14 @@
                             <div>
                                 <span>Исполнитель:</span>
 
-                                @if(!task.canUpdateTask() || page.members().size() == 1)
-                                    <span>${task.assigneeName()}</span>
+                                @if(!task.canUpdateTask())
+                                    @if(task.assigneeRemovedFromTeam())
+                                        <span style="color: red;" title="Пользователь был удалён из команды">
+                                            ${task.assigneeName()}
+                                        </span>
+                                    @else
+                                        <span>${task.assigneeName()}</span>
+                                    @endif
                                 @else
                                     <form
                                         method="post"
@@ -351,14 +447,26 @@
                                         style="display: inline;"
                                         data-inline-update-form="true"
                                     >
-                                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                                        <input
+                                            type="hidden"
+                                            name="${_csrf.getParameterName()}"
+                                            value="${_csrf.getToken()}"
+                                        >
 
                                         @if(page.selectedStatus() != null)
-                                            <input type="hidden" name="selectedStatus" value="${page.selectedStatus().name()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedStatus"
+                                                value="${page.selectedStatus().name()}"
+                                            >
                                         @endif
 
                                         @if(page.selectedSort() != null)
-                                            <input type="hidden" name="selectedSort" value="${page.selectedSort().name()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedSort"
+                                                value="${page.selectedSort().name()}"
+                                            >
                                         @endif
 
                                         <select
@@ -366,26 +474,37 @@
                                             data-inline-control
                                             data-original-value="${task.assigneeId().toString()}"
                                             onchange="showInlineSavePanel(this)"
+                                            style="${task.participants().assignee().removedFromTeamStyle()}"
+                                            title="${task.participants().assignee().removedFromTeamTitle()}"
                                         >
-                                            <option value="${task.assigneeId().toString()}" selected>
+                                            <option
+                                                value="${task.assigneeId().toString()}"
+                                                selected
+                                            >
                                                 ${task.assigneeName()}
                                             </option>
 
-                                            @for(User member : page.members())
-                                                @if(!member.getId().equals(task.assigneeId()))
-                                                    <option value="${member.getId().toString()}">
-                                                        ${member.getName()}
+                                            @for(TaskParticipantView member : page.members())
+                                                @if(!member.id().equals(task.assigneeId()))
+                                                    <option value="${member.id().toString()}">
+                                                        ${member.name()}
                                                     </option>
                                                 @endif
                                             @endfor
                                         </select>
 
-                                        <span data-inline-actions style="display: none;">
+                                        <span
+                                            data-inline-actions
+                                            style="display: none;"
+                                        >
                                             <button type="submit">
                                                 Сохранить
                                             </button>
 
-                                            <button type="button" onclick="cancelInlineUpdate(this)">
+                                            <button
+                                                type="button"
+                                                onclick="cancelInlineUpdate(this)"
+                                            >
                                                 Отмена
                                             </button>
                                         </span>
@@ -413,14 +532,26 @@
                                         style="display: inline;"
                                         data-inline-update-form="true"
                                     >
-                                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                                        <input
+                                            type="hidden"
+                                            name="${_csrf.getParameterName()}"
+                                            value="${_csrf.getToken()}"
+                                        >
 
                                         @if(page.selectedStatus() != null)
-                                            <input type="hidden" name="selectedStatus" value="${page.selectedStatus().name()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedStatus"
+                                                value="${page.selectedStatus().name()}"
+                                            >
                                         @endif
 
                                         @if(page.selectedSort() != null)
-                                            <input type="hidden" name="selectedSort" value="${page.selectedSort().name()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedSort"
+                                                value="${page.selectedSort().name()}"
+                                            >
                                         @endif
 
                                         @if(task.deadlineAt() == null)
@@ -442,12 +573,18 @@
                                             >
                                         @endif
 
-                                        <span data-inline-actions style="display: none;">
+                                        <span
+                                            data-inline-actions
+                                            style="display: none;"
+                                        >
                                             <button type="submit">
                                                 Сохранить
                                             </button>
 
-                                            <button type="button" onclick="cancelInlineUpdate(this)">
+                                            <button
+                                                type="button"
+                                                onclick="cancelInlineUpdate(this)"
+                                            >
                                                 Отмена
                                             </button>
                                         </span>
@@ -456,61 +593,84 @@
                             </div>
 
                             <div>
-                                <span>Категория:</span>
+                                <span>Тег:</span>
 
                                 @if(task.canUpdateTask())
                                     <form
                                         method="post"
-                                        action="/tasks/${task.id()}/category"
+                                        action="/tasks/${task.id()}/tag"
                                         style="display: inline;"
                                         data-inline-update-form="true"
                                     >
-                                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                                        <input
+                                            type="hidden"
+                                            name="${_csrf.getParameterName()}"
+                                            value="${_csrf.getToken()}"
+                                        >
 
                                         @if(page.selectedStatus() != null)
-                                            <input type="hidden" name="selectedStatus" value="${page.selectedStatus().name()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedStatus"
+                                                value="${page.selectedStatus().name()}"
+                                            >
                                         @endif
 
                                         @if(page.selectedSort() != null)
-                                            <input type="hidden" name="selectedSort" value="${page.selectedSort().name()}">
+                                            <input
+                                                type="hidden"
+                                                name="selectedSort"
+                                                value="${page.selectedSort().name()}"
+                                            >
                                         @endif
 
                                         <select
-                                            name="category"
+                                            name="tagId"
                                             data-inline-control
-                                            data-original-value="${task.category().name()}"
+                                            data-original-value="${task.tagId()}"
                                             onchange="showInlineSavePanel(this)"
                                         >
-                                            <option value="${task.category().name()}" selected>
-                                                ${task.category().name()}
-                                            </option>
-
-                                            @for(TaskCategory category : TaskCategory.values())
-                                                @if(category != task.category())
-                                                    <option value="${category.name()}">
-                                                        ${category.name()}
-                                                    </option>
-                                                @endif
+                                            @for(TeamTag tag : page.tags())
+                                                <option
+                                                    value="${tag.getId()}"
+                                                    selected="${tag.getId().equals(task.tagId())}"
+                                                >
+                                                    ${tag.getName()}
+                                                </option>
                                             @endfor
                                         </select>
 
-                                        <span data-inline-actions style="display: none;">
+                                        <span
+                                            data-inline-actions
+                                            style="display: none;"
+                                        >
                                             <button type="submit">
                                                 Сохранить
                                             </button>
 
-                                            <button type="button" onclick="cancelInlineUpdate(this)">
+                                            <button
+                                                type="button"
+                                                onclick="cancelInlineUpdate(this)"
+                                            >
                                                 Отмена
                                             </button>
                                         </span>
                                     </form>
                                 @else
-                                    <span>${task.category().name()}</span>
+                                    <span>${task.tagName()}</span>
                                 @endif
                             </div>
                         </li>
                     @endfor
                 </ul>
+            @endif
+
+            @if(page.canInvite())
+                <div>
+                    <a href="/teams/${page.team().getId()}/delete">
+                        Удалить команду
+                    </a>
+                </div>
             @endif
         </section>
     `

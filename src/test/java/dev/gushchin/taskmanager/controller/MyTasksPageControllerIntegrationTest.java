@@ -5,6 +5,7 @@ import static dev.gushchin.taskmanager.jooq.Tables.TASKS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAMS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAM_INVITATIONS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAM_MEMBERS;
+import static dev.gushchin.taskmanager.jooq.Tables.TEAM_TAGS;
 import static dev.gushchin.taskmanager.jooq.Tables.USERS;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -15,14 +16,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import dev.gushchin.taskmanager.IntegrationTestBase;
 import dev.gushchin.taskmanager.model.Task;
-import dev.gushchin.taskmanager.model.TaskCategory;
 import dev.gushchin.taskmanager.model.TaskStatus;
 import dev.gushchin.taskmanager.model.Team;
+import dev.gushchin.taskmanager.model.TeamTag;
 import dev.gushchin.taskmanager.model.User;
 import dev.gushchin.taskmanager.security.AuthUser;
 import dev.gushchin.taskmanager.service.TaskService;
 import dev.gushchin.taskmanager.service.TeamMemberService;
 import dev.gushchin.taskmanager.service.TeamService;
+import dev.gushchin.taskmanager.service.TeamTagService;
 import dev.gushchin.taskmanager.service.UserService;
 import java.time.LocalDate;
 import org.jooq.DSLContext;
@@ -48,6 +50,9 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
     @Autowired
     private TaskService taskService;
 
+    @Autowired
+    private TeamTagService teamTagService;
+
     private User owner;
     private User secondUser;
     private Team firstTeam;
@@ -59,13 +64,16 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
         cleanDatabase();
 
         owner = userService.create("owner-my-tasks@test.com", "Owner", "qwerty");
+
         secondUser = userService.create("second-my-tasks@test.com", "Second", "qwerty");
 
         firstTeam = teamService.create("First Team", owner.getId());
         secondTeam = teamService.create("Second Team", owner.getId());
-
         teamMemberService.addMember(firstTeam.getId(), secondUser.getId());
         teamMemberService.addMember(secondTeam.getId(), secondUser.getId());
+
+        TeamTag firstTeamTag = teamTagService.create(firstTeam.getId(), "Кинопоиск");
+        TeamTag secondTeamTag = teamTagService.create(secondTeam.getId(), "Плюс");
 
         taskService.create(
                 firstTeam.getId(),
@@ -74,7 +82,7 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 "Owner author task",
                 "Description",
                 LocalDate.of(2035, 1, 20),
-                TaskCategory.KINOPOISK);
+                firstTeamTag.getId());
 
         assigneeTask = taskService.create(
                 secondTeam.getId(),
@@ -83,7 +91,7 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 "Owner assignee task",
                 "Description",
                 LocalDate.of(2035, 2, 20),
-                TaskCategory.PLUS);
+                secondTeamTag.getId());
 
         taskService.updateStatus(assigneeTask.getId(), TaskStatus.DONE, secondUser.getId());
     }
@@ -145,10 +153,31 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("Команда")));
     }
 
+    @Test
+    void removedMemberShouldNotSeeRemovedTeamInTeamsPage() throws Exception {
+        teamMemberService.removeMember(firstTeam.getId(), secondUser.getId(), owner.getId());
+
+        mockMvc.perform(get("/teams").with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("First Team"))))
+                .andExpect(content().string(containsString("Second Team")));
+    }
+
+    @Test
+    void removedMemberShouldNotSeeRemovedTeamTasksInMyTasksPage() throws Exception {
+        teamMemberService.removeMember(firstTeam.getId(), secondUser.getId(), owner.getId());
+
+        mockMvc.perform(get("/tasks").with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("Owner author task"))))
+                .andExpect(content().string(containsString("Owner assignee task")));
+    }
+
     private void cleanDatabase() {
         dsl.deleteFrom(COMMENTS).execute();
         dsl.deleteFrom(TASKS).execute();
         dsl.deleteFrom(TEAM_INVITATIONS).execute();
+        dsl.deleteFrom(TEAM_TAGS).execute();
         dsl.deleteFrom(TEAM_MEMBERS).execute();
         dsl.deleteFrom(TEAMS).execute();
         dsl.deleteFrom(USERS).execute();

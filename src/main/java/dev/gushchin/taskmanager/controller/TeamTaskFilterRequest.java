@@ -13,4 +13,5 @@ public class TeamTaskFilterRequest {
     private TaskSort sort;
     private UUID authorId;
     private UUID assigneeId;
+    private Long tagId;
 }
