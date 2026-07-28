@@ -21,22 +21,23 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap"
+        href="https://fonts.googleapis.com/css2?family=Archivo+Black&amp;family=Inter:wght@400;500;600;700&amp;display=swap"
     >
     <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
     <div class="app-shell">
-        <aside class="app-sidebar">
-            <a class="app-logo" href="/tasks" aria-label="Task Me Please — мои задачи">
-                <img src="/images/logo.png" width="142" height="72" alt="Task Me Please">
-            </a>
+        <header class="app-header">
+            <div class="app-header-inner">
+                <a class="app-logo" href="/tasks" aria-label="Task Me Please — мои задачи">
+                    TASKMEPLEASE
+                </a>
 
-            <nav class="app-nav" aria-label="Основная навигация">
+                <nav class="app-nav" aria-label="Основная навигация">
                 <a
                     class="app-nav-link ${"tasks".equals(activeSection) ? "app-nav-link-active" : ""}"
                     href="/tasks"
-                    aria-current="${"tasks".equals(activeSection) ? "page" : "false"}"
+                    aria-current="${"tasks".equals(activeSection) ? "page" : null}"
                 >
                     Мои задачи
                 </a>
@@ -44,19 +45,11 @@
                 <a
                     class="app-nav-link ${"teams".equals(activeSection) ? "app-nav-link-active" : ""}"
                     href="/teams"
-                    aria-current="${"teams".equals(activeSection) ? "page" : "false"}"
+                    aria-current="${"teams".equals(activeSection) ? "page" : null}"
                 >
                     Мои команды
                 </a>
-            </nav>
-        </aside>
-
-        <div class="app-main">
-            <header class="app-topbar">
-                <div class="app-topbar-actions">
-                    <a class="button button-primary" href="/tasks/new">Создать задачу</a>
-                    <a class="button button-secondary" href="/teams/new">Создать команду</a>
-                </div>
+                </nav>
 
                 @if(currentUser != null)
                     <div class="app-profile" data-profile>
@@ -120,12 +113,12 @@
                         </div>
                     </div>
                 @endif
-            </header>
+            </div>
+        </header>
 
-            <main class="app-content">
-                ${content}
-            </main>
-        </div>
+        <main class="app-content app-content-wide">
+            ${content}
+        </main>
     </div>
 
     <div class="flash-stack" aria-live="polite" aria-atomic="false"></div>

@@ -13,28 +13,44 @@
     currentUser = currentUser,
     activeSection = "teams",
     content = @`
-        <section>
-            <h1>Команды</h1>
+        <section class="workspace-page teams-page">
+            <header class="page-header">
+                <div>
+                    <h1>Мои команды</h1>
+                    <p>Рабочие пространства, в которых вы состоите.</p>
+                </div>
 
-            <p>Здесь отображаются команды, в которых вы состоите.</p>
+                <a class="button button-primary" href="/teams/new">
+                    Создать команду
+                </a>
+            </header>
 
             @if(teams.isEmpty())
-                <p>У вас пока нет команд.</p>
+                <div class="empty-state">
+                    <h2>Команд пока нет</h2>
+                    <p>Создайте команду, чтобы распределять задачи и работать вместе.</p>
+                    <a class="button button-primary" href="/teams/new">Создать команду</a>
+                </div>
             @else
-                <ul>
+                <ul class="team-grid">
                     @for(Team team : teams)
-                        <li>
-                            <a href="/teams/${team.getId()}">
-                                ${team.getName()}
+                        <li class="team-card">
+                            <a class="team-card-link" href="/teams/${team.getId()}">
+                                <span class="team-card-mark" aria-hidden="true">
+                                    ${team.getName().substring(0, 1).toUpperCase()}
+                                </span>
+
+                                <span>
+                                    <strong>${team.getName()}</strong>
+                                    <small>Открыть задачи команды</small>
+                                </span>
+
+                                <span class="team-card-arrow" aria-hidden="true">→</span>
                             </a>
                         </li>
                     @endfor
                 </ul>
             @endif
-
-            <a href="/teams/new">
-                Создать команду
-            </a>
         </section>
     `
 )

@@ -19,34 +19,39 @@
     currentUser = currentUser,
     activeSection = "tasks",
     content = @`
-        <section>
-            <h1>Мои задачи</h1>
+        <section class="workspace-page tasks-page">
+            <header class="page-header">
+                <div>
+                    <h1>Мои задачи</h1>
+                    <p>Все задачи из ваших команд в одном месте.</p>
+                </div>
 
-            <div>
-                <a href="/tasks">
-                    @if(page.activeMode())
-                        <strong>Задачи</strong>
-                    @else
-                        Задачи
-                    @endif
+                <a class="button button-primary" href="/tasks/new">Создать задачу</a>
+            </header>
+
+            <nav class="local-tabs" aria-label="Режим списка задач">
+                <a
+                    class="${page.activeMode() ? "local-tab-active" : ""}"
+                    href="/tasks"
+                    aria-current="${page.activeMode() ? "page" : null}"
+                >
+                    Задачи
                 </a>
 
-                <a href="/tasks/archive">
-                    @if(page.archiveMode())
-                        <strong>Архив</strong>
-                    @else
-                        Архив
-                    @endif
+                <a
+                    class="${page.archiveMode() ? "local-tab-active" : ""}"
+                    href="/tasks/archive"
+                    aria-current="${page.archiveMode() ? "page" : null}"
+                >
+                    Архив
                 </a>
-            </div>
+            </nav>
 
-            <p>Здесь отображаются все ваши задачи.</p>
-
-            <div>
+            <div class="page-summary">
                 <strong>Задачи (${page.totalTasksCount()})</strong>
             </div>
 
-            <div>
+            <div class="filter-bar">
                 <span>Фильтр:</span>
 
                 <a href="${page.allStatusesUrl()}">
@@ -112,7 +117,7 @@
                 @endif
             </div>
 
-            <div>
+            <div class="filter-bar">
                 <span>Команда:</span>
 
                 <a href="${page.allTeamsUrl()}">
@@ -134,7 +139,7 @@
                 @endfor
             </div>
 
-			<div>
+			<div class="filter-bar">
 				<span>Сортировка:</span>
 
 				<a href="${page.sortUrl(TaskSort.DEADLINE)}">
@@ -155,19 +160,14 @@
 			</div>
 
             @if(page.tasks().isEmpty())
-                <p>Задачи по выбранным фильтрам отсутствуют.</p>
+                <div class="empty-state">
+                    <h2>Задачи не найдены</h2>
+                    <p>Измените фильтры или создайте новую задачу.</p>
+                </div>
             @else
-                <ul style="list-style: none; padding-left: 0; margin-left: 0;">
+                <ul class="task-grid">
                     @for(TaskWithTeamView taskCard : page.tasks())
-                        <li
-                            style="
-                                background: #f6f8fa;
-                                border: 1px solid #d0d7de;
-                                padding: 16px;
-                                margin-bottom: 12px;
-                                max-width: 720px;
-                            "
-                        >
+                        <li class="task-card">
                             <h3>
                                 <a href="/tasks/${taskCard.task().id()}">
                                     ${taskCard.task().title()}

@@ -149,8 +149,13 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
     void membersPageShouldShowOnlyVisibleTasksCount() throws Exception {
         mockMvc.perform(get("/teams/" + team.getId() + "/members").with(user(new AuthUser(member))))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Задачи (1)")))
-                .andExpect(content().string(not(containsString("Задачи (2)"))));
+                .andExpect(content().string(containsString("class=\"team-context\"")))
+                .andExpect(content().string(containsString("aria-label=\"Разделы команды\"")))
+                .andExpect(content().string(containsString("aria-current=\"page\"")))
+                .andExpect(content().string(containsString("href=\"/teams/" + team.getId() + "/archive\"")))
+                .andExpect(content().string(not(containsString("href=\"#\""))))
+                .andExpect(content().string(containsString("Задачи<span class=\"nav-count\">1</span>")))
+                .andExpect(content().string(containsString("Участники<span class=\"nav-count\">2</span>")));
     }
 
     @Test
@@ -383,7 +388,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/teams/" + team.getId() + "/members").with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Кроме вас в команде пока никого нет.")))
-                .andExpect(content().string(containsString("<table>")))
+                .andExpect(content().string(containsString("<table class=\"data-table\">")))
                 .andExpect(content().string(containsString("Owner")))
                 .andExpect(content().string(containsString("OWNER")));
     }

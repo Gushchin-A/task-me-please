@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap"
+        href="https://fonts.googleapis.com/css2?family=Archivo+Black&amp;family=Inter:wght@400;500;600;700&amp;display=swap"
     >
     <link rel="stylesheet" href="/css/app.css">
 </head>
@@ -17,7 +17,7 @@
     <main class="auth-page">
         <div class="auth-shell">
             <a class="auth-logo" href="/" aria-label="Task Me Please">
-                <img src="/images/logo.png" width="180" height="120" alt="Task Me Please">
+                TASKMEPLEASE
             </a>
 
             <p class="auth-tagline">

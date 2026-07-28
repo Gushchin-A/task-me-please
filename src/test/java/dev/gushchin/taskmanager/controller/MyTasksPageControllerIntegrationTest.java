@@ -106,6 +106,12 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/tasks").with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Мои задачи")))
+                .andExpect(content().string(containsString("TASKMEPLEASE")))
+                .andExpect(content().string(containsString("class=\"app-header\"")))
+                .andExpect(content().string(not(containsString("class=\"app-sidebar\""))))
+                .andExpect(content().string(containsString("class=\"app-content app-content-wide\"")))
+                .andExpect(content().string(containsString("class=\"task-grid\"")))
+                .andExpect(content().string(containsString("class=\"task-card\"")))
                 .andExpect(content().string(containsString("Owner author task")))
                 .andExpect(content().string(containsString("Owner assignee task")))
                 .andExpect(content().string(containsString("First Team")))
@@ -161,6 +167,15 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(content().string(not(containsString("First Team"))))
                 .andExpect(content().string(containsString("Second Team")));
+    }
+
+    @Test
+    void teamsPageShouldUseTeamCards() throws Exception {
+        mockMvc.perform(get("/teams").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("class=\"workspace-page teams-page\"")))
+                .andExpect(content().string(containsString("class=\"team-grid\"")))
+                .andExpect(content().string(containsString("class=\"team-card\"")));
     }
 
     @Test

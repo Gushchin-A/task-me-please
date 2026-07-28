@@ -10,32 +10,39 @@
     currentUser = currentUser,
     activeSection = "teams",
     content = @`
-        <section>
-            <h1>Создать команду</h1>
+        <section class="workspace-page form-page">
+            <header class="page-header page-header-compact">
+                <div>
+                    <a class="back-link" href="/teams">← К командам</a>
+                    <h1>Создать команду</h1>
+                    <p>Название и теги помогут участникам быстрее ориентироваться в задачах.</p>
+                </div>
+            </header>
 
-            <form method="post" action="/teams" id="create-team-form">
+            <form class="form-card" method="post" action="/teams" id="create-team-form">
                 <input
                     type="hidden"
                     name="${_csrf.getParameterName()}"
                     value="${_csrf.getToken()}"
                 >
 
-                <div>
-                    <label>Название команды</label>
+                <div class="form-field">
+                    <label for="team-name">Название команды</label>
 
                     <input
+                        id="team-name"
                         type="text"
                         name="name"
                         required
                     >
                 </div>
 
-                <div style="margin-top: 16px;">
+                <div class="form-field">
                     <label for="tag-name">
                         Теги команды
                     </label>
 
-                    <div>
+                    <div class="field-with-action">
                         <input
                             id="tag-name"
                             type="text"
@@ -44,6 +51,7 @@
                         >
 
                         <button
+                            class="button button-secondary"
                             type="button"
                             onclick="addTeamTag()"
                         >
@@ -51,15 +59,15 @@
                         </button>
                     </div>
 
-                    <p>
+                    <p class="form-help">
                         Можно добавить до 20 тегов.
                         Максимальная длина одного тега — 30 символов.
                     </p>
 
-                    <div id="team-tags"></div>
+                    <div class="tag-list" id="team-tags"></div>
                 </div>
 
-                <button type="submit">
+                <button class="button button-primary" type="submit">
                     Создать
                 </button>
             </form>
@@ -115,7 +123,7 @@
                     const wrapper =
                         document.createElement('div');
 
-                    wrapper.style.marginTop = '8px';
+                    wrapper.className = 'tag-chip';
 
                     const hiddenInput =
                         document.createElement('input');
@@ -134,7 +142,8 @@
 
                     removeButton.type = 'button';
                     removeButton.textContent = '×';
-                    removeButton.style.marginLeft = '8px';
+                    removeButton.className = 'tag-chip-remove';
+                    removeButton.setAttribute('aria-label', 'Удалить тег ' + tag);
 
                     removeButton.addEventListener(
                         'click',
