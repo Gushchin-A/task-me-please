@@ -4,6 +4,7 @@
 @import dev.gushchin.taskmanager.view.TaskParticipantView
 @import dev.gushchin.taskmanager.view.CommentView
 @import dev.gushchin.taskmanager.view.TaskView
+@import dev.gushchin.taskmanager.view.UserAvatarView
 @import java.util.List
 @import org.springframework.security.web.csrf.CsrfToken
 
@@ -13,10 +14,13 @@
 @param List<TeamTag> tags
 @param List<CommentView> comments
 @param CsrfToken _csrf
+@param UserAvatarView currentUser
 
 @template.layout.page(
     title = task.title(),
     _csrf = _csrf,
+    currentUser = currentUser,
+    activeSection = "tasks",
     content = @`
         <section>
             <a href="/teams/${team.getId()}">

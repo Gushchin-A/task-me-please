@@ -1,13 +1,17 @@
 @import dev.gushchin.taskmanager.model.Team
 @import java.util.List
+@import dev.gushchin.taskmanager.view.UserAvatarView
 @import org.springframework.security.web.csrf.CsrfToken
 
 @param List<Team> teams
 @param CsrfToken _csrf
+@param UserAvatarView currentUser
 
 @template.layout.page(
     title = "Команды",
     _csrf = _csrf,
+    currentUser = currentUser,
+    activeSection = "teams",
     content = @`
         <section>
             <h1>Команды</h1>

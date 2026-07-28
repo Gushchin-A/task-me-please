@@ -4,14 +4,18 @@
 @import dev.gushchin.taskmanager.view.TaskParticipantView
 @import dev.gushchin.taskmanager.view.TaskView
 @import dev.gushchin.taskmanager.view.TeamPageView
+@import dev.gushchin.taskmanager.view.UserAvatarView
 @import org.springframework.security.web.csrf.CsrfToken
 
 @param TeamPageView page
 @param CsrfToken _csrf
+@param UserAvatarView currentUser
 
 @template.layout.page(
     title = page.team().getName(),
     _csrf = _csrf,
+    currentUser = currentUser,
+    activeSection = "teams",
     content = @`
         <section>
             <h1>${page.team().getName()}</h1>

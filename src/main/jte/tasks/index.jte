@@ -4,16 +4,20 @@
 @import dev.gushchin.taskmanager.model.Team
 @import dev.gushchin.taskmanager.model.TeamTag
 @import dev.gushchin.taskmanager.view.MyTasksPageView
+@import dev.gushchin.taskmanager.view.UserAvatarView
 @import dev.gushchin.taskmanager.view.TaskParticipantView
 @import dev.gushchin.taskmanager.view.TaskWithTeamView
 @import org.springframework.security.web.csrf.CsrfToken
 
 @param MyTasksPageView page
 @param CsrfToken _csrf
+@param UserAvatarView currentUser
 
 @template.layout.page(
     title = "Мои задачи",
     _csrf = _csrf,
+    currentUser = currentUser,
+    activeSection = "tasks",
     content = @`
         <section>
             <h1>Мои задачи</h1>

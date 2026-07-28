@@ -2,6 +2,7 @@
 @import dev.gushchin.taskmanager.model.TeamMemberRole
 @import dev.gushchin.taskmanager.model.TeamTaskVisibility
 @import dev.gushchin.taskmanager.view.TeamMemberView
+@import dev.gushchin.taskmanager.view.UserAvatarView
 @import java.util.List
 @import java.util.UUID
 @import org.springframework.security.web.csrf.CsrfToken
@@ -20,10 +21,13 @@
 @param CsrfToken _csrf
 @param String successMessage
 @param String errorMessage
+@param UserAvatarView currentUser
 
 @template.layout.page(
     title = team.getName() + " — участники",
     _csrf = _csrf,
+    currentUser = currentUser,
+    activeSection = "teams",
     content = @`
         <section>
             <h1>${team.getName()}</h1>

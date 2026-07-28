@@ -1,6 +1,7 @@
 @import dev.gushchin.taskmanager.model.Team
 @import dev.gushchin.taskmanager.model.TeamTag
 @import dev.gushchin.taskmanager.view.TaskParticipantView
+@import dev.gushchin.taskmanager.view.UserAvatarView
 @import java.util.List
 @import org.springframework.security.web.csrf.CsrfToken
 
@@ -9,10 +10,13 @@
 @param List<TeamTag> tags
 @param Long selectedTeamId
 @param CsrfToken _csrf
+@param UserAvatarView currentUser
 
 @template.layout.page(
     title = "Создать задачу",
     _csrf = _csrf,
+    currentUser = currentUser,
+    activeSection = "tasks",
     content = @`
         <section>
             <h1>Создать задачу</h1>

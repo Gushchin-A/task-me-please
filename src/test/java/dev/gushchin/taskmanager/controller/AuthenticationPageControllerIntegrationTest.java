@@ -712,8 +712,30 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
 
         mockMvc.perform(get("/tasks").with(user(new AuthUser(user))))
                 .andExpect(status().isOk())
+                .andExpect(content().string(containsString("title=\"Ваш профиль\"")))
+                .andExpect(content().string(containsString("data-profile-initial>A</span>")))
+                .andExpect(content().string(containsString("Auth user")))
+                .andExpect(content().string(containsString(EMAIL)))
+                .andExpect(content().string(containsString("Настройки пока не реализованы")))
                 .andExpect(content().string(containsString("action=\"/logout\"")))
                 .andExpect(content().string(containsString("Выйти из профиля")));
+    }
+
+    @Test
+    void authenticatedPageShouldUseEmailForProfileFallback() throws Exception {
+        User user = userService.create(EMAIL, null, PASSWORD);
+
+        mockMvc.perform(get("/tasks").with(user(new AuthUser(user))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-profile-initial>A</span>")))
+                .andExpect(content().string(containsString("data-profile-display-name")))
+                .andExpect(content().string(containsString(EMAIL)))
+                .andExpect(content().string(not(containsString("data-profile-email"))));
+    }
+
+    @Test
+    void staticImagesShouldBeAvailableWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/images/favicon.svg")).andExpect(status().isOk());
     }
 
     @Test

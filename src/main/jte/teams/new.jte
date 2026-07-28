@@ -1,10 +1,14 @@
 @import org.springframework.security.web.csrf.CsrfToken
+@import dev.gushchin.taskmanager.view.UserAvatarView
 
 @param CsrfToken _csrf
+@param UserAvatarView currentUser
 
 @template.layout.page(
     title = "Создать команду",
     _csrf = _csrf,
+    currentUser = currentUser,
+    activeSection = "teams",
     content = @`
         <section>
             <h1>Создать команду</h1>

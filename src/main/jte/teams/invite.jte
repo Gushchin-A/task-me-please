@@ -1,5 +1,6 @@
 @import dev.gushchin.taskmanager.model.Team
 @import dev.gushchin.taskmanager.view.TeamInvitationView
+@import dev.gushchin.taskmanager.view.UserAvatarView
 @import java.util.List
 @import org.springframework.security.web.csrf.CsrfToken
 
@@ -10,10 +11,13 @@
 @param List<TeamInvitationView> invitations
 @param String successMessage
 @param String errorMessage
+@param UserAvatarView currentUser
 
 @template.layout.page(
     title = team.getName() + " — пригласить",
     _csrf = _csrf,
+    currentUser = currentUser,
+    activeSection = "teams",
     content = @`
         <section>
             <h1>${team.getName()}</h1>

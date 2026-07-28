@@ -1,6 +1,7 @@
 @import dev.gushchin.taskmanager.model.Team
 @import dev.gushchin.taskmanager.model.TeamTag
 @import dev.gushchin.taskmanager.view.TaskParticipantView
+@import dev.gushchin.taskmanager.view.UserAvatarView
 @import dev.gushchin.taskmanager.view.TaskView
 @import java.util.List
 @import org.springframework.security.web.csrf.CsrfToken
@@ -10,10 +11,13 @@
 @param List<TaskParticipantView> members
 @param List<TeamTag> tags
 @param CsrfToken _csrf
+@param UserAvatarView currentUser
 
 @template.layout.page(
     title = "Редактировать задачу",
     _csrf = _csrf,
+    currentUser = currentUser,
+    activeSection = "tasks",
     content = @`
         <section>
             <a href="/tasks/${task.id()}">

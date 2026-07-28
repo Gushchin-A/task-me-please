@@ -1,6 +1,12 @@
+@import dev.gushchin.taskmanager.view.UserAvatarView
+
+@param UserAvatarView currentUser
+
 @template.layout.page(
     title = "Страница не найдена",
     _csrf = null,
+    currentUser = currentUser,
+    activeSection = "teams",
     content = @`
         <section>
             <h1>Такая страница не найдена</h1>
