@@ -29,7 +29,6 @@
             <header class="page-header">
                 <div>
                     <h1>${page.archiveMode() ? "Архив задач" : "Задачи"}</h1>
-                    <p>${page.taskCountText()}</p>
                 </div>
 
                 <a class="button button-primary" href="/tasks/new?teamId=${page.team().getId()}">
@@ -37,8 +36,14 @@
                 </a>
             </header>
 
-            <div class="filter-bar filter-bar-wide">
-                <span>Фильтр:</span>
+            <div class="task-toolbar">
+                <strong>${page.taskCountText()}</strong>
+
+                <details class="toolbar-popover">
+                    <summary class="button button-secondary" data-tooltip="Фильтры">Фильтры</summary>
+
+                    <div class="toolbar-popover-panel">
+                        <span class="toolbar-popover-title">Статус, участники и тег</span>
 
                 <a href="${page.allStatusesUrl()}">
                     @if(page.selectedStatus() == null)
@@ -147,10 +152,13 @@
                         @endif
                     </a>
                 @endfor
-            </div>
+                    </div>
+                </details>
 
-            <div class="filter-bar">
-                <span>Сортировка:</span>
+                <details class="toolbar-popover">
+                    <summary class="button button-secondary" data-tooltip="Сортировка">Сортировка</summary>
+
+                    <div class="toolbar-popover-panel">
 
                 <a href="${page.sortUrl(TaskSort.DEADLINE)}">
                     @if(page.selectedSort() == TaskSort.DEADLINE)
@@ -167,6 +175,8 @@
                         Тег
                     @endif
                 </a>
+                    </div>
+                </details>
             </div>
 
             @if(page.tasks().isEmpty())

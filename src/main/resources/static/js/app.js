@@ -3,7 +3,47 @@ document.addEventListener('DOMContentLoaded', function () {
     setupFlashMessages();
     setupTooltips();
     setupSubmitLoading();
+    setupToolbarPopovers();
 });
+
+function setupToolbarPopovers() {
+    const popovers = document.querySelectorAll('.toolbar-popover, .comment-menu');
+
+    popovers.forEach(function (popover) {
+        popover.addEventListener('toggle', function () {
+            if (!popover.open) {
+                return;
+            }
+
+            popovers.forEach(function (otherPopover) {
+                if (otherPopover !== popover) {
+                    otherPopover.open = false;
+                }
+            });
+        });
+    });
+
+    document.addEventListener('click', function (event) {
+        popovers.forEach(function (popover) {
+            if (!popover.contains(event.target)) {
+                popover.open = false;
+            }
+        });
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape') {
+            return;
+        }
+
+        popovers.forEach(function (popover) {
+            if (popover.open) {
+                popover.open = false;
+                popover.querySelector('summary').focus();
+            }
+        });
+    });
+}
 
 function setupProfileMenu() {
     const profile = document.querySelector('[data-profile]');

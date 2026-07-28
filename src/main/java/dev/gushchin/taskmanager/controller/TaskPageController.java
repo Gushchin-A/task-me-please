@@ -208,6 +208,7 @@ public class TaskPageController {
                     return new CommentView(
                             comment.getId(),
                             user.getName(),
+                            user.getEmail(),
                             comment.getMessage(),
                             comment.getCreatedAt(),
                             comment.getUpdatedAt(),

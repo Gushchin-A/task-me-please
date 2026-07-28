@@ -14,16 +14,11 @@
     activeSection = "teams",
     content = @`
         <section class="workspace-page teams-page">
-            <header class="page-header">
-                <div>
-                    <h1>Мои команды</h1>
-                    <p>Рабочие пространства, в которых вы состоите.</p>
-                </div>
-
+            <div class="page-actions">
                 <a class="button button-primary" href="/teams/new">
                     Создать команду
                 </a>
-            </header>
+            </div>
 
             @if(teams.isEmpty())
                 <div class="empty-state">
@@ -35,14 +30,18 @@
                 <ul class="team-grid">
                     @for(Team team : teams)
                         <li class="team-card">
-                            <a class="team-card-link" href="/teams/${team.getId()}">
+                            <a
+                                class="team-card-link"
+                                href="/teams/${team.getId()}"
+                                data-tooltip="Открыть команду"
+                                aria-label="Открыть команду ${team.getName()}"
+                            >
                                 <span class="team-card-mark" aria-hidden="true">
                                     ${team.getName().substring(0, 1).toUpperCase()}
                                 </span>
 
                                 <span>
                                     <strong>${team.getName()}</strong>
-                                    <small>Открыть задачи команды</small>
                                 </span>
 
                                 <span class="team-card-arrow" aria-hidden="true">→</span>

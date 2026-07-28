@@ -110,6 +110,9 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("class=\"app-header\"")))
                 .andExpect(content().string(not(containsString("class=\"app-sidebar\""))))
                 .andExpect(content().string(containsString("class=\"app-content app-content-wide\"")))
+                .andExpect(content().string(not(containsString("<h1>Мои задачи</h1>"))))
+                .andExpect(content().string(containsString("class=\"task-toolbar\"")))
+                .andExpect(content().string(containsString("class=\"toolbar-popover\"")))
                 .andExpect(content().string(containsString("class=\"task-grid\"")))
                 .andExpect(content().string(containsString("class=\"task-card\"")))
                 .andExpect(content().string(containsString("Owner author task")))
@@ -175,7 +178,9 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("class=\"workspace-page teams-page\"")))
                 .andExpect(content().string(containsString("class=\"team-grid\"")))
-                .andExpect(content().string(containsString("class=\"team-card\"")));
+                .andExpect(content().string(containsString("class=\"team-card\"")))
+                .andExpect(content().string(containsString("data-tooltip=\"Открыть команду\"")))
+                .andExpect(content().string(not(containsString("Открыть задачи команды"))));
     }
 
     @Test

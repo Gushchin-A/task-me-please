@@ -132,6 +132,10 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("20 января 2035")))
                 .andExpect(content().string(containsString("Кинопоиск")))
                 .andExpect(content().string(containsString("Initial comment")))
+                .andExpect(content().string(containsString("class=\"task-detail-layout\"")))
+                .andExpect(content().string(containsString("class=\"comment-timeline\"")))
+                .andExpect(content().string(containsString("class=\"comment-avatar\"")))
+                .andExpect(content().string(containsString(">O</span>")))
                 .andExpect(content().string(containsString("15 июня 2026 18:17")));
     }
 

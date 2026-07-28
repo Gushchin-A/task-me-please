@@ -20,14 +20,9 @@
     activeSection = "tasks",
     content = @`
         <section class="workspace-page tasks-page">
-            <header class="page-header">
-                <div>
-                    <h1>Мои задачи</h1>
-                    <p>Все задачи из ваших команд в одном месте.</p>
-                </div>
-
+            <div class="page-actions">
                 <a class="button button-primary" href="/tasks/new">Создать задачу</a>
-            </header>
+            </div>
 
             <nav class="local-tabs" aria-label="Режим списка задач">
                 <a
@@ -47,12 +42,14 @@
                 </a>
             </nav>
 
-            <div class="page-summary">
+            <div class="task-toolbar">
                 <strong>Задачи (${page.totalTasksCount()})</strong>
-            </div>
 
-            <div class="filter-bar">
-                <span>Фильтр:</span>
+                <details class="toolbar-popover">
+                    <summary class="button button-secondary" data-tooltip="Фильтры">Фильтры</summary>
+
+                    <div class="toolbar-popover-panel">
+                        <span class="toolbar-popover-title">Статус и роль</span>
 
                 <a href="${page.allStatusesUrl()}">
                     @if(page.selectedStatus() == null)
@@ -115,10 +112,13 @@
                         Сбросить фильтр по роли
                     </a>
                 @endif
-            </div>
+                    </div>
+                </details>
 
-            <div class="filter-bar">
-                <span>Команда:</span>
+                <details class="toolbar-popover">
+                    <summary class="button button-secondary" data-tooltip="Команды">Команда</summary>
+
+                    <div class="toolbar-popover-panel">
 
                 <a href="${page.allTeamsUrl()}">
                     @if(page.selectedTeamId() == null)
@@ -137,10 +137,13 @@
                         @endif
                     </a>
                 @endfor
-            </div>
+                    </div>
+                </details>
 
-			<div class="filter-bar">
-				<span>Сортировка:</span>
+                <details class="toolbar-popover">
+                    <summary class="button button-secondary" data-tooltip="Сортировка">Сортировка</summary>
+
+                    <div class="toolbar-popover-panel">
 
 				<a href="${page.sortUrl(TaskSort.DEADLINE)}">
 					@if(page.selectedSort() == TaskSort.DEADLINE)
@@ -157,7 +160,9 @@
 						Тег
 					@endif
 				</a>
-			</div>
+                    </div>
+                </details>
+            </div>
 
             @if(page.tasks().isEmpty())
                 <div class="empty-state">

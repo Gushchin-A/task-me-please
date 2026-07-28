@@ -22,24 +22,31 @@
     currentUser = currentUser,
     activeSection = "tasks",
     content = @`
-        <section>
-            <a href="/teams/${team.getId()}">
-                ← Назад к команде
-            </a>
+        @template.components.teamNavigation(
+            team = team,
+            activeTab = "tasks",
+            tasksCount = -1,
+            membersCount = -1,
+            canInvite = false
+        )
 
-            <div>
+        <div class="task-detail-layout">
+        <section class="task-detail-main">
+            <a class="back-link" href="/teams/${team.getId()}">← К задачам команды</a>
+
+            <div class="task-title-row">
                 <h1 style="display: inline;">
                     ${task.title()}
                 </h1>
 
                 @if(task.canUpdateTask())
-                    <a
-                        href="#"
-                        style="margin-left: 12px; font-size: 14px;"
+                    <button
+                        class="text-action"
+                        type="button"
                         onclick="document.getElementById('title-edit-form').style.display = 'block'; this.style.display = 'none'; return false;"
                     >
                         Редактировать название
-                    </a>
+                    </button>
                 @endif
             </div>
 
@@ -109,14 +116,7 @@
                 <p>Архив</p>
             @endif
 
-            <div
-                style="
-                    display: flex;
-                    gap: 20px;
-                    align-items: center;
-                    flex-wrap: wrap;
-                "
-            >
+            <div class="task-metadata-panel">
                 <div>
                     <span>Статус:</span>
 
@@ -578,16 +578,10 @@
             </div>
         </section>
 
-        <section>
+        <section class="task-description-section">
             <h2>Описание</h2>
 
-            <div
-                style="
-                    border: 1px solid #d0d7de;
-                    padding: 16px;
-                    max-width: 720px;
-                "
-            >
+            <div class="task-description-panel">
                 @if(task.description() == null || task.description().isBlank())
                     <p>
                         Описание пока не добавлено.
@@ -598,12 +592,13 @@
             </div>
 
             @if(task.canUpdateTask())
-                <a
-                    href="#"
+                <button
+                    class="text-action"
+                    type="button"
                     onclick="document.getElementById('description-edit-form').style.display = 'block'; this.style.display = 'none'; return false;"
                 >
                     Редактировать описание
-                </a>
+                </button>
 
                 <form
                     id="description-edit-form"
@@ -666,7 +661,7 @@
             @endif
         </section>
 
-        <section>
+        <section class="comments-section">
             <h2>Комментарии</h2>
 
             @if(comments.isEmpty())
@@ -674,55 +669,54 @@
                     Комментариев пока нет.
                 </p>
             @else
-                <ul>
+                <ul class="comment-timeline">
                     @for(CommentView comment : comments)
-                        <li>
-                            <p>${comment.message()}</p>
+                        <li class="comment-item">
+                            <span class="comment-avatar" aria-hidden="true">${comment.author().initial()}</span>
 
-                            <small>
-                                ${comment.userName()} ·
-                                ${comment.createdAtText()}
+                            <article class="comment-card">
+                                <header class="comment-header">
+                                    <div>
+                                        <strong>${comment.author().displayName()}</strong>
+                                        <small>${comment.createdAtText()}</small>
 
-                                @if(comment.edited())
-                                    <span
-                                        style="
-                                            color: gray;
-                                            font-style: italic;
-                                        "
-                                    >
-                                        Отредактировано
-                                    </span>
-                                @endif
-                            </small>
+                                        @if(comment.edited())
+                                            <span class="comment-edited">Отредактировано</span>
+                                        @endif
+                                    </div>
+
+                                    @if(comment.canEdit())
+                                        <details class="comment-menu">
+                                            <summary aria-label="Действия с комментарием">•••</summary>
+
+                                            <div class="comment-menu-panel">
+                                                <button
+                                                    type="button"
+                                                    onclick="document.getElementById('comment-edit-form-${comment.id()}').style.display = 'block'; this.closest('details').open = false;"
+                                                >
+                                                    Редактировать
+                                                </button>
+
+                                                <form method="post" action="/tasks/${task.id()}/comments/${comment.id()}/delete">
+                                                    <input
+                                                        type="hidden"
+                                                        name="${_csrf.getParameterName()}"
+                                                        value="${_csrf.getToken()}"
+                                                    >
+
+                                                    <button class="comment-delete-action" type="submit">Удалить</button>
+                                                </form>
+                                            </div>
+                                        </details>
+                                    @endif
+                                </header>
+
+                                <div class="comment-body">${comment.message()}</div>
 
                             @if(comment.canEdit())
-                                <div>
-                                    <a
-                                        href="#"
-                                        onclick="document.getElementById('comment-edit-form-${comment.id()}').style.display = 'block'; return false;"
-                                    >
-                                        Редактировать
-                                    </a>
-
-                                    <form
-                                        method="post"
-                                        action="/tasks/${task.id()}/comments/${comment.id()}/delete"
-                                        style="display: inline;"
-                                    >
-                                        <input
-                                            type="hidden"
-                                            name="${_csrf.getParameterName()}"
-                                            value="${_csrf.getToken()}"
-                                        >
-
-                                        <button type="submit">
-                                            Удалить
-                                        </button>
-                                    </form>
-                                </div>
-
                                 <form
                                     id="comment-edit-form-${comment.id()}"
+                                    class="comment-edit-form"
                                     method="post"
                                     action="/tasks/${task.id()}/comments/${comment.id()}/edit"
                                     style="display: none; margin-top: 8px;"
@@ -750,12 +744,14 @@
                                     </button>
                                 </form>
                             @endif
+                            </article>
                         </li>
                     @endfor
                 </ul>
             @endif
 
             <form
+                class="comment-create-form form-card"
                 method="post"
                 action="/tasks/${task.id()}/comments"
             >
@@ -779,5 +775,6 @@
                 </button>
             </form>
         </section>
+        </div>
     `
 )
