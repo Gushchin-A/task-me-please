@@ -60,14 +60,18 @@
                 Пригласить
             </a>
         @else
-            <span class="team-invite-disabled" data-tooltip="Только owner команды может приглашать новых участников">
+            <span
+                class="team-invite-disabled"
+                data-tooltip="Только owner команды может приглашать новых участников"
+                tabindex="0"
+            >
                 <button class="button button-secondary team-invite-action" type="button" disabled>
                     Пригласить
                 </button>
             </span>
         @endif
 
-        <span class="team-settings-wrapper" data-tooltip="Настройки пока не реализованы">
+        <span class="team-settings-wrapper" data-tooltip="Настройки пока не реализованы" tabindex="0">
             <button class="button button-secondary team-settings-action" type="button" disabled>Настройки</button>
         </span>
     </div>

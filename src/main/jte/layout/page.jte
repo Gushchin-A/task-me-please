@@ -86,7 +86,7 @@
                             </div>
 
                             <div class="profile-actions">
-                                <div data-tooltip="Настройки пока не реализованы">
+                                <div data-tooltip="Настройки пока не реализованы" tabindex="0">
                                     <button class="profile-action" type="button" disabled>
                                         Настройки
                                         <span class="profile-action-note">Настройки пока не реализованы</span>
