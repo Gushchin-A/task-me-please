@@ -179,6 +179,18 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void teamPageShouldShowNavigationActionsAndTaskCards() throws Exception {
+        mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("class=\"team-tab team-settings-action\"")))
+                .andExpect(content().string(containsString("Настройки пока не реализованы")))
+                .andExpect(content().string(containsString("Создать задачу")))
+                .andExpect(content().string(containsString("class=\"task-grid\"")))
+                .andExpect(content().string(containsString("Visible task")))
+                .andExpect(content().string(not(containsString("Всего задач в команде"))));
+    }
+
+    @Test
     void ownerShouldDeleteTeamAfterThreeConfirmations() throws Exception {
         final TeamInvitation invitation =
                 teamInvitationService.create(team.getId(), "delete-team@test.com", owner.getId());

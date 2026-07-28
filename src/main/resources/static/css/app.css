@@ -326,13 +326,14 @@ a {
     border-bottom: 1px solid var(--color-border);
     background: var(--color-surface);
     box-shadow: 0 0 0 100vmax var(--color-surface);
+    clip-path: inset(0 -100vmax);
 }
 
 .team-context-inner {
     display: flex;
     min-height: 64px;
     align-items: center;
-    gap: 20px;
+    gap: 4px;
     width: min(100%, var(--workspace-width));
     margin: 0 auto;
     padding: 0;
@@ -346,16 +347,16 @@ a {
 .team-switcher summary {
     display: flex;
     max-width: 240px;
-    min-height: 36px;
+    min-height: 44px;
     align-items: center;
     gap: 8px;
-    padding: 6px 8px;
+    padding: 10px 11px;
     overflow: hidden;
     border-radius: var(--radius-sm);
     color: var(--color-text);
     cursor: pointer;
-    font-size: 13px;
-    font-weight: 650;
+    font-size: 14px;
+    font-weight: 550;
     list-style: none;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -454,7 +455,8 @@ a {
 }
 
 .team-settings-action {
-    min-height: 34px;
+    cursor: not-allowed;
+    opacity: 0.62;
 }
 
 .workspace-page {
@@ -624,6 +626,7 @@ a {
     align-items: center;
     gap: 12px;
     padding: 16px;
+    border-radius: inherit;
     color: var(--color-text);
     text-decoration: none;
 }
@@ -694,6 +697,10 @@ a {
 .task-toolbar > strong {
     margin-right: auto;
     font-size: 15px;
+}
+
+.team-details-page .task-toolbar {
+    justify-content: flex-end;
 }
 
 .toolbar-popover {
@@ -1716,7 +1723,7 @@ a {
 
     .team-context-inner {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto auto;
+        grid-template-columns: minmax(0, 1fr) auto;
         gap: 0 8px;
         padding: 10px 0 0;
     }
@@ -1737,11 +1744,6 @@ a {
         grid-column: 2;
         grid-row: 1;
         margin-left: 0;
-    }
-
-    .team-settings-wrapper {
-        grid-column: 3;
-        grid-row: 1;
     }
 
     .toolbar-popover .toolbar-icon-button,

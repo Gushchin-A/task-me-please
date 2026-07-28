@@ -53,6 +53,15 @@
             >
                 Архив@if(archiveCount >= 0)<span class="nav-count">${archiveCount}</span>@endif
             </a>
+
+            <span
+                class="team-tab team-settings-action"
+                data-tooltip="Настройки пока не реализованы"
+                tabindex="0"
+                aria-disabled="true"
+            >
+                Настройки
+            </span>
         </nav>
 
         @if(canInvite)
@@ -71,8 +80,5 @@
             </span>
         @endif
 
-        <span class="team-settings-wrapper" data-tooltip="Настройки пока не реализованы" tabindex="0">
-            <button class="button button-secondary team-settings-action" type="button" disabled>Настройки</button>
-        </span>
     </div>
 </section>

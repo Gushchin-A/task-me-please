@@ -38,8 +38,6 @@
             </div>
 
             <div class="task-toolbar">
-                <strong>${page.taskCountText()}</strong>
-
                 <details class="toolbar-popover">
                     <summary class="button button-secondary toolbar-icon-button" data-tooltip="Фильтры">
                         <span aria-hidden="true">▽</span>
