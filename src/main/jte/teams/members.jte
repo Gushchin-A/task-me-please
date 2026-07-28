@@ -55,17 +55,15 @@
                 @endif
             </div>
 
-            @if(successMessage != null)
-                <div class="flash-message">
-                    ${successMessage}
-                </div>
-            @endif
+            <div class="flash-stack" aria-live="polite" aria-atomic="false">
+                @if(successMessage != null)
+                    @template.components.flash(message = successMessage, type = "success")
+                @endif
 
-            @if(errorMessage != null)
-                <div class="flash-message">
-                    ${errorMessage}
-                </div>
-            @endif
+                @if(errorMessage != null)
+                    @template.components.flash(message = errorMessage, type = "error")
+                @endif
+            </div>
 
             @if(onlyCurrentOwnerInTeam)
                 <div>

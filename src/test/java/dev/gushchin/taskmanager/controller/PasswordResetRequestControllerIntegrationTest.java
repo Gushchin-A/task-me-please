@@ -83,6 +83,8 @@ class PasswordResetRequestControllerIntegrationTest extends IntegrationTestBase 
         mockMvc.perform(get("/forgot-password"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("action=\"/forgot-password\"")))
+                .andExpect(content().string(containsString("data-submit-loading")))
+                .andExpect(content().string(containsString("data-loading-text=\"Отправляем письмо…\"")))
                 .andExpect(content().string(containsString("name=\"email\"")))
                 .andExpect(content().string(containsString("data-remaining-attempts>5</span>")))
                 .andExpect(content().string(containsString("Почему количество попыток в сутки ограничено")))
@@ -132,7 +134,8 @@ class PasswordResetRequestControllerIntegrationTest extends IntegrationTestBase 
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("data-request-countdown=")))
                 .andExpect(content().string(containsString("data-remaining-attempts>4</span>")))
-                .andExpect(content().string(containsString("<button class=\"auth-submit\" type=\"submit\" disabled>")));
+                .andExpect(content().string(containsString("data-loading-text=\"Отправляем письмо…\"")))
+                .andExpect(content().string(containsString("disabled")));
     }
 
     @Test

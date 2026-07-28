@@ -17,22 +17,28 @@
     successMessage = successMessage,
     errorMessage = errorMessage,
     content = @`
-        <h1>Установите новый password</h1>
+        <h1 id="auth-heading">Установите новый password</h1>
 
-        <form method="post" action="/reset-password/${token}">
+        <form method="post" action="/reset-password/${token}" data-submit-loading>
             <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
 
             <div class="auth-field">
-                <label>Новый password</label>
-                <input type="password" name="password" required>
+                <label for="reset-password">Новый password</label>
+                <input id="reset-password" type="password" name="password" autocomplete="new-password" required>
             </div>
 
             <div class="auth-field">
-                <label>Повторите новый password</label>
-                <input type="password" name="passwordConfirmation" required>
+                <label for="reset-password-confirmation">Повторите новый password</label>
+                <input
+                    id="reset-password-confirmation"
+                    type="password"
+                    name="passwordConfirmation"
+                    autocomplete="new-password"
+                    required
+                >
             </div>
 
-            <button class="auth-submit" type="submit">
+            <button class="auth-submit" type="submit" data-loading-text="Изменяем password…">
                 Изменить password
             </button>
         </form>

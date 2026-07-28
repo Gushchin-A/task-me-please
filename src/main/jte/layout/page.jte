@@ -63,7 +63,7 @@
                         <button
                             class="profile-trigger"
                             type="button"
-                            title="Ваш профиль"
+                            data-tooltip="Ваш профиль"
                             aria-label="Ваш профиль"
                             aria-haspopup="true"
                             aria-expanded="false"
@@ -128,25 +128,9 @@
         </div>
     </div>
 
+    <div class="flash-stack" aria-live="polite" aria-atomic="false"></div>
+
     <script>
-        function showFlashMessage(message) {
-            const existingMessages = document.querySelectorAll('.flash-message');
-
-            existingMessages.forEach(function (existingMessage) {
-                existingMessage.remove();
-            });
-
-            const flashMessage = document.createElement('div');
-            flashMessage.className = 'flash-message';
-            flashMessage.textContent = message;
-
-            document.body.appendChild(flashMessage);
-
-            setTimeout(function () {
-                flashMessage.remove();
-            }, 2000);
-        }
-
         function resetPendingInlineForms(exceptForm) {
             const forms = document.querySelectorAll('[data-inline-update-form]');
 
@@ -204,13 +188,6 @@
             form.dataset.dirty = 'false';
         }
 
-        setTimeout(function () {
-            const messages = document.querySelectorAll('.flash-message');
-
-            messages.forEach(function (message) {
-                message.remove();
-            });
-        }, 2000);
     </script>
     <script src="/js/app.js"></script>
 </body>

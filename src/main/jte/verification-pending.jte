@@ -22,7 +22,7 @@
     successMessage = successMessage,
     errorMessage = errorMessage,
     content = @`
-        <h1>Подтвердите email</h1>
+        <h1 id="auth-heading">Подтвердите email</h1>
 
         <p>Мы отправили письмо на ${email}.</p>
         <p>Перейдите по ссылке в письме, чтобы подтвердить email и завершить регистрацию.</p>
@@ -37,7 +37,7 @@
 
         <p>Повторных попыток осталось: <span data-remaining-attempts>${remainingAttempts}</span></p>
 
-        <form method="post" action="/resend-verification">
+        <form method="post" action="/resend-verification" data-submit-loading>
             <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
             <input type="hidden" name="email" value="${email}">
 
@@ -49,13 +49,18 @@
                 <input type="hidden" name="invite" value="${invite}">
             @endif
 
-            <button class="auth-submit" type="submit" disabled="${!resendAvailable}">
+            <button
+                class="auth-submit"
+                type="submit"
+                data-loading-text="Отправляем письмо…"
+                disabled="${!resendAvailable}"
+            >
                 Отправить письмо повторно
             </button>
         </form>
 
         <details>
-            <summary style="color: #57606a; cursor: pointer;">
+            <summary>
                 Почему количество попыток в сутки ограничено
             </summary>
             <p>

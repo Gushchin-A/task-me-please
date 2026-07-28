@@ -21,9 +21,9 @@
     successMessage = successMessage,
     errorMessage = errorMessage,
     content = @`
-        <h1>Вход</h1>
+        <h1 id="auth-heading">Вход</h1>
 
-        <form method="post" action="/login">
+        <form method="post" action="/login" data-submit-loading>
             <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
 
             @if(redirect != null)
@@ -35,13 +35,13 @@
             @endif
 
             <div class="auth-field">
-                <label>Email</label>
-                <input type="email" name="username" required>
+                <label for="login-email">Email</label>
+                <input id="login-email" type="email" name="username" autocomplete="email" required>
             </div>
 
             <div class="auth-field">
-                <label>Пароль</label>
-                <input type="password" name="password" required>
+                <label for="login-password">Пароль</label>
+                <input id="login-password" type="password" name="password" autocomplete="current-password" required>
             </div>
 
             <label>
@@ -49,7 +49,7 @@
                 Запомнить меня
             </label>
 
-            <button class="auth-submit" type="submit">
+            <button class="auth-submit" type="submit" data-loading-text="Выполняется вход…">
                 Войти
             </button>
         </form>
