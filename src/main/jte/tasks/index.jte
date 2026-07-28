@@ -46,10 +46,12 @@
                 <strong>Задачи (${page.totalTasksCount()})</strong>
 
                 <details class="toolbar-popover">
-                    <summary class="button button-secondary" data-tooltip="Фильтры">Фильтры</summary>
+                    <summary class="button button-secondary toolbar-icon-button" data-tooltip="Фильтры">
+                        <span aria-hidden="true">▽</span>
+                        <span class="visually-hidden">Фильтры</span>
+                    </summary>
 
                     <div class="toolbar-popover-panel">
-                        <span class="toolbar-popover-title">Статус и роль</span>
 
                 <a href="${page.allStatusesUrl()}">
                     @if(page.selectedStatus() == null)
@@ -141,7 +143,10 @@
                 </details>
 
                 <details class="toolbar-popover">
-                    <summary class="button button-secondary" data-tooltip="Сортировка">Сортировка</summary>
+                    <summary class="button button-secondary toolbar-icon-button" data-tooltip="Сортировка">
+                        <span aria-hidden="true">⇅</span>
+                        <span class="visually-hidden">Сортировка</span>
+                    </summary>
 
                     <div class="toolbar-popover-panel">
 

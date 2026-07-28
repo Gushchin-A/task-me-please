@@ -46,8 +46,6 @@
                 </p>
             @endif
 
-            <p>Повторных попыток осталось: <span data-remaining-attempts>${remainingAttempts}</span></p>
-
             <button
                 class="auth-submit"
                 type="submit"
@@ -56,6 +54,10 @@
             >
                 Отправить письмо
             </button>
+
+            <p class="auth-attempts">
+                Повторных попыток осталось: <span data-remaining-attempts>${remainingAttempts}</span>
+            </p>
         </form>
 
         <details>

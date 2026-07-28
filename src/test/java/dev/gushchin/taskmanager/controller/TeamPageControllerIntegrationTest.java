@@ -159,6 +159,26 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void teamNavigationCountsShouldRemainStableBetweenActiveAndArchivePages() throws Exception {
+        Task archivedTask = taskService.findByTeamId(team.getId()).getFirst();
+        taskService.updateStatus(archivedTask.getId(), TaskStatus.DONE, owner.getId());
+        taskService.archive(archivedTask.getId(), owner.getId());
+
+        String activeCount = "Задачи<span class=\"nav-count\">1</span>";
+        String archiveCount = "Архив<span class=\"nav-count\">1</span>";
+
+        mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString(activeCount)))
+                .andExpect(content().string(containsString(archiveCount)));
+
+        mockMvc.perform(get("/teams/" + team.getId() + "/archive").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString(activeCount)))
+                .andExpect(content().string(containsString(archiveCount)));
+    }
+
+    @Test
     void ownerShouldDeleteTeamAfterThreeConfirmations() throws Exception {
         final TeamInvitation invitation =
                 teamInvitationService.create(team.getId(), "delete-team@test.com", owner.getId());

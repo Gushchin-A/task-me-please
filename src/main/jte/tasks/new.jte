@@ -18,7 +18,8 @@
     currentUser = currentUser,
     activeSection = "tasks",
     content = @`
-        <section>
+        <section class="workspace-page form-page">
+            <a class="back-link" href="/tasks">← Вернуться к задачам</a>
             <h1>Создать задачу</h1>
 
             @if(teams.isEmpty())
@@ -26,21 +27,22 @@
                     Сначала создайте команду.
                 </p>
 
-                <a href="/teams/new">
+                <a class="button button-primary" href="/teams/new">
                     Создать команду
                 </a>
             @else
-                <form method="post" action="/tasks">
+                <form class="form-card" method="post" action="/tasks">
                     <input
                         type="hidden"
                         name="${_csrf.getParameterName()}"
                         value="${_csrf.getToken()}"
                     >
 
-                    <div>
-                        <label>Команда</label>
+                    <div class="form-field">
+                        <label for="task-team">Команда</label>
 
                         <select
+                            id="task-team"
                             name="teamId"
                             required
                             onchange="window.location.href = '/tasks/new?teamId=' + this.value"
@@ -63,10 +65,11 @@
                             Создать задачу пока невозможно.
                         </p>
                     @else
-                        <div>
-                            <label>Исполнитель</label>
+                        <div class="form-field">
+                            <label for="task-assignee">Исполнитель</label>
 
                             <select
+                                id="task-assignee"
                                 name="assigneeId"
                                 required
                             >
@@ -80,35 +83,38 @@
                             </select>
                         </div>
 
-                        <div>
-                            <label>Название задачи</label>
+                        <div class="form-field">
+                            <label for="task-title">Название задачи</label>
 
                             <input
+                                id="task-title"
                                 type="text"
                                 name="title"
                                 required
                             >
                         </div>
 
-                        <div>
-                            <label>Описание</label>
+                        <div class="form-field">
+                            <label for="task-description">Описание</label>
 
-                            <textarea name="description"></textarea>
+                            <textarea id="task-description" name="description"></textarea>
                         </div>
 
-                        <div>
-                            <label>Дедлайн</label>
+                        <div class="form-field">
+                            <label for="task-deadline">Дедлайн</label>
 
                             <input
+                                id="task-deadline"
                                 type="date"
                                 name="deadlineDate"
                             >
                         </div>
 
-                        <div>
-                            <label>Тег</label>
+                        <div class="form-field">
+                            <label for="task-tag">Тег</label>
 
                             <select
+                                id="task-tag"
                                 name="tagId"
                                 required
                             >
@@ -120,7 +126,7 @@
                             </select>
                         </div>
 
-                        <button type="submit">
+                        <button class="button button-primary" type="submit">
                             Создать задачу
                         </button>
                     @endif

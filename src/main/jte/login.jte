@@ -21,8 +21,6 @@
     successMessage = successMessage,
     errorMessage = errorMessage,
     content = @`
-        <h1 id="auth-heading">Вход</h1>
-
         <form method="post" action="/login" data-submit-loading>
             <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
 

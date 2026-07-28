@@ -5,7 +5,7 @@
     class="flash-message flash-message-${type}"
     role="${"error".equals(type) ? "alert" : "status"}"
     data-flash-message
-    data-auto-dismiss-ms="5000"
+    data-auto-dismiss-ms="10000"
 >
     <span class="flash-message-text">${message}</span>
 

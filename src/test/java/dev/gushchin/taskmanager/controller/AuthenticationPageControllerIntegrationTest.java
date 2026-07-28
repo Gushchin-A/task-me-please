@@ -243,7 +243,7 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Неверный email или пароль.")))
                 .andExpect(content().string(containsString("data-flash-message")))
-                .andExpect(content().string(containsString("data-auto-dismiss-ms=\"5000\"")))
+                .andExpect(content().string(containsString("data-auto-dismiss-ms=\"10000\"")))
                 .andExpect(content().string(containsString("aria-label=\"Закрыть сообщение\"")));
     }
 

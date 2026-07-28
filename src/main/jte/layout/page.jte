@@ -86,15 +86,12 @@
                             </div>
 
                             <div class="profile-actions">
-                                <button
-                                    class="profile-action"
-                                    type="button"
-                                    title="Настройки пока не реализованы"
-                                    disabled
-                                >
-                                    Настройки
-                                    <span class="profile-action-note">Настройки пока не реализованы</span>
-                                </button>
+                                <div data-tooltip="Настройки пока не реализованы">
+                                    <button class="profile-action" type="button" disabled>
+                                        Настройки
+                                        <span class="profile-action-note">Настройки пока не реализованы</span>
+                                    </button>
+                                </div>
 
                                 @if(_csrf != null)
                                     <form class="profile-logout-form" method="post" action="/logout">

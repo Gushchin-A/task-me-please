@@ -1,13 +1,16 @@
 @import dev.gushchin.taskmanager.model.TeamTag
 @import dev.gushchin.taskmanager.model.TaskSort
 @import dev.gushchin.taskmanager.model.TaskStatus
+@import dev.gushchin.taskmanager.model.Team
 @import dev.gushchin.taskmanager.view.TaskParticipantView
 @import dev.gushchin.taskmanager.view.TaskView
 @import dev.gushchin.taskmanager.view.TeamPageView
 @import dev.gushchin.taskmanager.view.UserAvatarView
+@import java.util.List
 @import org.springframework.security.web.csrf.CsrfToken
 
 @param TeamPageView page
+@param List<Team> navigationTeams
 @param CsrfToken _csrf
 @param UserAvatarView currentUser
 
@@ -19,31 +22,31 @@
     content = @`
         @template.components.teamNavigation(
             team = page.team(),
+            teams = navigationTeams,
             activeTab = page.archiveMode() ? "archive" : "tasks",
-            tasksCount = page.totalTasksCount(),
+            tasksCount = page.activeTasksCount(),
+            archiveCount = page.archiveTasksCount(),
             membersCount = page.membersCount(),
             canInvite = page.canInvite()
         )
 
         <section class="workspace-page team-details-page">
-            <header class="page-header">
-                <div>
-                    <h1>${page.archiveMode() ? "Архив задач" : "Задачи"}</h1>
-                </div>
-
+            <div class="page-actions">
                 <a class="button button-primary" href="/tasks/new?teamId=${page.team().getId()}">
                     Создать задачу
                 </a>
-            </header>
+            </div>
 
             <div class="task-toolbar">
                 <strong>${page.taskCountText()}</strong>
 
                 <details class="toolbar-popover">
-                    <summary class="button button-secondary" data-tooltip="Фильтры">Фильтры</summary>
+                    <summary class="button button-secondary toolbar-icon-button" data-tooltip="Фильтры">
+                        <span aria-hidden="true">▽</span>
+                        <span class="visually-hidden">Фильтры</span>
+                    </summary>
 
                     <div class="toolbar-popover-panel">
-                        <span class="toolbar-popover-title">Статус, участники и тег</span>
 
                 <a href="${page.allStatusesUrl()}">
                     @if(page.selectedStatus() == null)
@@ -156,7 +159,10 @@
                 </details>
 
                 <details class="toolbar-popover">
-                    <summary class="button button-secondary" data-tooltip="Сортировка">Сортировка</summary>
+                    <summary class="button button-secondary toolbar-icon-button" data-tooltip="Сортировка">
+                        <span aria-hidden="true">⇅</span>
+                        <span class="visually-hidden">Сортировка</span>
+                    </summary>
 
                     <div class="toolbar-popover-panel">
 

@@ -57,6 +57,7 @@ public class TeamPageController {
     private static final String DELETE_TEAM_VIEW = "teams/delete";
     private static final int FINAL_DELETE_CONFIRMATION_STEP = 3;
     private static final String MEMBERS_PATH_SUFFIX = "/members";
+    private static final String NAVIGATION_TEAMS_ATTRIBUTE = "navigationTeams";
     private static final String NOT_FOUND_VIEW = "teams/not-found";
     private static final String OWNER_INVITE_REQUIRED_MESSAGE_PREFIX =
             "Только owner команды может приглашать новых участников. ";
@@ -124,7 +125,9 @@ public class TeamPageController {
 
         Team team = teamService.findById(id);
         List<Task> visibleTasks = taskService.findVisibleByTeamId(id, authUser.getId());
-        List<Task> modeFilteredTasks = taskService.filterByArchived(visibleTasks, false);
+        List<Task> activeTasks = taskService.filterByArchived(visibleTasks, false);
+        List<Task> archivedTasks = taskService.filterByArchived(visibleTasks, true);
+        List<Task> modeFilteredTasks = activeTasks;
         List<TeamTag> tags = teamTagService.findByTeamId(id);
         List<TeamMember> teamMembers = teamMemberService.findByTeamId(id);
 
@@ -148,13 +151,15 @@ public class TeamPageController {
                 taskViews,
                 new TeamPageView.TeamPageResources(
                         members, getFilterParticipants(id, modeFilteredTasks, members), tags),
-                new TeamPageView.TeamPageCounts(modeFilteredTasks.size(), sortedTasks.size(), teamMembers.size()),
+                new TeamPageView.TeamPageCounts(
+                        activeTasks.size(), archivedTasks.size(), sortedTasks.size(), teamMembers.size()),
                 stats,
                 new TeamPageView.TeamPageFilters(status, sort, authorId, assigneeId, tagId),
                 canInvite,
                 TaskListMode.ACTIVE);
 
         model.addAttribute(PAGE_ATTRIBUTE, page);
+        model.addAttribute(NAVIGATION_TEAMS_ATTRIBUTE, teamService.findByUserId(authUser.getId()));
         model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
 
         return TEAMS_SHOW_VIEW;
@@ -183,7 +188,9 @@ public class TeamPageController {
 
         Team team = teamService.findById(id);
         List<Task> visibleTasks = taskService.findVisibleByTeamId(id, authUser.getId());
-        List<Task> modeFilteredTasks = taskService.filterByArchived(visibleTasks, true);
+        List<Task> activeTasks = taskService.filterByArchived(visibleTasks, false);
+        List<Task> archivedTasks = taskService.filterByArchived(visibleTasks, true);
+        List<Task> modeFilteredTasks = archivedTasks;
         List<TeamTag> tags = teamTagService.findByTeamId(id);
         List<TeamMember> teamMembers = teamMemberService.findByTeamId(id);
 
@@ -207,13 +214,15 @@ public class TeamPageController {
                 taskViews,
                 new TeamPageView.TeamPageResources(
                         members, getFilterParticipants(id, modeFilteredTasks, members), tags),
-                new TeamPageView.TeamPageCounts(modeFilteredTasks.size(), sortedTasks.size(), teamMembers.size()),
+                new TeamPageView.TeamPageCounts(
+                        activeTasks.size(), archivedTasks.size(), sortedTasks.size(), teamMembers.size()),
                 stats,
                 new TeamPageView.TeamPageFilters(status, sort, authorId, assigneeId, tagId),
                 canInvite,
                 TaskListMode.ARCHIVE);
 
         model.addAttribute(PAGE_ATTRIBUTE, page);
+        model.addAttribute(NAVIGATION_TEAMS_ATTRIBUTE, teamService.findByUserId(authUser.getId()));
         model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
 
         return TEAMS_SHOW_VIEW;
@@ -269,7 +278,11 @@ public class TeamPageController {
         boolean canInvite = currentMember.getRole() == TeamMemberRole.OWNER;
 
         model.addAttribute(TEAM_ATTRIBUTE, team);
-        model.addAttribute("totalTasksCount", tasks.size());
+        model.addAttribute(
+                "totalTasksCount", taskService.filterByArchived(tasks, false).size());
+        model.addAttribute(
+                "archiveTasksCount", taskService.filterByArchived(tasks, true).size());
+        model.addAttribute(NAVIGATION_TEAMS_ATTRIBUTE, teamService.findByUserId(authUser.getId()));
         model.addAttribute("membersCount", members.size());
         model.addAttribute("members", memberViews);
         model.addAttribute("onlyCurrentOwnerInTeam", onlyCurrentOwnerInTeam);
@@ -300,6 +313,7 @@ public class TeamPageController {
         boolean canInvite = currentMember.getRole() == TeamMemberRole.OWNER;
 
         model.addAttribute(TEAM_ATTRIBUTE, team);
+        model.addAttribute(NAVIGATION_TEAMS_ATTRIBUTE, teamService.findByUserId(authUser.getId()));
         model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
         model.addAttribute(CAN_INVITE_ATTRIBUTE, canInvite);
         model.addAttribute("invitationExpirationDays", TeamInvitationService.EXPIRATION_DAYS);
@@ -340,7 +354,7 @@ public class TeamPageController {
         session.setAttribute(DELETE_CONFIRMATION_TEAM_ID_SESSION_ATTRIBUTE, id);
         session.setAttribute(DELETE_CONFIRMATION_STEP_SESSION_ATTRIBUTE, 1);
 
-        return showDeleteTeamStep(id, 1, model, csrfToken);
+        return showDeleteTeamStep(id, authUser.getId(), 1, model, csrfToken);
     }
 
     @PostMapping("/teams/{id}/delete")
@@ -514,7 +528,7 @@ public class TeamPageController {
         } else if (confirmationStep < FINAL_DELETE_CONFIRMATION_STEP) {
             int nextStep = confirmationStep + 1;
             session.setAttribute(DELETE_CONFIRMATION_STEP_SESSION_ATTRIBUTE, nextStep);
-            result = showDeleteTeamStep(teamId, nextStep, model, csrfToken);
+            result = showDeleteTeamStep(teamId, currentUserId, nextStep, model, csrfToken);
         } else {
             teamService.delete(teamId, currentUserId);
             clearDeleteConfirmation(session);
@@ -524,8 +538,9 @@ public class TeamPageController {
         return result;
     }
 
-    private String showDeleteTeamStep(Long teamId, int step, Model model, CsrfToken csrfToken) {
+    private String showDeleteTeamStep(Long teamId, UUID currentUserId, int step, Model model, CsrfToken csrfToken) {
         model.addAttribute(TEAM_ATTRIBUTE, teamService.findById(teamId));
+        model.addAttribute(NAVIGATION_TEAMS_ATTRIBUTE, teamService.findByUserId(currentUserId));
         model.addAttribute("step", step);
         model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
 

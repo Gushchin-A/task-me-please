@@ -20,8 +20,6 @@
     successMessage = successMessage,
     errorMessage = errorMessage,
     content = @`
-        <h1 id="auth-heading">Регистрация</h1>
-
         <form method="post" action="/registration" data-submit-loading>
             <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
 

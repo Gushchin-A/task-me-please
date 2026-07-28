@@ -39,7 +39,7 @@
                 Личные и командные задачи в одном рабочем пространстве
             </p>
 
-            <section class="auth-panel" aria-labelledby="auth-heading">
+            <section class="auth-panel" aria-labelledby="${activeTab.isBlank() ? "auth-heading" : null}">
                 @if(!activeTab.isBlank())
                     <nav class="auth-tabs" aria-label="Авторизация">
                         <a
@@ -47,7 +47,7 @@
                             class="auth-tab ${activeTab.equals("login") ? "auth-tab-active" : ""}"
                             aria-current="${activeTab.equals("login") ? "page" : "false"}"
                         >
-                            Вход
+                            <span>Вход</span>
                         </a>
 
                         <a
@@ -55,7 +55,7 @@
                             class="auth-tab ${activeTab.equals("registration") ? "auth-tab-active" : ""}"
                             aria-current="${activeTab.equals("registration") ? "page" : "false"}"
                         >
-                            Регистрация
+                            <span>Регистрация</span>
                         </a>
                     </nav>
                 @endif
@@ -75,7 +75,7 @@
 
                 @if(activeTab.isBlank())
                     <a class="auth-back-link" href="${loginUrl}">
-                        ← Вернуться ко входу
+                        ← Вернуться назад
                     </a>
                 @endif
             </section>

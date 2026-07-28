@@ -1,8 +1,10 @@
 @import dev.gushchin.taskmanager.model.Team
 @import dev.gushchin.taskmanager.view.UserAvatarView
+@import java.util.List
 @import org.springframework.security.web.csrf.CsrfToken
 
 @param Team team
+@param List<Team> navigationTeams
 @param int step
 @param CsrfToken _csrf
 @param UserAvatarView currentUser
@@ -15,8 +17,10 @@
     content = @`
         @template.components.teamNavigation(
             team = team,
+            teams = navigationTeams,
             activeTab = "delete",
             tasksCount = -1,
+            archiveCount = -1,
             membersCount = -1,
             canInvite = true
         )

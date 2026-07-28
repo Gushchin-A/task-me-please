@@ -10,6 +10,7 @@
 
 @param TaskView task
 @param Team team
+@param List<Team> navigationTeams
 @param List<TaskParticipantView> members
 @param List<TeamTag> tags
 @param List<CommentView> comments
@@ -24,8 +25,10 @@
     content = @`
         @template.components.teamNavigation(
             team = team,
+            teams = navigationTeams,
             activeTab = "tasks",
             tasksCount = -1,
+            archiveCount = -1,
             membersCount = -1,
             canInvite = false
         )

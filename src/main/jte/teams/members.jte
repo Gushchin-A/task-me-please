@@ -8,7 +8,9 @@
 @import org.springframework.security.web.csrf.CsrfToken
 
 @param Team team
+@param List<Team> navigationTeams
 @param int totalTasksCount
+@param int archiveTasksCount
 @param int membersCount
 @param List<TeamMemberView> members
 @param boolean onlyCurrentOwnerInTeam
@@ -31,20 +33,15 @@
     content = @`
         @template.components.teamNavigation(
             team = team,
+            teams = navigationTeams,
             activeTab = "members",
             tasksCount = totalTasksCount,
+            archiveCount = archiveTasksCount,
             membersCount = membersCount,
             canInvite = canInvite
         )
 
         <section class="workspace-page team-members-page">
-            <header class="page-header page-header-compact">
-                <div>
-                    <h1>Участники</h1>
-                    <p>Участники и доступ к задачам команды.</p>
-                </div>
-            </header>
-
             <div class="flash-stack" aria-live="polite" aria-atomic="false">
                 @if(successMessage != null)
                     @template.components.flash(message = successMessage, type = "success")

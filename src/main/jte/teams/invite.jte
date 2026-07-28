@@ -5,6 +5,7 @@
 @import org.springframework.security.web.csrf.CsrfToken
 
 @param Team team
+@param List<Team> navigationTeams
 @param CsrfToken _csrf
 @param boolean canInvite
 @param int invitationExpirationDays
@@ -21,20 +22,15 @@
     content = @`
         @template.components.teamNavigation(
             team = team,
+            teams = navigationTeams,
             activeTab = "invite",
             tasksCount = -1,
+            archiveCount = -1,
             membersCount = -1,
             canInvite = canInvite
         )
 
         <section class="workspace-page team-invite-page">
-            <header class="page-header page-header-compact">
-                <div>
-                    <h1>Приглашения</h1>
-                    <p>Приглашения и ссылки для новых участников.</p>
-                </div>
-            </header>
-
             <div class="flash-stack" aria-live="polite" aria-atomic="false">
                 @if(successMessage != null)
                     @template.components.flash(message = successMessage, type = "success")
@@ -47,12 +43,11 @@
 
             @if(canInvite)
                 <form
-                    class="form-card form-card-compact"
+                    class="invite-form"
                     method="post"
                     action="/teams/${team.getId()}/members"
                     data-submit-loading
                 >
-                    <h2>Добавить участника</h2>
                     <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
 
                     <div class="form-field">

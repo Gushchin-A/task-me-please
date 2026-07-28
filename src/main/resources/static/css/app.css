@@ -50,6 +50,17 @@ a {
     outline-offset: 2px;
 }
 
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 .app-shell {
     min-height: 100vh;
 }
@@ -186,15 +197,15 @@ a {
     padding: 0;
     border: 1px solid var(--color-border-strong);
     border-radius: 50%;
-    background: #59636e;
-    color: #ffffff;
+    background: var(--color-surface-muted);
+    color: var(--color-green);
     cursor: pointer;
     font-size: 15px;
     font-weight: 700;
 }
 
 .profile-trigger:hover {
-    background: #424a53;
+    background: var(--color-border);
 }
 
 .profile-menu {
@@ -228,8 +239,8 @@ a {
     flex: 0 0 auto;
     place-items: center;
     border-radius: 50%;
-    background: #59636e;
-    color: #ffffff;
+    background: var(--color-surface-muted);
+    color: var(--color-green);
     font-size: 14px;
     font-weight: 700;
 }
@@ -293,7 +304,7 @@ a {
 }
 
 .profile-action-note {
-    display: block;
+    display: none;
     margin-top: 2px;
     font-size: 12px;
     font-weight: 400;
@@ -310,7 +321,8 @@ a {
 }
 
 .team-context {
-    margin: -28px -24px 28px;
+    width: 100vw;
+    margin: -28px calc(50% - 50vw) 28px;
     border-bottom: 1px solid var(--color-border);
     background: var(--color-surface);
 }
@@ -320,36 +332,69 @@ a {
     min-height: 64px;
     align-items: center;
     gap: 20px;
+    width: min(100%, var(--workspace-width));
+    margin: 0 auto;
     padding: 0 24px;
 }
 
-.team-identity {
-    display: flex;
+.team-switcher {
+    position: relative;
     min-width: 0;
+}
+
+.team-switcher summary {
+    display: flex;
+    max-width: 240px;
+    min-height: 36px;
     align-items: center;
     gap: 8px;
-    color: var(--color-text-muted);
+    padding: 6px 8px;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    color: var(--color-text);
+    cursor: pointer;
     font-size: 13px;
+    font-weight: 650;
+    list-style: none;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.team-list-link,
-.team-name-link {
-    color: var(--color-text-muted);
-    text-decoration: none;
+.team-switcher summary:hover {
+    background: var(--color-surface-muted);
 }
 
-.team-name-link {
-    max-width: 240px;
+.team-switcher-menu {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 6px);
+    left: 0;
+    display: grid;
+    width: min(280px, calc(100vw - 32px));
+    max-height: 320px;
+    gap: 3px;
+    padding: 6px;
+    overflow-y: auto;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-floating);
+}
+
+.team-switcher-menu a {
+    padding: 8px 9px;
     overflow: hidden;
+    border-radius: var(--radius-sm);
     color: var(--color-text);
-    font-weight: 650;
+    font-size: 13px;
+    text-decoration: none;
     text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.team-list-link:hover,
-.team-name-link:hover {
-    color: var(--color-green);
+.team-switcher-menu a:hover,
+.team-switcher-menu a[aria-current="page"] {
+    background: var(--color-surface-muted);
 }
 
 .team-tabs {
@@ -401,6 +446,14 @@ a {
 .team-invite-action {
     min-height: 34px;
     margin-left: auto;
+}
+
+.team-invite-disabled {
+    margin-left: auto;
+}
+
+.team-settings-action {
+    min-height: 34px;
 }
 
 .workspace-page {
@@ -575,17 +628,17 @@ a {
 }
 
 .team-card-link:hover {
-    background: #424a53;
-    color: #ffffff;
+    background: var(--color-surface-muted);
+    color: var(--color-text);
 }
 
 .team-card-link:hover .team-card-mark {
-    background: #ffffff;
-    color: #424a53;
+    background: var(--color-border);
+    color: var(--color-green);
 }
 
 .team-card-link:hover .team-card-arrow {
-    color: #ffffff;
+    color: var(--color-text);
 }
 
 .team-card-mark {
@@ -624,7 +677,7 @@ a {
 }
 
 .task-grid {
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
     gap: 14px;
     margin-top: 18px;
 }
@@ -649,6 +702,13 @@ a {
 .toolbar-popover summary {
     min-height: 34px;
     list-style: none;
+}
+
+.toolbar-popover .toolbar-icon-button {
+    width: 34px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 17px;
 }
 
 .toolbar-popover summary::-webkit-details-marker {
@@ -697,7 +757,7 @@ a {
 }
 
 .task-card {
-    padding: 18px;
+    padding: 14px;
 }
 
 .task-card h3 {
@@ -739,6 +799,17 @@ a {
     border-radius: var(--radius-sm);
     background: var(--color-surface);
     color: var(--color-text);
+}
+
+.task-card select:hover,
+.task-metadata-panel select:hover {
+    background: var(--color-surface-muted);
+}
+
+.task-card select:focus-visible,
+.task-metadata-panel select:focus-visible {
+    outline: 2px solid rgba(0, 107, 84, 0.35);
+    outline-offset: 1px;
 }
 
 .task-card button:not(.button),
@@ -893,6 +964,24 @@ a {
 
 .data-table tbody tr:last-child td {
     border-bottom: 0;
+}
+
+.data-table tbody tr:hover {
+    background: var(--color-surface-muted);
+}
+
+.invite-form {
+    display: flex;
+    max-width: 720px;
+    align-items: end;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.invite-form .form-field {
+    min-width: 0;
+    flex: 1;
+    margin: 0;
 }
 
 .destructive-page {
@@ -1129,6 +1218,34 @@ a {
     background: var(--color-bg);
 }
 
+.invitation-page {
+    display: flex;
+    min-height: 100vh;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+}
+
+.invitation-panel {
+    width: min(100%, 440px);
+    padding: 26px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+}
+
+.invitation-panel h1 {
+    margin: 0;
+    font-size: 24px;
+}
+
+.invitation-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 22px;
+    flex-wrap: wrap;
+}
+
 .auth-shell {
     width: min(100%, 420px);
 }
@@ -1177,15 +1294,16 @@ a {
 }
 
 .auth-tabs {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    justify-content: center;
+    gap: 28px;
     margin: -6px 0 24px;
     border-bottom: 1px solid var(--color-border);
 }
 
 .auth-tab {
     position: relative;
-    padding: 10px 12px;
+    padding: 10px 0;
     color: var(--color-text-muted);
     font-size: 14px;
     font-weight: 600;
@@ -1201,11 +1319,16 @@ a {
     color: var(--color-text);
 }
 
-.auth-tab-active::after {
+.auth-tab span {
+    position: relative;
+    display: inline-block;
+}
+
+.auth-tab-active span::after {
     position: absolute;
-    right: 10px;
-    bottom: -1px;
-    left: 10px;
+    right: 0;
+    bottom: -11px;
+    left: 0;
     height: 2px;
     border-radius: 2px 2px 0 0;
     background: var(--color-orange);
@@ -1296,6 +1419,12 @@ a {
 
 .auth-panel details {
     margin-top: 20px;
+    color: var(--color-text-muted);
+    font-size: 13px;
+}
+
+.auth-attempts {
+    margin: 12px 0 0;
     color: var(--color-text-muted);
     font-size: 13px;
 }
@@ -1530,6 +1659,15 @@ a {
         flex-direction: column;
     }
 
+    .invite-form {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .profile-action-note {
+        display: block;
+    }
+
     .destructive-actions {
         flex-direction: column;
     }
@@ -1572,18 +1710,18 @@ a {
     }
 
     .team-context {
-        margin: -20px -16px 22px;
+        margin: -20px calc(50% - 50vw) 22px;
         overflow: hidden;
     }
 
     .team-context-inner {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 0 12px;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        gap: 0 8px;
         padding: 10px 16px 0;
     }
 
-    .team-identity {
+    .team-switcher {
         grid-column: 1;
         min-height: 34px;
     }
@@ -1594,10 +1732,16 @@ a {
         overflow-x: auto;
     }
 
-    .team-invite-action {
+    .team-invite-action,
+    .team-invite-disabled {
         grid-column: 2;
         grid-row: 1;
         margin-left: 0;
+    }
+
+    .team-settings-wrapper {
+        grid-column: 3;
+        grid-row: 1;
     }
 }
 

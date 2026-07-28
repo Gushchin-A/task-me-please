@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 function setupToolbarPopovers() {
-    const popovers = document.querySelectorAll('.toolbar-popover, .comment-menu');
+    const popovers = document.querySelectorAll('.toolbar-popover, .comment-menu, .team-switcher');
 
     popovers.forEach(function (popover) {
         popover.addEventListener('toggle', function () {
@@ -193,7 +193,7 @@ function showFlashMessage(message) {
 
     flashMessage.className = 'flash-message flash-message-info';
     flashMessage.dataset.flashMessage = '';
-    flashMessage.dataset.autoDismissMs = '5000';
+    flashMessage.dataset.autoDismissMs = '10000';
     flashMessage.setAttribute('role', 'status');
     messageText.className = 'flash-message-text';
     messageText.textContent = message;
@@ -210,5 +210,5 @@ function showFlashMessage(message) {
     });
     window.setTimeout(function () {
         flashMessage.remove();
-    }, 5000);
+    }, 10000);
 }
