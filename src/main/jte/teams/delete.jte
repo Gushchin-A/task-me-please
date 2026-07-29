@@ -1,15 +1,33 @@
 @import dev.gushchin.taskmanager.model.Team
+@import dev.gushchin.taskmanager.view.UserAvatarView
+@import java.util.List
 @import org.springframework.security.web.csrf.CsrfToken
 
 @param Team team
+@param List<Team> navigationTeams
 @param int step
 @param CsrfToken _csrf
+@param UserAvatarView currentUser
 
 @template.layout.page(
     title = team.getName() + " — удалить",
     _csrf = _csrf,
+    currentUser = currentUser,
+    activeSection = "teams",
     content = @`
-        <section>
+        @template.components.teamNavigation(
+            team = team,
+            teams = navigationTeams,
+            activeTab = "delete",
+            tasksCount = -1,
+            archiveCount = -1,
+            membersCount = -1,
+            canInvite = true
+        )
+
+        <section class="workspace-page destructive-page">
+            <div class="destructive-card">
+            <span class="destructive-step">Шаг ${step} из 3</span>
             <h1>Удаление команды «${team.getName()}»</h1>
 
             @if(step == 1)
@@ -20,17 +38,18 @@
                 <p>Это последнее подтверждение. Удалить команду?</p>
             @endif
 
-            <form method="post" action="/teams/${team.getId()}/delete">
+            <form class="destructive-actions" method="post" action="/teams/${team.getId()}/delete">
                 <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
 
-                <button type="submit" name="confirmation" value="yes">
+                <button class="button button-danger" type="submit" name="confirmation" value="yes">
                     Да
                 </button>
 
-                <button type="submit" name="confirmation" value="no">
+                <button class="button button-secondary" type="submit" name="confirmation" value="no">
                     Нет
                 </button>
             </form>
+            </div>
         </section>
     `
 )

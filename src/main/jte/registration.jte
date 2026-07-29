@@ -20,9 +20,7 @@
     successMessage = successMessage,
     errorMessage = errorMessage,
     content = @`
-        <h1>Регистрация</h1>
-
-        <form method="post" action="/registration">
+        <form method="post" action="/registration" data-submit-loading>
             <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
 
             @if(redirect != null)
@@ -34,21 +32,27 @@
             @endif
 
             <div class="auth-field">
-                <label>Имя</label>
-                <input type="text" name="name">
+                <label for="registration-name">Имя</label>
+                <input id="registration-name" type="text" name="name" autocomplete="name">
             </div>
 
             <div class="auth-field">
-                <label>Email</label>
-                <input type="email" name="email" required>
+                <label for="registration-email">Email</label>
+                <input id="registration-email" type="email" name="email" autocomplete="email" required>
             </div>
 
             <div class="auth-field">
-                <label>Пароль</label>
-                <input type="password" name="password" required>
+                <label for="registration-password">Пароль</label>
+                <input
+                    id="registration-password"
+                    type="password"
+                    name="password"
+                    autocomplete="new-password"
+                    required
+                >
             </div>
 
-            <button class="auth-submit" type="submit">
+            <button class="auth-submit" type="submit" data-loading-text="Создаём аккаунт…">
                 Создать аккаунт
             </button>
         </form>

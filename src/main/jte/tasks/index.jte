@@ -4,46 +4,54 @@
 @import dev.gushchin.taskmanager.model.Team
 @import dev.gushchin.taskmanager.model.TeamTag
 @import dev.gushchin.taskmanager.view.MyTasksPageView
+@import dev.gushchin.taskmanager.view.UserAvatarView
 @import dev.gushchin.taskmanager.view.TaskParticipantView
 @import dev.gushchin.taskmanager.view.TaskWithTeamView
 @import org.springframework.security.web.csrf.CsrfToken
 
 @param MyTasksPageView page
 @param CsrfToken _csrf
+@param UserAvatarView currentUser
 
 @template.layout.page(
     title = "Мои задачи",
     _csrf = _csrf,
+    currentUser = currentUser,
+    activeSection = "tasks",
     content = @`
-        <section>
-            <h1>Мои задачи</h1>
-
-            <div>
-                <a href="/tasks">
-                    @if(page.activeMode())
-                        <strong>Задачи</strong>
-                    @else
-                        Задачи
-                    @endif
-                </a>
-
-                <a href="/tasks/archive">
-                    @if(page.archiveMode())
-                        <strong>Архив</strong>
-                    @else
-                        Архив
-                    @endif
-                </a>
+        <section class="workspace-page tasks-page">
+            <div class="page-actions">
+                <a class="button button-primary" href="/tasks/new">Создать задачу</a>
             </div>
 
-            <p>Здесь отображаются все ваши задачи.</p>
+            <nav class="local-tabs" aria-label="Режим списка задач">
+                <a
+                    class="${page.activeMode() ? "local-tab-active" : ""}"
+                    href="/tasks"
+                    aria-current="${page.activeMode() ? "page" : null}"
+                >
+                    Задачи
+                </a>
 
-            <div>
+                <a
+                    class="${page.archiveMode() ? "local-tab-active" : ""}"
+                    href="/tasks/archive"
+                    aria-current="${page.archiveMode() ? "page" : null}"
+                >
+                    Архив
+                </a>
+            </nav>
+
+            <div class="task-toolbar">
                 <strong>Задачи (${page.totalTasksCount()})</strong>
-            </div>
 
-            <div>
-                <span>Фильтр:</span>
+                <details class="toolbar-popover">
+                    <summary class="button button-secondary toolbar-icon-button" data-tooltip="Фильтры">
+                        <span aria-hidden="true">▽</span>
+                        <span class="visually-hidden">Фильтры</span>
+                    </summary>
+
+                    <div class="toolbar-popover-panel">
 
                 <a href="${page.allStatusesUrl()}">
                     @if(page.selectedStatus() == null)
@@ -106,10 +114,13 @@
                         Сбросить фильтр по роли
                     </a>
                 @endif
-            </div>
+                    </div>
+                </details>
 
-            <div>
-                <span>Команда:</span>
+                <details class="toolbar-popover">
+                    <summary class="button button-secondary" data-tooltip="Команды">Команда</summary>
+
+                    <div class="toolbar-popover-panel">
 
                 <a href="${page.allTeamsUrl()}">
                     @if(page.selectedTeamId() == null)
@@ -128,10 +139,16 @@
                         @endif
                     </a>
                 @endfor
-            </div>
+                    </div>
+                </details>
 
-			<div>
-				<span>Сортировка:</span>
+                <details class="toolbar-popover">
+                    <summary class="button button-secondary toolbar-icon-button" data-tooltip="Сортировка">
+                        <span aria-hidden="true">⇅</span>
+                        <span class="visually-hidden">Сортировка</span>
+                    </summary>
+
+                    <div class="toolbar-popover-panel">
 
 				<a href="${page.sortUrl(TaskSort.DEADLINE)}">
 					@if(page.selectedSort() == TaskSort.DEADLINE)
@@ -148,22 +165,19 @@
 						Тег
 					@endif
 				</a>
-			</div>
+                    </div>
+                </details>
+            </div>
 
             @if(page.tasks().isEmpty())
-                <p>Задачи по выбранным фильтрам отсутствуют.</p>
+                <div class="empty-state">
+                    <h2>Задачи не найдены</h2>
+                    <p>Измените фильтры или создайте новую задачу.</p>
+                </div>
             @else
-                <ul style="list-style: none; padding-left: 0; margin-left: 0;">
+                <ul class="task-grid">
                     @for(TaskWithTeamView taskCard : page.tasks())
-                        <li
-                            style="
-                                background: #f6f8fa;
-                                border: 1px solid #d0d7de;
-                                padding: 16px;
-                                margin-bottom: 12px;
-                                max-width: 720px;
-                            "
-                        >
+                        <li class="task-card">
                             <h3>
                                 <a href="/tasks/${taskCard.task().id()}">
                                     ${taskCard.task().title()}

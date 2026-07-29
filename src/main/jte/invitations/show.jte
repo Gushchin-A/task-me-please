@@ -1,15 +1,19 @@
 @import dev.gushchin.taskmanager.model.Team
 @import dev.gushchin.taskmanager.model.TeamInvitation
+@import dev.gushchin.taskmanager.view.UserAvatarView
 @import org.springframework.security.web.csrf.CsrfToken
 
 @param TeamInvitation invitation
 @param Team team
 @param String invitedByEmail
 @param CsrfToken _csrf
+@param UserAvatarView currentUser
 
 @template.layout.page(
     title = "Приглашение в команду",
     _csrf = _csrf,
+    currentUser = currentUser,
+    activeSection = null,
     content = @`
         <section>
             <h1>Приглашение в команду</h1>

@@ -1,58 +1,50 @@
 @import dev.gushchin.taskmanager.model.TeamTag
 @import dev.gushchin.taskmanager.model.TaskSort
 @import dev.gushchin.taskmanager.model.TaskStatus
+@import dev.gushchin.taskmanager.model.Team
 @import dev.gushchin.taskmanager.view.TaskParticipantView
 @import dev.gushchin.taskmanager.view.TaskView
 @import dev.gushchin.taskmanager.view.TeamPageView
+@import dev.gushchin.taskmanager.view.UserAvatarView
+@import java.util.List
 @import org.springframework.security.web.csrf.CsrfToken
 
 @param TeamPageView page
+@param List<Team> navigationTeams
 @param CsrfToken _csrf
+@param UserAvatarView currentUser
 
 @template.layout.page(
     title = page.team().getName(),
     _csrf = _csrf,
+    currentUser = currentUser,
+    activeSection = "teams",
     content = @`
-        <section>
-            <h1>${page.team().getName()}</h1>
+        @template.components.teamNavigation(
+            team = page.team(),
+            teams = navigationTeams,
+            activeTab = page.archiveMode() ? "archive" : "tasks",
+            tasksCount = page.activeTasksCount(),
+            archiveCount = page.archiveTasksCount(),
+            membersCount = page.membersCount(),
+            canInvite = page.canInvite()
+        )
 
-            <div>
-                <a href="/teams/${page.team().getId()}">
-                    @if(page.activeMode())
-                        <strong>Задачи (${page.totalTasksCount()})</strong>
-                    @else
-                        Задачи
-                    @endif
+        <section class="workspace-page team-details-page">
+            <div class="page-actions">
+                <a class="button button-primary" href="/tasks/new?teamId=${page.team().getId()}">
+                    Создать задачу
                 </a>
-
-                <a href="/teams/${page.team().getId()}/members">
-                    Участники (${page.membersCount()})
-                </a>
-
-                <a href="/teams/${page.team().getId()}/archive">
-                    @if(page.archiveMode())
-                        <strong>Архив</strong>
-                    @else
-                        Архив
-                    @endif
-                </a>
-
-                @if(page.canInvite())
-                    <a href="/teams/${page.team().getId()}/invite">
-                        Пригласить в команду
-                    </a>
-                @else
-                    <a
-                        href="#"
-                        onclick="showFlashMessage('Только owner команды может приглашать новых участников. Вы можете пока только просматривать команду.'); return false;"
-                    >
-                        Пригласить в команду
-                    </a>
-                @endif
             </div>
 
-            <div>
-                <span>Фильтр:</span>
+            <div class="task-toolbar">
+                <details class="toolbar-popover">
+                    <summary class="button button-secondary toolbar-icon-button" data-tooltip="Фильтры">
+                        <span aria-hidden="true">▽</span>
+                        <span class="visually-hidden">Фильтры</span>
+                    </summary>
+
+                    <div class="toolbar-popover-panel">
 
                 <a href="${page.allStatusesUrl()}">
                     @if(page.selectedStatus() == null)
@@ -161,10 +153,16 @@
                         @endif
                     </a>
                 @endfor
-            </div>
+                    </div>
+                </details>
 
-            <div>
-                <span>Сортировка:</span>
+                <details class="toolbar-popover">
+                    <summary class="button button-secondary toolbar-icon-button" data-tooltip="Сортировка">
+                        <span aria-hidden="true">⇅</span>
+                        <span class="visually-hidden">Сортировка</span>
+                    </summary>
+
+                    <div class="toolbar-popover-panel">
 
                 <a href="${page.sortUrl(TaskSort.DEADLINE)}">
                     @if(page.selectedSort() == TaskSort.DEADLINE)
@@ -181,32 +179,29 @@
                         Тег
                     @endif
                 </a>
+                    </div>
+                </details>
             </div>
-
-            <p>${page.taskCountText()}</p>
 
             @if(page.tasks().isEmpty())
                 @if(page.totalTasksCount() > 0 && page.hasSelectedFilters())
-                    <p>Задачи по выбранным фильтрам отсутствуют.</p>
+                    <div class="empty-state">
+                        <h2>Задачи не найдены</h2>
+                        <p>Измените фильтры, чтобы увидеть другие задачи команды.</p>
+                    </div>
                 @else
-                    <p>Пока в этой команде нет задач.</p>
-
-                    <a href="/tasks/new?teamId=${page.team().getId()}">
-                        Создать задачу
-                    </a>
+                    <div class="empty-state">
+                        <h2>В команде пока нет задач</h2>
+                        <p>Создайте первую задачу и назначьте ответственного.</p>
+                        <a class="button button-primary" href="/tasks/new?teamId=${page.team().getId()}">
+                            Создать задачу
+                        </a>
+                    </div>
                 @endif
             @else
-                <ul style="list-style: none; padding-left: 0; margin-left: 0;">
+                <ul class="task-grid">
                     @for(TaskView task : page.tasks())
-                        <li
-                            style="
-                                background: #f6f8fa;
-                                border: 1px solid #d0d7de;
-                                padding: 16px;
-                                margin-bottom: 12px;
-                                max-width: 720px;
-                            "
-                        >
+                        <li class="task-card">
                             <h3>
                                 <a href="/tasks/${task.id()}">
                                     ${task.title()}

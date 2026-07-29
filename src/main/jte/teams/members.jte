@@ -2,12 +2,15 @@
 @import dev.gushchin.taskmanager.model.TeamMemberRole
 @import dev.gushchin.taskmanager.model.TeamTaskVisibility
 @import dev.gushchin.taskmanager.view.TeamMemberView
+@import dev.gushchin.taskmanager.view.UserAvatarView
 @import java.util.List
 @import java.util.UUID
 @import org.springframework.security.web.csrf.CsrfToken
 
 @param Team team
+@param List<Team> navigationTeams
 @param int totalTasksCount
+@param int archiveTasksCount
 @param int membersCount
 @param List<TeamMemberView> members
 @param boolean onlyCurrentOwnerInTeam
@@ -20,51 +23,37 @@
 @param CsrfToken _csrf
 @param String successMessage
 @param String errorMessage
+@param UserAvatarView currentUser
 
 @template.layout.page(
     title = team.getName() + " — участники",
     _csrf = _csrf,
+    currentUser = currentUser,
+    activeSection = "teams",
     content = @`
-        <section>
-            <h1>${team.getName()}</h1>
+        @template.components.teamNavigation(
+            team = team,
+            teams = navigationTeams,
+            activeTab = "members",
+            tasksCount = totalTasksCount,
+            archiveCount = archiveTasksCount,
+            membersCount = membersCount,
+            canInvite = canInvite
+        )
 
-            <div>
-                <a href="/teams/${team.getId()}">
-                    Задачи (${totalTasksCount})
-                </a>
+        <section class="workspace-page team-members-page">
+            <div class="flash-stack" aria-live="polite" aria-atomic="false">
+                @if(successMessage != null)
+                    @template.components.flash(message = successMessage, type = "success")
+                @endif
 
-                <a href="/teams/${team.getId()}/members">
-                    <strong>Участники (${membersCount})</strong>
-                </a>
-
-                @if(canInvite)
-                    <a href="/teams/${team.getId()}/invite">
-                        Пригласить в команду
-                    </a>
-                @else
-                    <a
-                        href="#"
-                        onclick="showFlashMessage('Только owner команды может приглашать новых участников. Вы можете пока только просматривать команду.'); return false;"
-                    >
-                        Пригласить в команду
-                    </a>
+                @if(errorMessage != null)
+                    @template.components.flash(message = errorMessage, type = "error")
                 @endif
             </div>
 
-            @if(successMessage != null)
-                <div class="flash-message">
-                    ${successMessage}
-                </div>
-            @endif
-
-            @if(errorMessage != null)
-                <div class="flash-message">
-                    ${errorMessage}
-                </div>
-            @endif
-
             @if(onlyCurrentOwnerInTeam)
-                <div>
+                <div class="empty-state empty-state-compact">
                     <p>Кроме вас в команде пока никого нет.</p>
 
                     @if(canInvite)
@@ -72,18 +61,13 @@
                             Пригласить в команду
                         </a>
                     @else
-                        <a
-                            href="#"
-                            onclick="showFlashMessage('Только owner команды может приглашать новых участников. Вы можете пока только просматривать команду.'); return false;"
-                        >
-                            Пригласить в команду
-                        </a>
+                        <span class="disabled-action">Приглашать участников может только owner команды</span>
                     @endif
                 </div>
             @endif
 
             @if(members.isEmpty())
-                    <div>
+                    <div class="empty-state empty-state-compact">
                         <p>В команде нет участников.</p>
 
                         @if(canInvite)
@@ -91,16 +75,12 @@
                                 Пригласить в команду
                             </a>
                         @else
-                            <a
-                                href="#"
-                                onclick="showFlashMessage('Только owner команды может приглашать новых участников. Вы можете пока только просматривать команду.'); return false;"
-                            >
-                                Пригласить в команду
-                            </a>
+                            <span class="disabled-action">Приглашать участников может только owner команды</span>
                         @endif
                     </div>
                 @else
-                    <table>
+                    <div class="table-card">
+                    <table class="data-table">
                         <thead>
                             <tr>
                                 <th>Имя</th>
@@ -231,6 +211,7 @@
                             @endfor
                         </tbody>
                     </table>
+                    </div>
             @endif
         </section>
     `

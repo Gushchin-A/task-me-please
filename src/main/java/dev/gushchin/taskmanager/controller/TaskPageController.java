@@ -44,6 +44,7 @@ public class TaskPageController {
     private static final String TAGS_ATTRIBUTE = "tags";
     private static final String CSRF_ATTRIBUTE = "_csrf";
     private static final String MEMBERS_ATTRIBUTE = "members";
+    private static final String NAVIGATION_TEAMS_ATTRIBUTE = "navigationTeams";
     private static final String REDIRECT_TEAMS_PREFIX = "redirect:/teams/";
     private static final String REDIRECT_TASKS = "redirect:/tasks";
     private static final String REDIRECT_TASKS_PREFIX = "redirect:/tasks/";
@@ -208,6 +209,7 @@ public class TaskPageController {
                     return new CommentView(
                             comment.getId(),
                             user.getName(),
+                            user.getEmail(),
                             comment.getMessage(),
                             comment.getCreatedAt(),
                             comment.getUpdatedAt(),
@@ -217,6 +219,7 @@ public class TaskPageController {
 
         model.addAttribute(TASK_ATTRIBUTE, toTaskView(task, authUser.getId()));
         model.addAttribute(TEAM_ATTRIBUTE, team);
+        model.addAttribute(NAVIGATION_TEAMS_ATTRIBUTE, teamService.findByUserId(authUser.getId()));
         model.addAttribute(MEMBERS_ATTRIBUTE, members);
         model.addAttribute(TAGS_ATTRIBUTE, teamTagService.findByTeamId(task.getTeamId()));
         model.addAttribute("comments", comments);

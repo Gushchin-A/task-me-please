@@ -20,16 +20,23 @@
     successMessage = successMessage,
     errorMessage = errorMessage,
     content = @`
-        <h1>Забыли пароль?</h1>
+        <h1 id="auth-heading">Забыли пароль?</h1>
 
         <p>Введите email, указанный при регистрации.</p>
 
-        <form method="post" action="/forgot-password">
+        <form method="post" action="/forgot-password" data-submit-loading>
             <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
 
             <div class="auth-field">
-                <label>Email</label>
-                <input type="email" name="email" value="${email}" required>
+                <label for="forgot-password-email">Email</label>
+                <input
+                    id="forgot-password-email"
+                    type="email"
+                    name="email"
+                    value="${email}"
+                    autocomplete="email"
+                    required
+                >
             </div>
 
             @if(cooldownSeconds > 0 && remainingAttempts > 0)
@@ -39,15 +46,22 @@
                 </p>
             @endif
 
-            <p>Повторных попыток осталось: <span data-remaining-attempts>${remainingAttempts}</span></p>
-
-            <button class="auth-submit" type="submit" disabled="${!requestAvailable}">
+            <button
+                class="auth-submit"
+                type="submit"
+                data-loading-text="Отправляем письмо…"
+                disabled="${!requestAvailable}"
+            >
                 Отправить письмо
             </button>
+
+            <p class="auth-attempts">
+                Повторных попыток осталось: <span data-remaining-attempts>${remainingAttempts}</span>
+            </p>
         </form>
 
         <details>
-            <summary style="color: #57606a; cursor: pointer;">
+            <summary>
                 Почему количество попыток в сутки ограничено
             </summary>
             <p>

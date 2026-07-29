@@ -36,7 +36,15 @@ public record TeamPageView(
     }
 
     public int totalTasksCount() {
-        return counts.totalTasksCount();
+        return archiveMode() ? counts.archiveTasksCount() : counts.activeTasksCount();
+    }
+
+    public int activeTasksCount() {
+        return counts.activeTasksCount();
+    }
+
+    public int archiveTasksCount() {
+        return counts.archiveTasksCount();
     }
 
     public int membersCount() {
@@ -175,7 +183,8 @@ public record TeamPageView(
     public record TeamPageResources(
             List<TaskParticipantView> members, List<TaskParticipantView> filterMembers, List<TeamTag> tags) {}
 
-    public record TeamPageCounts(int totalTasksCount, int filteredTasksCount, int membersCount) {}
+    public record TeamPageCounts(
+            int activeTasksCount, int archiveTasksCount, int filteredTasksCount, int membersCount) {}
 
     public record TeamPageFilters(
             TaskStatus selectedStatus,

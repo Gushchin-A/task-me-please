@@ -1,6 +1,7 @@
 @import dev.gushchin.taskmanager.model.Team
 @import dev.gushchin.taskmanager.model.TeamTag
 @import dev.gushchin.taskmanager.view.TaskParticipantView
+@import dev.gushchin.taskmanager.view.UserAvatarView
 @import dev.gushchin.taskmanager.view.TaskView
 @import java.util.List
 @import org.springframework.security.web.csrf.CsrfToken
@@ -10,19 +11,23 @@
 @param List<TaskParticipantView> members
 @param List<TeamTag> tags
 @param CsrfToken _csrf
+@param UserAvatarView currentUser
 
 @template.layout.page(
     title = "Редактировать задачу",
     _csrf = _csrf,
+    currentUser = currentUser,
+    activeSection = "tasks",
     content = @`
-        <section>
-            <a href="/tasks/${task.id()}">
+        <section class="workspace-page form-page">
+            <a class="back-link" href="/tasks/${task.id()}">
                 ← Назад к задаче
             </a>
 
             <h1>Редактировать задачу</h1>
 
             <form
+                class="form-card"
                 method="post"
                 action="/tasks/${task.id()}/edit"
             >
@@ -32,10 +37,11 @@
                     value="${_csrf.getToken()}"
                 >
 
-                <div>
-                    <label>Название</label>
+                <div class="form-field">
+                    <label for="edit-task-title">Название</label>
 
                     <input
+                        id="edit-task-title"
                         type="text"
                         name="title"
                         value="${task.title()}"
@@ -43,22 +49,24 @@
                     >
                 </div>
 
-                <div>
-                    <label>Описание</label>
+                <div class="form-field">
+                    <label for="edit-task-description">Описание</label>
 
-                    <textarea name="description">@if(task.description() != null)${task.description()}@endif</textarea>
+                    <textarea id="edit-task-description" name="description">@if(task.description() != null)${task.description()}@endif</textarea>
                 </div>
 
-                <div>
-                    <label>Дедлайн</label>
+                <div class="form-field">
+                    <label for="edit-task-deadline">Дедлайн</label>
 
                     @if(task.deadlineAt() == null)
                         <input
+                            id="edit-task-deadline"
                             type="date"
                             name="deadlineDate"
                         >
                     @else
                         <input
+                            id="edit-task-deadline"
                             type="date"
                             name="deadlineDate"
                             value="${task.deadlineAt().toString().substring(0, 10)}"
@@ -66,10 +74,11 @@
                     @endif
                 </div>
 
-                <div>
-                    <label>Тег</label>
+                <div class="form-field">
+                    <label for="edit-task-tag">Тег</label>
 
                     <select
+                        id="edit-task-tag"
                         name="tagId"
                         required
                     >
@@ -84,10 +93,11 @@
                     </select>
                 </div>
 
-                <div>
-                    <label>Исполнитель</label>
+                <div class="form-field">
+                    <label for="edit-task-assignee">Исполнитель</label>
 
                     <select
+                        id="edit-task-assignee"
                         name="assigneeId"
                         required
                     >
@@ -106,7 +116,7 @@
                     Команда: ${team.getName()}
                 </p>
 
-                <button type="submit">
+                <button class="button button-primary" type="submit">
                     Сохранить
                 </button>
             </form>

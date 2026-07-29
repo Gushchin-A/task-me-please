@@ -1,70 +1,75 @@
 @import dev.gushchin.taskmanager.model.Team
 @import dev.gushchin.taskmanager.view.TeamInvitationView
+@import dev.gushchin.taskmanager.view.UserAvatarView
 @import java.util.List
 @import org.springframework.security.web.csrf.CsrfToken
 
 @param Team team
+@param List<Team> navigationTeams
 @param CsrfToken _csrf
 @param boolean canInvite
 @param int invitationExpirationDays
 @param List<TeamInvitationView> invitations
 @param String successMessage
 @param String errorMessage
+@param UserAvatarView currentUser
 
 @template.layout.page(
     title = team.getName() + " — пригласить",
     _csrf = _csrf,
+    currentUser = currentUser,
+    activeSection = "teams",
     content = @`
-        <section>
-            <h1>${team.getName()}</h1>
+        @template.components.teamNavigation(
+            team = team,
+            teams = navigationTeams,
+            activeTab = "invite",
+            tasksCount = -1,
+            archiveCount = -1,
+            membersCount = -1,
+            canInvite = canInvite
+        )
 
-            <div>
-                <a href="/teams/${team.getId()}">
-                    Задачи
-                </a>
+        <section class="workspace-page team-invite-page">
+            <div class="flash-stack" aria-live="polite" aria-atomic="false">
+                @if(successMessage != null)
+                    @template.components.flash(message = successMessage, type = "success")
+                @endif
 
-                <a href="/teams/${team.getId()}/members">
-                    Участники
-                </a>
-
-                <a href="/teams/${team.getId()}/invite">
-                    <strong>Пригласить в команду</strong>
-                </a>
+                @if(errorMessage != null)
+                    @template.components.flash(message = errorMessage, type = "error")
+                @endif
             </div>
 
-            @if(successMessage != null)
-                <div class="flash-message">
-                    ${successMessage}
-                </div>
-            @endif
-
-            @if(errorMessage != null)
-                <div class="flash-message">
-                    ${errorMessage}
-                </div>
-            @endif
-
-            <h2>Добавить участника</h2>
-
             @if(canInvite)
-                <form method="post" action="/teams/${team.getId()}/members">
+                <form
+                    class="invite-form"
+                    method="post"
+                    action="/teams/${team.getId()}/members"
+                    data-submit-loading
+                >
                     <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
 
-                    <div>
-                        <label>Email пользователя</label>
+                    <div class="form-field">
+                        <label for="invitation-email">Email пользователя</label>
 
                         <input
+                            id="invitation-email"
                             type="email"
                             name="email"
                             required
                         >
                     </div>
 
-                    <button type="submit">
+                    <button
+                        class="button button-primary"
+                        type="submit"
+                        data-loading-text="Отправляем приглашение…"
+                    >
                         Отправить приглашение
                     </button>
 
-                    <p>Ссылка-приглашение действует ${invitationExpirationDays} дней.</p>
+                    <p class="form-help">Ссылка-приглашение действует ${invitationExpirationDays} дней.</p>
                 </form>
             @else
                 <p>Вы можете просматривать команду, но не можете приглашать новых участников.</p>
@@ -73,7 +78,8 @@
             @if(canInvite)
                 <h2>Статус отправленных приглашений</h2>
 
-                <table>
+                <div class="table-card">
+                <table class="data-table invitation-table">
                     <thead>
                         <tr>
                             <th>Email получателя</th>
@@ -101,6 +107,7 @@
                                             method="post"
                                             action="/teams/${team.getId()}/invitations/${invitation.id()}/resend"
                                             style="display: inline;"
+                                            data-submit-loading
                                         >
                                             <input
                                                 type="hidden"
@@ -108,7 +115,11 @@
                                                 value="${_csrf.getToken()}"
                                             >
 
-                                            <button type="submit">
+                                            <button
+                                                class="button button-secondary"
+                                                type="submit"
+                                                data-loading-text="Отправляем письмо…"
+                                            >
                                                 Отправить письмо повторно
                                             </button>
                                         </form>
@@ -154,6 +165,7 @@
                         @endfor
                     </tbody>
                 </table>
+                </div>
             @endif
         </section>
     `

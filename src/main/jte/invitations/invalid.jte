@@ -4,38 +4,10 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Приглашение недействительно</title>
-
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f6f8fa;
-        }
-
-        .invitation-page {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 32px;
-        }
-
-        .invitation-panel {
-            width: 100%;
-            max-width: 420px;
-            border: 1px solid #d0d7de;
-            border-radius: 8px;
-            background: white;
-            padding: 24px;
-        }
-
-        .invitation-actions {
-            display: flex;
-            gap: 12px;
-            margin-top: 20px;
-        }
-    </style>
+    <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
     <main class="invitation-page">
@@ -44,15 +16,15 @@
 
             <div class="invitation-actions">
                 @if(authenticated)
-                    <a href="/tasks">
+                    <a class="button button-primary" href="/tasks">
                         К моим задачам
                     </a>
                 @else
-                    <a href="/login">
+                    <a class="button button-primary" href="/login">
                         Войти
                     </a>
 
-                    <a href="/registration">
+                    <a class="button button-secondary" href="/registration">
                         Зарегистрироваться
                     </a>
                 @endif

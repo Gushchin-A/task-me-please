@@ -98,7 +98,10 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/login"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Task Me Please")))
+                .andExpect(content().string(containsString("class=\"auth-logo\"")))
                 .andExpect(content().string(containsString("action=\"/login\"")))
+                .andExpect(content().string(containsString("data-submit-loading")))
+                .andExpect(content().string(containsString("data-loading-text=\"Выполняется вход…\"")))
                 .andExpect(content().string(containsString("name=\"username\"")))
                 .andExpect(content().string(containsString("name=\"remember-me\"")))
                 .andExpect(content().string(containsString("Запомнить меня")));
@@ -110,6 +113,7 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Task Me Please")))
                 .andExpect(content().string(containsString("action=\"/registration\"")))
+                .andExpect(content().string(containsString("data-loading-text=\"Создаём аккаунт…\"")))
                 .andExpect(content().string(containsString("Создать аккаунт")));
     }
 
@@ -237,7 +241,10 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/login")
                         .session((MockHttpSession) result.getRequest().getSession()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Неверный email или пароль.")));
+                .andExpect(content().string(containsString("Неверный email или пароль.")))
+                .andExpect(content().string(containsString("data-flash-message")))
+                .andExpect(content().string(containsString("data-auto-dismiss-ms=\"10000\"")))
+                .andExpect(content().string(containsString("aria-label=\"Закрыть сообщение\"")));
     }
 
     @Test
@@ -301,7 +308,8 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("Повторных попыток осталось:")))
                 .andExpect(content().string(containsString("data-remaining-attempts>5</span>")))
                 .andExpect(content().string(containsString("data-resend-countdown=")))
-                .andExpect(content().string(containsString("<button class=\"auth-submit\" type=\"submit\" disabled>")))
+                .andExpect(content().string(containsString("data-loading-text=\"Отправляем письмо…\"")))
+                .andExpect(content().string(containsString("disabled")))
                 .andExpect(content().string(containsString("Почему количество попыток в сутки ограничено")))
                 .andExpect(content().string(containsString("support@example.com")));
     }
@@ -645,7 +653,8 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/verification-pending").session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("data-remaining-attempts>0</span>")))
-                .andExpect(content().string(containsString("<button class=\"auth-submit\" type=\"submit\" disabled>")));
+                .andExpect(content().string(containsString("data-loading-text=\"Отправляем письмо…\"")))
+                .andExpect(content().string(containsString("disabled")));
     }
 
     @Test
@@ -712,8 +721,30 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
 
         mockMvc.perform(get("/tasks").with(user(new AuthUser(user))))
                 .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-tooltip=\"Ваш профиль\"")))
+                .andExpect(content().string(containsString("data-profile-initial>A</span>")))
+                .andExpect(content().string(containsString("Auth user")))
+                .andExpect(content().string(containsString(EMAIL)))
+                .andExpect(content().string(containsString("Настройки пока не реализованы")))
                 .andExpect(content().string(containsString("action=\"/logout\"")))
                 .andExpect(content().string(containsString("Выйти из профиля")));
+    }
+
+    @Test
+    void authenticatedPageShouldUseEmailForProfileFallback() throws Exception {
+        User user = userService.create(EMAIL, null, PASSWORD);
+
+        mockMvc.perform(get("/tasks").with(user(new AuthUser(user))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-profile-initial>A</span>")))
+                .andExpect(content().string(containsString("data-profile-display-name")))
+                .andExpect(content().string(containsString(EMAIL)))
+                .andExpect(content().string(not(containsString("data-profile-email"))));
+    }
+
+    @Test
+    void staticImagesShouldBeAvailableWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/images/favicon.svg")).andExpect(status().isOk());
     }
 
     @Test
