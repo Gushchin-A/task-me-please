@@ -11,23 +11,30 @@
 
 <section class="team-context" aria-label="Текущая команда">
     <div class="team-context-inner">
-        <details class="team-switcher">
-            <summary data-tooltip="Выбрать команду">
-                <span>${team.getName()}</span>
-                <span aria-hidden="true">⌄</span>
-            </summary>
+        <div class="team-identity">
+            <a class="team-name-link" href="/teams/${team.getId()}">${team.getName()}</a>
 
-            <div class="team-switcher-menu">
-                @for(Team availableTeam : teams)
-                    <a
-                        href="/teams/${availableTeam.getId()}"
-                        aria-current="${availableTeam.getId().equals(team.getId()) ? "page" : null}"
-                    >
-                        ${availableTeam.getName()}
-                    </a>
-                @endfor
-            </div>
-        </details>
+            <details class="team-switcher">
+                <summary data-tooltip="Выбрать команду" aria-label="Выбрать команду">
+                    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16">
+                        <path d="M8 11 3 6l.7-.7L8 9.6l4.3-4.3.7.7-5 5Z" fill="currentColor"></path>
+                    </svg>
+                </summary>
+
+                <div class="team-switcher-menu">
+                    @for(Team availableTeam : teams)
+                        <a
+                            href="/teams/${availableTeam.getId()}"
+                            aria-current="${availableTeam.getId().equals(team.getId()) ? "page" : null}"
+                        >
+                            ${availableTeam.getName()}
+                        </a>
+                    @endfor
+
+                    <a class="team-switcher-all" href="/teams">Все команды</a>
+                </div>
+            </details>
+        </div>
 
         <nav class="team-tabs" aria-label="Разделы команды">
             <a
