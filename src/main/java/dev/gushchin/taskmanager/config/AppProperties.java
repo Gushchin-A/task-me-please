@@ -1,5 +1,6 @@
 package dev.gushchin.taskmanager.config;
 
+import java.time.Duration;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -9,8 +10,18 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Setter
 public class AppProperties {
     private String baseUrl;
+    private Brevo brevo = new Brevo();
     private Mail mail = new Mail();
     private Security security = new Security();
+
+    @Getter
+    @Setter
+    public static class Brevo {
+        private String apiKey;
+        private String apiUrl;
+        private Duration connectTimeout;
+        private Duration readTimeout;
+    }
 
     @Getter
     @Setter

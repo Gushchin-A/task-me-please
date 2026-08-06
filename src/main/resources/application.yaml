@@ -7,29 +7,19 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:postgres_user}
     password: ${SPRING_DATASOURCE_PASSWORD:postgres_password}
 
-  mail:
-    host: ${SMTP_HOST:localhost}
-    port: ${SMTP_PORT:1025}
-    username: ${SMTP_USERNAME:}
-    password: ${SMTP_PASSWORD:}
-    properties:
-      mail:
-        smtp:
-          auth: ${SMTP_AUTH:false}
-          connectiontimeout: 5000
-          starttls:
-            enable: ${SMTP_STARTTLS_ENABLE:false}
-          timeout: 5000
-          writetimeout: 5000
-
   output:
     ansi:
       enabled: always
 
 app:
   base-url: ${APP_BASE_URL:http://localhost:8181}
+  brevo:
+    api-key: ${BREVO_API_KEY:}
+    api-url: ${BREVO_API_URL:https://api.brevo.com/v3/smtp/email}
+    connect-timeout: ${BREVO_CONNECT_TIMEOUT:5s}
+    read-timeout: ${BREVO_READ_TIMEOUT:5s}
   mail:
-    from: ${MAIL_FROM:no-reply@task-me-please.local}
+    from: ${MAIL_FROM:no-reply@taskmeplease.online}
   security:
     remember-me-key: ${REMEMBER_ME_KEY}
 
