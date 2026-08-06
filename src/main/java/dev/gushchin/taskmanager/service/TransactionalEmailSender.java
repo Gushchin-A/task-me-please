@@ -2,56 +2,82 @@ package dev.gushchin.taskmanager.service;
 
 import dev.gushchin.taskmanager.config.AppProperties;
 import dev.gushchin.taskmanager.exception.TransactionalEmailSendingException;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.mail.MailProperties;
-import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class TransactionalEmailSender {
-    private static final String SMTP_AUTH_PROPERTY = "mail.smtp.auth";
-    private static final String SMTP_STARTTLS_PROPERTY = "mail.smtp.starttls.enable";
+    private static final String API_KEY_HEADER = "api-key";
+    private static final String INVALID_RESPONSE_MESSAGE = "Brevo API returned an invalid success response";
 
-    private final JavaMailSender mailSender;
+    private final RestClient brevoRestClient;
     private final AppProperties appProperties;
-    private final MailProperties mailProperties;
 
     public void send(String recipient, String subject, String text) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(appProperties.getMail().getFrom());
-        message.setTo(recipient);
-        message.setSubject(subject);
-        message.setText(text);
+        validateApiKey();
+        BrevoEmailRequest request = new BrevoEmailRequest(
+                new EmailAddress(appProperties.getMail().getFrom()),
+                List.of(new EmailAddress(recipient)),
+                subject,
+                text);
+        BrevoEmailResponse response;
 
         try {
-            mailSender.send(message);
-        } catch (MailException ex) {
-            logFailure(ex);
+            response = brevoRestClient
+                    .post()
+                    .uri(appProperties.getBrevo().getApiUrl())
+                    .header(API_KEY_HEADER, appProperties.getBrevo().getApiKey())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .retrieve()
+                    .body(BrevoEmailResponse.class);
+        } catch (RestClientResponseException ex) {
+            logHttpFailure(ex);
             throw new TransactionalEmailSendingException(ex);
+        } catch (RestClientException ex) {
+            logClientFailure(ex);
+            throw new TransactionalEmailSendingException(ex);
+        }
+
+        if (response == null || !StringUtils.hasText(response.messageId())) {
+            log.warn(INVALID_RESPONSE_MESSAGE);
+            throw new TransactionalEmailSendingException(
+                    INVALID_RESPONSE_MESSAGE, new IllegalStateException("Missing messageId"));
         }
     }
 
-    private void logFailure(MailException exception) {
-        Throwable rootCause = getRootCause(exception);
+    private void validateApiKey() {
+        if (!StringUtils.hasText(appProperties.getBrevo().getApiKey())) {
+            throw new TransactionalEmailSendingException(
+                    "Brevo API key is not configured", new IllegalStateException("Missing Brevo API key"));
+        }
+    }
+
+    private void logHttpFailure(RestClientResponseException exception) {
         if (log.isWarnEnabled()) {
             log.warn(
-                    "SMTP delivery failed: host={}, port={}, auth={}, startTls={}, usernameConfigured={}, "
-                            + "passwordConfigured={}, from={}, errorType={}, errorMessage={}",
-                    mailProperties.getHost(),
-                    mailProperties.getPort(),
-                    mailProperties.getProperties().get(SMTP_AUTH_PROPERTY),
-                    mailProperties.getProperties().get(SMTP_STARTTLS_PROPERTY),
-                    StringUtils.hasText(mailProperties.getUsername()),
-                    StringUtils.hasText(mailProperties.getPassword()),
-                    appProperties.getMail().getFrom(),
-                    rootCause.getClass().getSimpleName(),
-                    rootCause.getMessage());
+                    "Brevo API delivery failed: status={}, errorType={}",
+                    exception.getStatusCode().value(),
+                    exception.getClass().getSimpleName());
+        }
+    }
+
+    private void logClientFailure(RestClientException exception) {
+        if (log.isWarnEnabled()) {
+            Throwable rootCause = getRootCause(exception);
+            log.warn(
+                    "Brevo API delivery failed: errorType={}",
+                    rootCause.getClass().getSimpleName());
         }
     }
 
@@ -63,4 +89,10 @@ public class TransactionalEmailSender {
 
         return rootCause;
     }
+
+    private record BrevoEmailRequest(EmailAddress sender, List<EmailAddress> to, String subject, String textContent) {}
+
+    private record BrevoEmailResponse(String messageId) {}
+
+    private record EmailAddress(String email) {}
 }

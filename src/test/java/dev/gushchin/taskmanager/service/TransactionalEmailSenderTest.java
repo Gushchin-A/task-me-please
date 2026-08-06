@@ -1,87 +1,161 @@
 package dev.gushchin.taskmanager.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.client.ExpectedCount.once;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withException;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import dev.gushchin.taskmanager.config.AppProperties;
 import dev.gushchin.taskmanager.exception.TransactionalEmailSendingException;
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.springframework.boot.autoconfigure.mail.MailProperties;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
-import org.springframework.mail.MailSendException;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.RestClient;
 
 @ExtendWith(OutputCaptureExtension.class)
 class TransactionalEmailSenderTest {
-    private final JavaMailSender mailSender = mock(JavaMailSender.class);
-    private final AppProperties appProperties = createAppProperties();
-    private final MailProperties mailProperties = createMailProperties();
-    private final TransactionalEmailSender emailSender =
-            new TransactionalEmailSender(mailSender, appProperties, mailProperties);
+    private static final String API_KEY = "test-api-key";
+    private static final String API_URL = "https://api.brevo.test/v3/smtp/email";
 
-    @Test
-    void sendShouldBuildExpectedMessage() {
-        emailSender.send("user@test.com", "Subject", "Message text");
+    private MockRestServiceServer server;
+    private TransactionalEmailSender emailSender;
 
-        ArgumentCaptor<SimpleMailMessage> messageCaptor = ArgumentCaptor.forClass(SimpleMailMessage.class);
-        verify(mailSender).send(messageCaptor.capture());
-        SimpleMailMessage message = messageCaptor.getValue();
-
-        assertEquals("no-reply@test.com", message.getFrom());
-        assertEquals("user@test.com", message.getTo()[0]);
-        assertEquals("Subject", message.getSubject());
-        assertEquals("Message text", message.getText());
+    @BeforeEach
+    void setUp() {
+        RestClient.Builder builder = RestClient.builder();
+        server = MockRestServiceServer.bindTo(builder).build();
+        AppProperties appProperties = new AppProperties();
+        appProperties.getBrevo().setApiKey(API_KEY);
+        appProperties.getBrevo().setApiUrl(API_URL);
+        appProperties.getMail().setFrom("no-reply@test.com");
+        emailSender = new TransactionalEmailSender(builder.build(), appProperties);
     }
 
     @Test
-    void sendShouldWrapMailExceptionAndLogSafeDiagnostics(CapturedOutput output) {
-        doThrow(new MailSendException("SMTP unavailable"))
-                .when(mailSender)
-                .send(org.mockito.ArgumentMatchers.any(SimpleMailMessage.class));
+    void sendShouldBuildExpectedBrevoRequest() {
+        server.expect(once(), requestTo(API_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("api-key", API_KEY))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(
+                        content()
+                                .json(
+                                        """
+                        {
+                          "sender": {"email": "no-reply@test.com"},
+                          "to": [{"email": "user@test.com"}],
+                          "subject": "Subject",
+                          "textContent": "Message text"
+                        }
+                        """))
+                .andRespond(withSuccess("{\"messageId\":\"message-id\"}", MediaType.APPLICATION_JSON));
+
+        emailSender.send("user@test.com", "Subject", "Message text");
+
+        server.verify();
+    }
+
+    @Test
+    void sendShouldWrapClientErrorAndLogSafeDiagnostics(CapturedOutput output) {
+        server.expect(requestTo(API_URL)).andRespond(withStatus(HttpStatus.BAD_REQUEST));
 
         assertThrows(
                 TransactionalEmailSendingException.class,
                 () -> emailSender.send("user@test.com", "Subject", "Message text"));
-        assertTrue(output.getAll().contains("SMTP unavailable"));
-        assertTrue(output.getAll().contains("host=smtp-relay.brevo.com"));
-        assertTrue(output.getAll().contains("port=587"));
-        assertTrue(output.getAll().contains("auth=true"));
-        assertTrue(output.getAll().contains("startTls=true"));
-        assertTrue(output.getAll().contains("usernameConfigured=true"));
-        assertTrue(output.getAll().contains("passwordConfigured=true"));
-        assertTrue(output.getAll().contains("from=no-reply@test.com"));
-        assertTrue(output.getAll().contains("errorType=MailSendException"));
+
+        assertTrue(output.getAll().contains("Brevo API delivery failed"));
+        assertTrue(output.getAll().contains("status=400"));
+        assertSafeDiagnostics(output);
+        server.verify();
+    }
+
+    @Test
+    void sendShouldWrapServerErrorAndLogSafeDiagnostics(CapturedOutput output) {
+        server.expect(requestTo(API_URL)).andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+
+        assertThrows(
+                TransactionalEmailSendingException.class,
+                () -> emailSender.send("user@test.com", "Subject", "Message text"));
+
+        assertTrue(output.getAll().contains("Brevo API delivery failed"));
+        assertTrue(output.getAll().contains("status=503"));
+        assertSafeDiagnostics(output);
+        server.verify();
+    }
+
+    @Test
+    void sendShouldWrapTimeoutAndLogSafeDiagnostics(CapturedOutput output) {
+        server.expect(requestTo(API_URL)).andRespond(withException(new SocketTimeoutException("Read timed out")));
+
+        assertThrows(
+                TransactionalEmailSendingException.class,
+                () -> emailSender.send("user@test.com", "Subject", "Message text"));
+
+        assertTrue(output.getAll().contains("Brevo API delivery failed"));
+        assertTrue(output.getAll().contains("SocketTimeoutException"));
+        assertSafeDiagnostics(output);
+        server.verify();
+    }
+
+    @Test
+    void sendShouldWrapNetworkErrorAndLogSafeDiagnostics(CapturedOutput output) {
+        server.expect(requestTo(API_URL)).andRespond(withException(new ConnectException("Connection refused")));
+
+        assertThrows(
+                TransactionalEmailSendingException.class,
+                () -> emailSender.send("user@test.com", "Subject", "Message text"));
+
+        assertTrue(output.getAll().contains("Brevo API delivery failed"));
+        assertTrue(output.getAll().contains("ConnectException"));
+        assertSafeDiagnostics(output);
+        server.verify();
+    }
+
+    @Test
+    void sendShouldRejectSuccessfulResponseWithoutMessageId(CapturedOutput output) {
+        server.expect(requestTo(API_URL))
+                .andRespond(withSuccess("{\"unexpected\":\"value\"}", MediaType.APPLICATION_JSON));
+
+        assertThrows(
+                TransactionalEmailSendingException.class,
+                () -> emailSender.send("user@test.com", "Subject", "Message text"));
+
+        assertTrue(output.getAll().contains("Brevo API returned an invalid success response"));
+        assertSafeDiagnostics(output);
+        server.verify();
+    }
+
+    @Test
+    void sendShouldWrapMalformedResponseAndLogSafeDiagnostics(CapturedOutput output) {
+        server.expect(requestTo(API_URL)).andRespond(withSuccess("not-json", MediaType.APPLICATION_JSON));
+
+        assertThrows(
+                TransactionalEmailSendingException.class,
+                () -> emailSender.send("user@test.com", "Subject", "Message text"));
+
+        assertTrue(output.getAll().contains("Brevo API delivery failed"));
+        assertSafeDiagnostics(output);
+        server.verify();
+    }
+
+    private void assertSafeDiagnostics(CapturedOutput output) {
+        assertFalse(output.getAll().contains(API_KEY));
         assertFalse(output.getAll().contains("user@test.com"));
         assertFalse(output.getAll().contains("Message text"));
-        assertFalse(output.getAll().contains("smtp-user@test.com"));
-        assertFalse(output.getAll().contains("smtp-secret"));
-    }
-
-    private AppProperties createAppProperties() {
-        AppProperties properties = new AppProperties();
-        properties.getMail().setFrom("no-reply@test.com");
-
-        return properties;
-    }
-
-    private MailProperties createMailProperties() {
-        MailProperties properties = new MailProperties();
-        properties.setHost("smtp-relay.brevo.com");
-        properties.setPort(587);
-        properties.setUsername("smtp-user@test.com");
-        properties.setPassword("smtp-secret");
-        properties.getProperties().put("mail.smtp.auth", "true");
-        properties.getProperties().put("mail.smtp.starttls.enable", "true");
-
-        return properties;
     }
 }
