@@ -108,6 +108,20 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void authLayoutShouldUseLocalPrimerResourcesAndThemeAttributes() throws Exception {
+        mockMvc.perform(get("/login"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-color-mode=\"auto\"")))
+                .andExpect(content().string(containsString("data-light-theme=\"light\"")))
+                .andExpect(content().string(containsString("data-dark-theme=\"dark\"")))
+                .andExpect(content().string(containsString("href=\"/css/primer/primitives.css\"")))
+                .andExpect(content().string(containsString("href=\"/css/primer/functional/themes/light.css\"")))
+                .andExpect(content().string(containsString("href=\"/css/primer/functional/themes/dark.css\"")))
+                .andExpect(content().string(not(containsString("primer.style"))))
+                .andExpect(content().string(not(containsString("github.com/primer"))));
+    }
+
+    @Test
     void registrationPageShouldBeAvailableWithoutAuthentication() throws Exception {
         mockMvc.perform(get("/registration"))
                 .andExpect(status().isOk())
@@ -731,6 +745,18 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void authenticatedLayoutShouldUsePrimerThemeAttributes() throws Exception {
+        User user = userService.create(EMAIL, "Auth user", PASSWORD);
+
+        mockMvc.perform(get("/tasks").with(user(new AuthUser(user))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-color-mode=\"auto\"")))
+                .andExpect(content().string(containsString("data-light-theme=\"light\"")))
+                .andExpect(content().string(containsString("data-dark-theme=\"dark\"")))
+                .andExpect(content().string(containsString("href=\"/css/primer/primitives.css\"")));
+    }
+
+    @Test
     void authenticatedPageShouldUseEmailForProfileFallback() throws Exception {
         User user = userService.create(EMAIL, null, PASSWORD);
 
@@ -745,6 +771,24 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
     @Test
     void staticImagesShouldBeAvailableWithoutAuthentication() throws Exception {
         mockMvc.perform(get("/images/favicon.svg")).andExpect(status().isOk());
+    }
+
+    @Test
+    void localPrimerStylesShouldBeAvailableWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/css/primer/primitives.css"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("functional/size/radius.css")));
+        mockMvc.perform(get("/css/primer/functional/themes/light.css"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("--fgColor-default")));
+        mockMvc.perform(get("/css/primer/functional/themes/dark.css"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("--bgColor-default")));
+        mockMvc.perform(get("/css/app.css"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("var(--fgColor-default)")))
+                .andExpect(content().string(not(containsString("--tmp-"))))
+                .andExpect(content().string(not(containsString("--color-bg:"))));
     }
 
     @Test

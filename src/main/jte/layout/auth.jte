@@ -12,7 +12,7 @@
 @param Content content
 
 <!doctype html>
-<html lang="ru">
+<html lang="ru" data-color-mode="auto" data-light-theme="light" data-dark-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -20,12 +20,9 @@
     <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="/images/favicon-32x32.png" sizes="32x32" type="image/png">
     <link rel="apple-touch-icon" href="/images/favicon-180x180.png">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Archivo+Black&amp;family=Inter:wght@400;500;600;700&amp;display=swap"
-    >
+    <link rel="stylesheet" href="/css/primer/primitives.css">
+    <link rel="stylesheet" href="/css/primer/functional/themes/light.css">
+    <link rel="stylesheet" href="/css/primer/functional/themes/dark.css">
     <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>

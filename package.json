@@ -1,0 +1,11 @@
+{
+  "name": "task-me-please",
+  "private": true,
+  "scripts": {
+    "postinstall": "npm run sync:primer",
+    "sync:primer": "node scripts/sync-primer-primitives.mjs"
+  },
+  "dependencies": {
+    "@primer/primitives": "11.10.0"
+  }
+}
