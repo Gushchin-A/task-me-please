@@ -99,12 +99,19 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Task Me Please")))
                 .andExpect(content().string(containsString("class=\"auth-logo\"")))
+                .andExpect(content().string(containsString("class=\"auth-logo-mark\"")))
+                .andExpect(content().string(containsString("class=\"auth-logo-name\">TaskMePlease")))
+                .andExpect(content().string(containsString("class=\"auth-title\">Войдите, чтобы продолжить")))
                 .andExpect(content().string(containsString("action=\"/login\"")))
                 .andExpect(content().string(containsString("data-submit-loading")))
                 .andExpect(content().string(containsString("data-loading-text=\"Выполняется вход…\"")))
                 .andExpect(content().string(containsString("name=\"username\"")))
                 .andExpect(content().string(containsString("name=\"remember-me\"")))
-                .andExpect(content().string(containsString("Запомнить меня")));
+                .andExpect(content().string(containsString("class=\"auth-label-row\"")))
+                .andExpect(content().string(containsString("class=\"auth-label-link\"")))
+                .andExpect(content().string(containsString("Запомнить меня")))
+                .andExpect(content().string(containsString("Нет аккаунта?")))
+                .andExpect(content().string(containsString("Создать аккаунт")));
     }
 
     @Test
@@ -126,9 +133,14 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/registration"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Task Me Please")))
+                .andExpect(content().string(containsString("class=\"auth-title\">Создайте учетную запись")))
                 .andExpect(content().string(containsString("action=\"/registration\"")))
+                .andExpect(content().string(containsString("name=\"name\"")))
+                .andExpect(content().string(containsString("name=\"email\"")))
+                .andExpect(content().string(containsString("name=\"password\"")))
                 .andExpect(content().string(containsString("data-loading-text=\"Создаём аккаунт…\"")))
-                .andExpect(content().string(containsString("Создать аккаунт")));
+                .andExpect(content().string(containsString("Создать аккаунт")))
+                .andExpect(content().string(containsString("Уже есть аккаунт?")));
     }
 
     @Test
@@ -317,15 +329,12 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/verification-pending")
                         .session((MockHttpSession) result.getRequest().getSession()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Мы отправили письмо на " + EMAIL)))
-                .andExpect(content().string(containsString("Отправить письмо повторно")))
-                .andExpect(content().string(containsString("Повторных попыток осталось:")))
-                .andExpect(content().string(containsString("data-remaining-attempts>5</span>")))
-                .andExpect(content().string(containsString("data-resend-countdown=")))
-                .andExpect(content().string(containsString("data-loading-text=\"Отправляем письмо…\"")))
-                .andExpect(content().string(containsString("disabled")))
-                .andExpect(content().string(containsString("Почему количество попыток в сутки ограничено")))
-                .andExpect(content().string(containsString("support@example.com")));
+                .andExpect(content().string(containsString("Подтвердите email")))
+                .andExpect(content().string(containsString("Отправили вам ссылку для подтверждения")))
+                .andExpect(content().string(containsString("проверьте папку «Спам»")))
+                .andExpect(content().string(containsString("Назад на страницу входа")))
+                .andExpect(content().string(not(containsString("Отправить письмо повторно"))))
+                .andExpect(content().string(not(containsString("Повторных попыток осталось:"))));
     }
 
     @Test
@@ -346,7 +355,7 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/verification-pending")
                         .session((MockHttpSession) result.getRequest().getSession()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("name=\"redirect\" value=\"" + redirect + "\"")));
+                .andExpect(content().string(containsString("redirect=/invitations/token-123")));
     }
 
     @Test
@@ -666,9 +675,9 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
 
         mockMvc.perform(get("/verification-pending").session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("data-remaining-attempts>0</span>")))
-                .andExpect(content().string(containsString("data-loading-text=\"Отправляем письмо…\"")))
-                .andExpect(content().string(containsString("disabled")));
+                .andExpect(content().string(containsString("В сервисе используется ограниченный лимит писем в день")))
+                .andExpect(content().string(not(containsString("<h1 class=\"auth-title\""))))
+                .andExpect(content().string(not(containsString("Отправить письмо повторно"))));
     }
 
     @Test

@@ -3,6 +3,7 @@ package dev.gushchin.taskmanager.service;
 import dev.gushchin.taskmanager.exception.TransactionalEmailSendingException;
 import dev.gushchin.taskmanager.model.AccountToken;
 import dev.gushchin.taskmanager.model.AccountTokenType;
+import dev.gushchin.taskmanager.model.PasswordResetRequestResult;
 import dev.gushchin.taskmanager.model.User;
 import dev.gushchin.taskmanager.repository.AccountTokenRepository;
 import dev.gushchin.taskmanager.repository.UserRepository;
@@ -29,29 +30,42 @@ public class PasswordResetRequestService {
     private final UserRepository userRepository;
 
     @Transactional
-    public void request(String email) {
-        if (email != null && !email.isBlank()) {
-            User user = userRepository.findByEmailForUpdate(email);
-            if (isEligible(user) && isRequestAllowed(user, Instant.now())) {
-                createAndSend(user);
-            }
+    public PasswordResetRequestResult request(String email) {
+        if (email == null || email.isBlank()) {
+            return PasswordResetRequestResult.INVALID_ACCOUNT;
         }
+
+        User user = userRepository.findByEmailForUpdate(email);
+        if (!isEligible(user)) {
+            return PasswordResetRequestResult.INVALID_ACCOUNT;
+        }
+
+        Instant now = Instant.now();
+        List<AccountToken> tokens = getRecentTokens(user, now);
+        if (tokens.size() >= MAX_REQUEST_ATTEMPTS) {
+            return PasswordResetRequestResult.LIMIT_REACHED;
+        }
+
+        if (isCooldownFinished(tokens, now)) {
+            createAndSend(user);
+        }
+
+        return PasswordResetRequestResult.SENT;
     }
 
     private boolean isEligible(User user) {
         return user != null && !user.isDeleted() && user.isEmailVerified();
     }
 
-    private boolean isRequestAllowed(User user, Instant now) {
-        List<AccountToken> tokens =
-                accountTokenRepository.findByUserIdAndType(user.getId(), AccountTokenType.PASSWORD_RESET);
-        long attempts = tokens.stream()
+    private List<AccountToken> getRecentTokens(User user, Instant now) {
+        return accountTokenRepository.findByUserIdAndType(user.getId(), AccountTokenType.PASSWORD_RESET).stream()
                 .filter(token -> token.getCreatedAt().isAfter(now.minus(REQUEST_LIMIT_WINDOW)))
-                .count();
-        boolean cooldownFinished = tokens.isEmpty()
-                || !tokens.getLast().getCreatedAt().plus(REQUEST_COOLDOWN).isAfter(now);
+                .toList();
+    }
 
-        return cooldownFinished && attempts < MAX_REQUEST_ATTEMPTS;
+    private boolean isCooldownFinished(List<AccountToken> tokens, Instant now) {
+        return tokens.isEmpty()
+                || !tokens.getLast().getCreatedAt().plus(REQUEST_COOLDOWN).isAfter(now);
     }
 
     private void createAndSend(User user) {

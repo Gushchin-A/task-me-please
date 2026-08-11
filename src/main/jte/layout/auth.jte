@@ -29,34 +29,17 @@
     <main class="auth-page">
         <div class="auth-shell">
             <a class="auth-logo" href="/" aria-label="Task Me Please">
-                TASKMEPLEASE
+                <span class="auth-logo-mark" aria-hidden="true"></span>
+                <span class="auth-logo-name">TaskMePlease</span>
             </a>
 
-            <p class="auth-tagline">
-                Личные и командные задачи в одном рабочем пространстве
-            </p>
+            @if(!activeTab.isBlank()
+                    && !activeTab.equals("forgot-password-limited")
+                    && !activeTab.equals("verification-limited"))
+                <h1 class="auth-title">${title}</h1>
+            @endif
 
             <section class="auth-panel" aria-labelledby="${activeTab.isBlank() ? "auth-heading" : null}">
-                @if(!activeTab.isBlank())
-                    <nav class="auth-tabs" aria-label="Авторизация">
-                        <a
-                            href="${loginUrl}"
-                            class="auth-tab ${activeTab.equals("login") ? "auth-tab-active" : ""}"
-                            aria-current="${activeTab.equals("login") ? "page" : "false"}"
-                        >
-                            <span>Вход</span>
-                        </a>
-
-                        <a
-                            href="${registrationUrl}"
-                            class="auth-tab ${activeTab.equals("registration") ? "auth-tab-active" : ""}"
-                            aria-current="${activeTab.equals("registration") ? "page" : "false"}"
-                        >
-                            <span>Регистрация</span>
-                        </a>
-                    </nav>
-                @endif
-
                 @if(inviteContext != null)
                     <div class="auth-invite">
                         <strong>Приглашение в команду</strong>
@@ -69,13 +52,35 @@
                 @endif
 
                 ${content}
-
-                @if(activeTab.isBlank())
-                    <a class="auth-back-link" href="${loginUrl}">
-                        ← Вернуться назад
-                    </a>
-                @endif
             </section>
+
+            @if(activeTab.equals("login"))
+                <p class="auth-switch">
+                    Нет аккаунта?
+                    <a href="${registrationUrl}">Создать аккаунт</a>
+                </p>
+            @elseif(activeTab.equals("registration"))
+                <p class="auth-switch">
+                    Уже есть аккаунт?
+                    <a href="${loginUrl}">Войти</a>
+                </p>
+            @elseif(activeTab.equals("forgot-password"))
+                <p class="auth-switch">
+                    Есть аккаунт?
+                    <a href="${loginUrl}">Войти</a>
+                </p>
+            @elseif(activeTab.equals("forgot-password-sent")
+                    || activeTab.equals("forgot-password-limited")
+                    || activeTab.equals("verification-pending")
+                    || activeTab.equals("verification-limited"))
+                <p class="auth-switch">
+                    <a href="${loginUrl}">Назад на страницу входа</a>
+                </p>
+            @else
+                <a class="auth-back-link" href="${loginUrl}">
+                    ← Вернуться назад
+                </a>
+            @endif
         </div>
     </main>
 

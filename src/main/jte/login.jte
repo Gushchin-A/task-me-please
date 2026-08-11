@@ -12,7 +12,7 @@
 @param String unverifiedEmail
 
 @template.layout.auth(
-    title = "Вход",
+    title = "Войдите, чтобы продолжить",
     loginUrl = loginUrl,
     registrationUrl = registrationUrl,
     activeTab = "login",
@@ -38,11 +38,14 @@
             </div>
 
             <div class="auth-field">
-                <label for="login-password">Пароль</label>
+                <div class="auth-label-row">
+                    <label for="login-password">Пароль</label>
+                    <a class="auth-label-link" href="/forgot-password">Забыли пароль?</a>
+                </div>
                 <input id="login-password" type="password" name="password" autocomplete="current-password" required>
             </div>
 
-            <label>
+            <label class="auth-checkbox">
                 <input type="checkbox" name="remember-me">
                 Запомнить меня
             </label>
@@ -51,10 +54,6 @@
                 Войти
             </button>
         </form>
-
-        <p>
-            <a href="/forgot-password">Забыли пароль?</a>
-        </p>
 
         @if(unverifiedEmail != null)
             <a class="auth-submit" href="/verification-pending">

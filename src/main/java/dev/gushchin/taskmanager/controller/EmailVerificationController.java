@@ -9,7 +9,6 @@ import dev.gushchin.taskmanager.service.EmailVerificationService;
 import dev.gushchin.taskmanager.service.TeamInvitationService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,7 +39,7 @@ public class EmailVerificationController {
     private final TeamInvitationService teamInvitationService;
 
     @GetMapping(VERIFICATION_PENDING_PATH)
-    public String pending(HttpSession session, Model model, CsrfToken csrfToken) {
+    public String pending(HttpSession session, Model model) {
         String email = (String) session.getAttribute(VERIFICATION_EMAIL_SESSION_ATTRIBUTE);
         if (email == null || email.isBlank()) {
             return "redirect:/registration";
@@ -49,15 +48,9 @@ public class EmailVerificationController {
         String redirect = getSafeRedirect((String) session.getAttribute(VERIFICATION_REDIRECT_SESSION_ATTRIBUTE));
         String invite = getValidInvite((String) session.getAttribute(VERIFICATION_INVITE_SESSION_ATTRIBUTE));
         EmailVerificationResendState resendState = emailVerificationService.getResendState(email);
-        model.addAttribute("_csrf", csrfToken);
-        model.addAttribute("email", email);
-        model.addAttribute("redirect", redirect);
-        model.addAttribute(INVITE_PARAMETER, invite);
         model.addAttribute("loginUrl", buildLoginUrl(redirect, invite));
         model.addAttribute("registrationUrl", "/registration");
-        model.addAttribute("cooldownSeconds", resendState.cooldownSeconds());
-        model.addAttribute("remainingAttempts", resendState.remainingAttempts());
-        model.addAttribute("resendAvailable", resendState.available());
+        model.addAttribute("limitReached", resendState.remainingAttempts() == 0);
         model.addAttribute(SUCCESS_MESSAGE_ATTRIBUTE, getModelAttribute(model, SUCCESS_MESSAGE_ATTRIBUTE));
         model.addAttribute(ERROR_MESSAGE_ATTRIBUTE, getModelAttribute(model, ERROR_MESSAGE_ATTRIBUTE));
 
