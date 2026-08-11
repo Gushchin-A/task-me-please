@@ -600,6 +600,7 @@ a {
     padding: 10px 12px;
     color: var(--fgColor-muted);
     font-size: 14px;
+    font-weight: 600;
     text-decoration: none;
 }
 
@@ -620,6 +621,19 @@ a {
     border-radius: 2px 2px 0 0;
     background: var(--underlineNav-borderColor-active);
     content: "";
+}
+
+.tasks-page > .local-tabs {
+    margin-bottom: 0;
+}
+
+.tasks-page > .local-tabs a:first-child {
+    padding-left: 0;
+}
+
+.tasks-page > .local-tabs a:first-child::after {
+    right: 12px;
+    left: 0;
 }
 
 .disabled-action {
@@ -767,9 +781,25 @@ a {
     margin: 18px 0 12px;
 }
 
-.task-toolbar > strong {
+.tasks-page > .task-toolbar {
+    min-height: 58px;
+    margin-top: 0;
+}
+
+.task-count {
     margin-right: auto;
-    font-size: 15px;
+    color: var(--fgColor-muted);
+    font-size: 14px;
+    font-weight: var(--base-text-weight-normal);
+    line-height: 21px;
+}
+
+.task-create-action {
+    min-height: 32px;
+    margin-left: 4px;
+    padding: 5px 12px;
+    font-size: 14px;
+    line-height: 20px;
 }
 
 .team-details-page .task-toolbar {
@@ -938,6 +968,38 @@ a {
     margin: 8px 0 18px;
     color: var(--fgColor-muted);
     font-size: 14px;
+}
+
+.task-empty-state {
+    width: 100%;
+    max-width: none;
+    min-height: 248px;
+    padding: 32px 24px;
+    border-style: solid;
+    border-color: var(--borderColor-default);
+    border-radius: var(--borderRadius-medium);
+}
+
+.task-empty-state .empty-state-icon {
+    width: 24px;
+    height: 24px;
+    margin-bottom: 12px;
+    color: var(--fgColor-muted);
+}
+
+.task-empty-state h2 {
+    margin: 0 0 4px;
+    color: var(--fgColor-default);
+    font-size: 16px;
+    font-weight: var(--base-text-weight-semibold);
+    line-height: 24px;
+}
+
+.task-empty-state p {
+    margin: 0;
+    color: var(--fgColor-muted);
+    font-size: 14px;
+    line-height: 21px;
 }
 
 .form-card {
@@ -1724,8 +1786,12 @@ a {
         flex-wrap: wrap;
     }
 
-    .task-toolbar > strong {
+    .task-count {
         width: 100%;
+    }
+
+    .task-create-action {
+        margin-left: 0;
     }
 
     .toolbar-popover {

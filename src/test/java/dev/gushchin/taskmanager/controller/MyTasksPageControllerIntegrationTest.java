@@ -113,7 +113,9 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(not(containsString("class=\"app-sidebar\""))))
                 .andExpect(content().string(containsString("class=\"app-content app-content-wide\"")))
                 .andExpect(content().string(not(containsString("<h1>Мои задачи</h1>"))))
+                .andExpect(content().string(not(containsString("class=\"page-actions\""))))
                 .andExpect(content().string(containsString("class=\"task-toolbar\"")))
+                .andExpect(content().string(containsString("class=\"button button-primary task-create-action\"")))
                 .andExpect(content().string(containsString("class=\"toolbar-popover\"")))
                 .andExpect(content().string(containsString("class=\"task-grid\"")))
                 .andExpect(content().string(containsString("class=\"task-card\"")))
@@ -162,6 +164,29 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("First Team")))
                 .andExpect(content().string(containsString("Second Team")))
                 .andExpect(content().string(containsString("Команда")));
+    }
+
+    @Test
+    void emptyTaskListsShouldUseSharedBlankSlate() throws Exception {
+        dsl.deleteFrom(TASKS).execute();
+
+        mockMvc.perform(get("/tasks").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("class=\"empty-state task-empty-state\"")))
+                .andExpect(content().string(containsString("class=\"empty-state-icon\"")))
+                .andExpect(content().string(containsString("class=\"task-count\">Задачи (0)")))
+                .andExpect(content().string(not(containsString("class=\"toolbar-popover\""))))
+                .andExpect(content().string(containsString("class=\"button button-primary task-create-action\"")))
+                .andExpect(content().string(containsString("Задачи не найдены")));
+
+        mockMvc.perform(get("/tasks/archive").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("class=\"empty-state task-empty-state\"")))
+                .andExpect(content().string(containsString("class=\"empty-state-icon\"")))
+                .andExpect(content().string(containsString("class=\"task-count\">Задачи (0)")))
+                .andExpect(content().string(not(containsString("class=\"toolbar-popover\""))))
+                .andExpect(content().string(containsString("class=\"button button-primary task-create-action\"")))
+                .andExpect(content().string(containsString("Задачи не найдены")));
     }
 
     @Test

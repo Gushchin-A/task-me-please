@@ -20,10 +20,6 @@
     activeSection = "tasks",
     content = @`
         <section class="workspace-page tasks-page">
-            <div class="page-actions">
-                <a class="button button-primary" href="/tasks/new">Создать задачу</a>
-            </div>
-
             <nav class="local-tabs" aria-label="Режим списка задач">
                 <a
                     class="${page.activeMode() ? "local-tab-active" : ""}"
@@ -43,9 +39,10 @@
             </nav>
 
             <div class="task-toolbar">
-                <strong>Задачи (${page.totalTasksCount()})</strong>
+                <span class="task-count">Задачи (${page.totalTasksCount()})</span>
 
-                <details class="toolbar-popover">
+                @if(!page.tasks().isEmpty())
+                    <details class="toolbar-popover">
                     <summary class="button button-secondary toolbar-icon-button" data-tooltip="Фильтры">
                         <span aria-hidden="true">▽</span>
                         <span class="visually-hidden">Фильтры</span>
@@ -115,9 +112,9 @@
                     </a>
                 @endif
                     </div>
-                </details>
+                    </details>
 
-                <details class="toolbar-popover">
+                    <details class="toolbar-popover">
                     <summary class="button button-secondary" data-tooltip="Команды">Команда</summary>
 
                     <div class="toolbar-popover-panel">
@@ -140,9 +137,9 @@
                     </a>
                 @endfor
                     </div>
-                </details>
+                    </details>
 
-                <details class="toolbar-popover">
+                    <details class="toolbar-popover">
                     <summary class="button button-secondary toolbar-icon-button" data-tooltip="Сортировка">
                         <span aria-hidden="true">⇅</span>
                         <span class="visually-hidden">Сортировка</span>
@@ -166,11 +163,32 @@
 					@endif
 				</a>
                     </div>
-                </details>
+                    </details>
+                @endif
+
+                <a class="button button-primary task-create-action" href="/tasks/new">Создать задачу</a>
             </div>
 
             @if(page.tasks().isEmpty())
-                <div class="empty-state">
+                <div class="empty-state task-empty-state">
+                    <svg
+                        class="empty-state-icon"
+                        aria-hidden="true"
+                        focusable="false"
+                        viewBox="0 0 24 24"
+                        width="24"
+                        height="24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <path d="M7.5 5.25H5.75A2.75 2.75 0 0 0 3 8v11.25A1.75 1.75 0 0 0 4.75 21h14.5A1.75 1.75 0 0 0 21 19.25V8a2.75 2.75 0 0 0-2.75-2.75H16.5"></path>
+                        <path d="M7.5 2.75v4M16.5 2.75v4"></path>
+                        <path d="M7.5 10h7M7.5 13.5h5"></path>
+                        <path d="m14 17 1.75 1.75 3.25-4.5"></path>
+                    </svg>
                     <h2>Задачи не найдены</h2>
                     <p>Измените фильтры или создайте новую задачу.</p>
                 </div>
