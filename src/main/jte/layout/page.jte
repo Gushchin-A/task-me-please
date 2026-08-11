@@ -23,6 +23,8 @@
     <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
+    <a class="skip-link" href="#main-content">Перейти к содержимому</a>
+
     <div class="app-shell">
         <header class="app-header">
             <div class="app-header-inner">
@@ -31,21 +33,21 @@
                 </a>
 
                 <nav class="app-nav" aria-label="Основная навигация">
-                <a
-                    class="app-nav-link ${"tasks".equals(activeSection) ? "app-nav-link-active" : ""}"
-                    href="/tasks"
-                    aria-current="${"tasks".equals(activeSection) ? "page" : null}"
-                >
-                    Мои задачи
-                </a>
+                    <a
+                        class="app-nav-link ${"tasks".equals(activeSection) ? "app-nav-link-active" : ""}"
+                        href="/tasks"
+                        aria-current="${"tasks".equals(activeSection) ? "page" : null}"
+                    >
+                        Мои задачи
+                    </a>
 
-                <a
-                    class="app-nav-link ${"teams".equals(activeSection) ? "app-nav-link-active" : ""}"
-                    href="/teams"
-                    aria-current="${"teams".equals(activeSection) ? "page" : null}"
-                >
-                    Мои команды
-                </a>
+                    <a
+                        class="app-nav-link ${"teams".equals(activeSection) ? "app-nav-link-active" : ""}"
+                        href="/teams"
+                        aria-current="${"teams".equals(activeSection) ? "page" : null}"
+                    >
+                        Мои команды
+                    </a>
                 </nav>
 
                 @if(currentUser != null)
@@ -98,7 +100,7 @@
                                             value="${_csrf.getToken()}"
                                         >
 
-                                        <button class="profile-action" type="submit">
+                                        <button class="profile-action" type="submit" data-profile-focus>
                                             Выйти из профиля
                                         </button>
                                     </form>
@@ -110,7 +112,7 @@
             </div>
         </header>
 
-        <main class="app-content app-content-wide">
+        <main class="app-content app-content-wide" id="main-content">
             ${content}
         </main>
     </div>

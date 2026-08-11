@@ -108,6 +108,8 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("Мои задачи")))
                 .andExpect(content().string(containsString("TASKMEPLEASE")))
                 .andExpect(content().string(containsString("class=\"app-header\"")))
+                .andExpect(content().string(containsString("href=\"#main-content\"")))
+                .andExpect(content().string(containsString("aria-current=\"page\"")))
                 .andExpect(content().string(not(containsString("class=\"app-sidebar\""))))
                 .andExpect(content().string(containsString("class=\"app-content app-content-wide\"")))
                 .andExpect(content().string(not(containsString("<h1>Мои задачи</h1>"))))

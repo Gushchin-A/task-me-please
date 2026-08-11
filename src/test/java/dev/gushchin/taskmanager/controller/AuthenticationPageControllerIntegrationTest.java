@@ -746,6 +746,7 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("data-tooltip=\"Ваш профиль\"")))
                 .andExpect(content().string(containsString("data-profile-initial>A</span>")))
+                .andExpect(content().string(containsString("data-profile-focus")))
                 .andExpect(content().string(containsString("Auth user")))
                 .andExpect(content().string(containsString(EMAIL)))
                 .andExpect(content().string(containsString("Настройки пока не реализованы")))

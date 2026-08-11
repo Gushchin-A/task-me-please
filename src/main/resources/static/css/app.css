@@ -42,8 +42,28 @@ a {
     border: 0;
 }
 
+.skip-link {
+    position: fixed;
+    top: var(--base-size-8);
+    left: var(--base-size-8);
+    z-index: 100;
+    padding: var(--base-size-8) var(--base-size-12);
+    border-radius: var(--borderRadius-medium);
+    background: var(--bgColor-accent-emphasis);
+    color: var(--fgColor-onEmphasis);
+    font-size: var(--text-body-size-medium);
+    font-weight: var(--base-text-weight-semibold);
+    text-decoration: none;
+    transform: translateY(calc(-100% - var(--base-size-16)));
+}
+
+.skip-link:focus {
+    transform: translateY(0);
+}
+
 .app-shell {
     min-height: 100vh;
+    background: var(--bgColor-default);
 }
 
 .app-header {
@@ -51,14 +71,13 @@ a {
     top: 0;
     z-index: 30;
     border-bottom: var(--borderWidth-default) solid var(--borderColor-default);
-    background: var(--bgColor-default);
-    backdrop-filter: blur(10px);
+    background: var(--page-header-bgColor);
 }
 
 .app-header-inner {
     display: flex;
     width: min(100%, var(--breakpoint-xlarge));
-    min-height: 64px;
+    min-height: 60px;
     align-items: center;
     gap: var(--base-size-24);
     margin: 0 auto;
@@ -71,8 +90,9 @@ a {
     min-height: 44px;
     color: var(--fgColor-default);
     font-family: var(--fontStack-sansSerifDisplay);
-    font-size: 20px;
-    letter-spacing: -0.1em;
+    font-size: 17px;
+    font-weight: var(--base-text-weight-semibold);
+    letter-spacing: -0.04em;
     line-height: 1;
     text-decoration: none;
 }
@@ -90,14 +110,18 @@ a {
     align-items: center;
     min-height: 44px;
     padding: 10px 12px;
+    border-radius: var(--borderRadius-medium);
     color: var(--fgColor-muted);
     font-size: 14px;
     font-weight: 600;
     text-decoration: none;
+    transition:
+        background-color 80ms ease-out,
+        color 80ms ease-out;
 }
 
 .app-nav-link:hover {
-    background: var(--control-bgColor-rest);
+    background: var(--control-bgColor-hover);
     color: var(--fgColor-default);
 }
 
@@ -107,9 +131,9 @@ a {
 
 .app-nav-link-active::after {
     position: absolute;
-    right: 12px;
+    right: var(--base-size-12);
     bottom: -1px;
-    left: 12px;
+    left: var(--base-size-12);
     height: 2px;
     border-radius: 2px 2px 0 0;
     background: var(--underlineNav-borderColor-active);
@@ -178,27 +202,40 @@ a {
     padding: 0;
     border: var(--borderWidth-default) solid var(--borderColor-emphasis);
     border-radius: 50%;
-    background: var(--control-bgColor-rest);
-    color: var(--fgColor-link);
+    background: #fff;
+    color: #1f2328;
     cursor: pointer;
     font-size: 15px;
     font-weight: 700;
+    transition:
+        background-color 80ms ease-out,
+        border-color 80ms ease-out,
+        box-shadow 80ms ease-out;
 }
 
-.profile-trigger:hover {
-    background: var(--borderColor-default);
+.profile-trigger:hover,
+.profile-trigger[aria-expanded="true"] {
+    border-color: var(--borderColor-emphasis);
+    background: #f6f8fa;
+    box-shadow: var(--shadow-resting-small);
 }
 
 .profile-menu {
     position: absolute;
-    top: calc(100% + 10px);
+    top: calc(100% + var(--base-size-8));
     right: 0;
-    width: min(300px, calc(100vw - 32px));
+    width: min(256px, calc(100vw - var(--base-size-32)));
+    min-width: 192px;
     padding: var(--base-size-8);
-    border: var(--borderWidth-default) solid var(--borderColor-default);
+    border: 0;
     border-radius: var(--borderRadius-large);
-    background: var(--bgColor-default);
+    background: var(--overlay-bgColor);
     box-shadow: var(--shadow-floating-small);
+    color: var(--fgColor-default);
+    font-size: var(--text-body-size-medium);
+    font-weight: var(--base-text-weight-normal);
+    line-height: 21px;
+    animation: profile-menu-appear 200ms cubic-bezier(0.33, 1, 0.68, 1);
 }
 
 .profile-menu[hidden] {
@@ -208,21 +245,21 @@ a {
 .profile-summary {
     display: flex;
     align-items: center;
-    gap: var(--base-size-12);
-    padding: var(--base-size-12);
-    border-bottom: var(--borderWidth-default) solid var(--borderColor-default);
+    gap: var(--base-size-8);
+    padding: var(--base-size-8) var(--base-size-8) var(--base-size-12);
 }
 
 .profile-avatar {
     display: grid;
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     flex: 0 0 auto;
     place-items: center;
     border-radius: 50%;
-    background: var(--control-bgColor-rest);
-    color: var(--fgColor-link);
-    font-size: 14px;
+    border: var(--borderWidth-default) solid var(--borderColor-emphasis);
+    background: #fff;
+    color: #1f2328;
+    font-size: var(--text-body-size-medium);
     font-weight: 700;
 }
 
@@ -239,36 +276,39 @@ a {
 }
 
 .profile-name {
+    font-size: var(--text-body-size-medium);
+    font-weight: var(--base-text-weight-semibold);
+    line-height: 21px;
     overflow-wrap: anywhere;
 }
 
-.profile-name {
-    font-size: 14px;
-    font-weight: 650;
-}
-
 .profile-email {
-    margin-top: 2px;
     color: var(--fgColor-muted);
-    font-size: 12px;
+    font-size: var(--text-body-size-medium);
+    line-height: 21px;
 }
 
 .profile-actions {
     display: grid;
-    gap: 4px;
-    padding-top: 8px;
+    gap: 0;
 }
 
 .profile-action {
     width: 100%;
-    min-height: 40px;
-    padding: 8px 10px;
+    min-height: 36px;
+    padding: var(--base-size-8);
     border: 0;
     border-radius: var(--borderRadius-medium);
     background: transparent;
     color: var(--fgColor-default);
     cursor: pointer;
+    font-size: var(--text-body-size-medium);
+    font-weight: var(--base-text-weight-normal);
+    line-height: 20px;
     text-align: left;
+    transition:
+        background-color 80ms ease-out,
+        color 80ms ease-out;
 }
 
 .profile-action:hover {
@@ -292,7 +332,21 @@ a {
 }
 
 .profile-logout-form {
-    margin: 0;
+    margin: var(--base-size-8) 0 0;
+    padding-top: var(--base-size-8);
+    border-top: var(--borderWidth-default) solid var(--borderColor-default);
+}
+
+@keyframes profile-menu-appear {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .app-content {
@@ -1618,9 +1672,10 @@ a {
     padding: 5px 8px;
     border-radius: var(--borderRadius-medium);
     background: var(--tooltip-bgColor);
-    color: var(--fgColor-onEmphasis);
-    font-size: 12px;
-    line-height: 1.35;
+    color: var(--tooltip-fgColor);
+    font-size: var(--text-body-size-small);
+    font-weight: var(--base-text-weight-normal);
+    line-height: 18px;
     pointer-events: none;
 }
 
@@ -1747,23 +1802,23 @@ a {
 
     .app-logo {
         min-height: 44px;
-        font-size: 16px;
+        font-size: 14px;
     }
 
     .app-header-inner {
-        min-height: 58px;
-        gap: 8px;
-        padding: 0 16px;
+        min-height: 56px;
+        gap: var(--base-size-4);
+        padding: 0 var(--base-size-12);
     }
 
     .app-nav {
-        overflow-x: auto;
+        gap: 0;
     }
 
     .app-nav-link {
         flex: 0 0 auto;
-        padding-right: 9px;
-        padding-left: 9px;
+        padding-right: var(--base-size-8);
+        padding-left: var(--base-size-8);
         font-size: 13px;
     }
 
@@ -1819,6 +1874,10 @@ a {
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .profile-menu {
+        animation: none;
+    }
+
     .auth-spinner {
         animation: none;
         border-color: var(--borderColor-translucent);

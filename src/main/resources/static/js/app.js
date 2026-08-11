@@ -54,6 +54,7 @@ function setupProfileMenu() {
 
     const trigger = profile.querySelector('[data-profile-trigger]');
     const menu = profile.querySelector('[data-profile-menu]');
+    const firstAction = menu.querySelector('[data-profile-focus]');
 
     function closeProfileMenu() {
         menu.hidden = true;
@@ -66,6 +67,9 @@ function setupProfileMenu() {
         if (shouldOpen) {
             menu.hidden = false;
             trigger.setAttribute('aria-expanded', 'true');
+            if (firstAction !== null) {
+                firstAction.focus();
+            }
             return;
         }
 
@@ -73,6 +77,12 @@ function setupProfileMenu() {
     });
 
     document.addEventListener('click', function (event) {
+        if (!profile.contains(event.target)) {
+            closeProfileMenu();
+        }
+    });
+
+    document.addEventListener('focusin', function (event) {
         if (!profile.contains(event.target)) {
             closeProfileMenu();
         }
