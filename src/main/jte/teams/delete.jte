@@ -17,12 +17,7 @@
     content = @`
         @template.components.teamNavigation(
             team = team,
-            teams = navigationTeams,
-            activeTab = "delete",
-            tasksCount = -1,
-            archiveCount = -1,
-            membersCount = -1,
-            canInvite = true
+            activeTab = "delete"
         )
 
         <section class="workspace-page destructive-page">

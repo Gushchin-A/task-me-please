@@ -33,12 +33,7 @@
     content = @`
         @template.components.teamNavigation(
             team = team,
-            teams = navigationTeams,
-            activeTab = "members",
-            tasksCount = totalTasksCount,
-            archiveCount = archiveTasksCount,
-            membersCount = membersCount,
-            canInvite = canInvite
+            activeTab = "members"
         )
 
         <section class="workspace-page team-members-page">

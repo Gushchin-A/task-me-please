@@ -188,8 +188,10 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(not(containsString("class=\"task-count\""))))
                 .andExpect(content().string(not(containsString("class=\"toolbar-popover\""))))
                 .andExpect(content().string(containsString("class=\"button button-primary task-create-action\"")))
-                .andExpect(content().string(containsString("Задачи не найдены")))
-                .andExpect(content().string(containsString("Измените фильтры или создайте новую задачу")));
+                .andExpect(content().string(containsString("В архиве пока что пусто")))
+                .andExpect(content()
+                        .string(containsString(
+                                "Сюда вы сможете перенести выполненные, неактуальные или удаленные задачи")));
     }
 
     @Test
@@ -223,8 +225,10 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("class=\"task-count\">Задачи (0)")))
                 .andExpect(content().string(containsString("class=\"toolbar-popover\"")))
                 .andExpect(content().string(containsString("class=\"button button-primary task-create-action\"")))
-                .andExpect(content().string(containsString("Задачи в архиве не найдены")))
-                .andExpect(content().string(containsString("Измените фильтры или перенесите задачу в архив")));
+                .andExpect(content().string(containsString("В архиве пока что пусто")))
+                .andExpect(content()
+                        .string(containsString(
+                                "Сюда вы сможете перенести выполненные, неактуальные или удаленные задачи")));
     }
 
     @Test
@@ -238,12 +242,14 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    void teamsPageShouldUseTeamCards() throws Exception {
+    void teamsPageShouldUseTeamList() throws Exception {
         mockMvc.perform(get("/teams").with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("class=\"workspace-page teams-page\"")))
-                .andExpect(content().string(containsString("class=\"team-grid\"")))
-                .andExpect(content().string(containsString("class=\"team-card\"")))
+                .andExpect(content().string(containsString("class=\"teams-toolbar\"")))
+                .andExpect(content().string(containsString("Команды (2)")))
+                .andExpect(content().string(containsString("class=\"team-list\"")))
+                .andExpect(content().string(containsString("class=\"team-list-item\"")))
                 .andExpect(content().string(containsString("data-tooltip=\"Открыть команду\"")))
                 .andExpect(content().string(not(containsString("Открыть задачи команды"))));
     }
@@ -258,7 +264,7 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
 
         mockMvc.perform(get("/teams").with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("class=\"page-actions teams-page-actions\"")))
+                .andExpect(content().string(containsString("class=\"teams-toolbar\"")))
                 .andExpect(content().string(containsString("class=\"button button-primary team-create-action\"")))
                 .andExpect(content().string(containsString("class=\"empty-state team-empty-state\"")))
                 .andExpect(content().string(containsString("class=\"empty-state-icon\"")))

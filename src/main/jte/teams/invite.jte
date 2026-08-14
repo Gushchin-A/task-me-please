@@ -22,12 +22,7 @@
     content = @`
         @template.components.teamNavigation(
             team = team,
-            teams = navigationTeams,
-            activeTab = "invite",
-            tasksCount = -1,
-            archiveCount = -1,
-            membersCount = -1,
-            canInvite = canInvite
+            activeTab = "invite"
         )
 
         <section class="workspace-page team-invite-page">

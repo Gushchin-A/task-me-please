@@ -25,12 +25,7 @@
     content = @`
         @template.components.teamNavigation(
             team = team,
-            teams = navigationTeams,
-            activeTab = "tasks",
-            tasksCount = -1,
-            archiveCount = -1,
-            membersCount = -1,
-            canInvite = false
+            activeTab = "tasks"
         )
 
         <div class="task-detail-layout">

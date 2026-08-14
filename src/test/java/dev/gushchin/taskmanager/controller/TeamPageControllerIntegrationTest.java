@@ -159,51 +159,111 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    void membersPageShouldShowOnlyVisibleTasksCount() throws Exception {
+    void membersPageShouldUseSharedTeamNavigation() throws Exception {
         mockMvc.perform(get("/teams/" + team.getId() + "/members").with(user(new AuthUser(member))))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("class=\"team-context\"")))
+                .andExpect(content().string(containsString("class=\"local-tabs team-tabs\"")))
                 .andExpect(content().string(containsString("aria-label=\"Разделы команды\"")))
-                .andExpect(content().string(containsString("aria-current=\"page\"")))
                 .andExpect(content().string(containsString("href=\"/teams/" + team.getId() + "/archive\"")))
                 .andExpect(content().string(not(containsString("href=\"#\""))))
-                .andExpect(content().string(containsString("Задачи<span class=\"nav-count\">1</span>")))
-                .andExpect(content().string(containsString("Участники<span class=\"nav-count\">2</span>")));
+                .andExpect(content().string(not(containsString("Участники"))))
+                .andExpect(content().string(not(containsString("class=\"nav-count\""))));
     }
 
     @Test
-    void teamNavigationCountsShouldRemainStableBetweenActiveAndArchivePages() throws Exception {
+    void teamNavigationShouldRemainStableBetweenActiveAndArchivePages() throws Exception {
         Task archivedTask = taskService.findByTeamId(team.getId()).getFirst();
         taskService.updateStatus(archivedTask.getId(), TaskStatus.DONE, owner.getId());
         taskService.archive(archivedTask.getId(), owner.getId());
 
-        String activeCount = "Задачи<span class=\"nav-count\">1</span>";
-        String archiveCount = "Архив<span class=\"nav-count\">1</span>";
-
         mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString(activeCount)))
-                .andExpect(content().string(containsString(archiveCount)));
+                .andExpect(content().string(containsString("class=\"local-tabs team-tabs\"")))
+                .andExpect(content().string(containsString("class=\"local-tab-active\"")))
+                .andExpect(content().string(not(containsString("class=\"nav-count\""))));
 
         mockMvc.perform(get("/teams/" + team.getId() + "/archive").with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString(activeCount)))
-                .andExpect(content().string(containsString(archiveCount)));
+                .andExpect(content().string(containsString("class=\"local-tabs team-tabs\"")))
+                .andExpect(content().string(containsString("class=\"local-tab-active\"")))
+                .andExpect(content().string(not(containsString("class=\"nav-count\""))));
     }
 
     @Test
     void teamPageShouldShowNavigationActionsAndTaskCards() throws Exception {
         mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("class=\"team-tab team-settings-action\"")))
+                .andExpect(content().string(containsString("class=\"local-tabs team-tabs\"")))
+                .andExpect(content().string(containsString("class=\"local-tab-disabled team-settings-action\"")))
                 .andExpect(content().string(containsString("Настройки пока не реализованы")))
-                .andExpect(content().string(containsString("class=\"team-name-link\"")))
-                .andExpect(content().string(containsString("aria-label=\"Выбрать команду\"")))
-                .andExpect(content().string(containsString("class=\"team-switcher-all\" href=\"/teams\"")))
-                .andExpect(content().string(containsString("Создать задачу")))
+                .andExpect(content().string(not(containsString("aria-label=\"Выбрать команду\""))))
+                .andExpect(content().string(not(containsString("Пригласить"))))
+                .andExpect(content().string(not(containsString("Удалить команду"))))
+                .andExpect(content().string(not(containsString("Участники"))))
+                .andExpect(content().string(containsString("class=\"primer-select-trigger task-toolbar-trigger\"")))
+                .andExpect(content().string(containsString("class=\"primer-select-options task-filter-options\"")))
+                .andExpect(content().string(containsString("Выберите фильтры")))
+                .andExpect(content().string(containsString("aria-label=\"Закрыть фильтры\"")))
+                .andExpect(content().string(containsString("aria-label=\"Закрыть сортировку\"")))
+                .andExpect(content().string(containsString("data-filter-select")))
+                .andExpect(content().string(not(containsString("Выберите статус"))))
+                .andExpect(content().string(not(containsString("Все статусы"))))
+                .andExpect(content().string(not(containsString("Все исполнители"))))
+                .andExpect(content().string(not(containsString("Все авторы"))))
+                .andExpect(content().string(not(containsString("Все теги"))))
+                .andExpect(content().string(not(containsString(">Применить</button>"))))
+                .andExpect(content().string(containsString("По умолчанию")))
+                .andExpect(content().string(containsString("Сначала новые задачи, затем старые")))
+                .andExpect(content().string(containsString("class=\"button button-primary task-create-action\"")))
                 .andExpect(content().string(containsString("class=\"task-grid\"")))
                 .andExpect(content().string(containsString("Visible task")))
                 .andExpect(content().string(not(containsString("Всего задач в команде"))));
+    }
+
+    @Test
+    void teamWithoutTasksShouldShowSharedBlankSlateWithoutTaskActions() throws Exception {
+        Team emptyTeam = teamService.create("Empty Team", owner.getId());
+
+        mockMvc.perform(get("/teams/" + emptyTeam.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("class=\"empty-state task-empty-state\"")))
+                .andExpect(content().string(containsString("class=\"empty-state-icon\"")))
+                .andExpect(content().string(containsString("В команде пока нет задач")))
+                .andExpect(content().string(containsString("Создайте первую задачу и назначьте ответственного.")))
+                .andExpect(content().string(not(containsString("class=\"task-toolbar\""))))
+                .andExpect(content().string(containsString("class=\"page-actions tasks-onboarding-actions\"")))
+                .andExpect(content().string(containsString("class=\"button button-primary task-create-action\"")))
+                .andExpect(content().string(containsString("href=\"/tasks/new?teamId=" + emptyTeam.getId() + "\"")));
+    }
+
+    @Test
+    void emptyTeamArchiveShouldShowSharedArchiveBlankSlate() throws Exception {
+        mockMvc.perform(get("/teams/" + team.getId() + "/archive").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("class=\"empty-state task-empty-state\"")))
+                .andExpect(content().string(containsString("class=\"empty-state-icon\"")))
+                .andExpect(content().string(containsString("В архиве пока что пусто")))
+                .andExpect(content()
+                        .string(containsString(
+                                "Сюда вы сможете перенести выполненные, неактуальные или удаленные задачи")));
+    }
+
+    @Test
+    void teamWithOnlyArchivedTasksShouldShowSharedActiveTasksBlankSlate() throws Exception {
+        List<Task> tasks = taskService.findByTeamId(team.getId());
+
+        for (Task task : tasks) {
+            taskService.updateStatus(task.getId(), TaskStatus.DONE, owner.getId());
+            taskService.archive(task.getId(), owner.getId());
+        }
+
+        mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("class=\"task-toolbar\"")))
+                .andExpect(content().string(containsString("class=\"empty-state task-empty-state\"")))
+                .andExpect(content().string(containsString("class=\"empty-state-icon\"")))
+                .andExpect(content().string(containsString("В команде пока нет задач")))
+                .andExpect(content().string(containsString("Создайте первую задачу и назначьте ответственного.")));
     }
 
     @Test

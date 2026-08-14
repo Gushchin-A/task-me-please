@@ -4,7 +4,136 @@ document.addEventListener('DOMContentLoaded', function () {
     setupTooltips();
     setupSubmitLoading();
     setupToolbarPopovers();
+    setupToolbarSelects();
+    setupFilterSelects();
 });
+
+function setupFilterSelects() {
+    const selects = document.querySelectorAll('[data-filter-select]');
+
+    function closeFilterSelect(select) {
+        const trigger = select.querySelector(':scope > .primer-select-trigger');
+        const panel = trigger.nextElementSibling;
+
+        panel.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+    }
+
+    selects.forEach(function (select) {
+        const trigger = select.querySelector(':scope > .primer-select-trigger');
+        const panel = trigger.nextElementSibling;
+
+        trigger.addEventListener('click', function (event) {
+            event.stopPropagation();
+
+            const shouldOpen = panel.hidden;
+
+            selects.forEach(function (otherSelect) {
+                if (otherSelect !== select) {
+                    closeFilterSelect(otherSelect);
+                }
+            });
+
+            panel.hidden = !shouldOpen;
+            trigger.setAttribute('aria-expanded', String(shouldOpen));
+        });
+    });
+
+    document.addEventListener('click', function (event) {
+        selects.forEach(function (select) {
+            if (!select.contains(event.target)) {
+                closeFilterSelect(select);
+            }
+        });
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape') {
+            return;
+        }
+
+        const openSelect = Array.from(selects).find(function (select) {
+            return select.querySelector(':scope > .primer-select-trigger')
+                    .getAttribute('aria-expanded') === 'true';
+        });
+
+        if (openSelect !== undefined) {
+            const trigger = openSelect.querySelector(':scope > .primer-select-trigger');
+
+            event.stopImmediatePropagation();
+            closeFilterSelect(openSelect);
+            trigger.focus();
+        }
+    });
+}
+
+function setupToolbarSelects() {
+    const selects = document.querySelectorAll('[data-toolbar-select]');
+
+    function closeToolbarSelect(select) {
+        const trigger = select.querySelector('.task-toolbar-trigger');
+        const panel = trigger.nextElementSibling;
+
+        panel.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+        select.querySelectorAll('[data-filter-select]').forEach(function (filterSelect) {
+            const filterTrigger = filterSelect.querySelector(':scope > .primer-select-trigger');
+
+            filterTrigger.nextElementSibling.hidden = true;
+            filterTrigger.setAttribute('aria-expanded', 'false');
+        });
+    }
+
+    selects.forEach(function (select) {
+        const trigger = select.querySelector('.task-toolbar-trigger');
+        const panel = trigger.nextElementSibling;
+        const closeButton = panel.querySelector('[data-toolbar-select-close]');
+
+        trigger.addEventListener('click', function (event) {
+            event.stopPropagation();
+
+            const shouldOpen = panel.hidden;
+
+            selects.forEach(function (otherSelect) {
+                if (otherSelect !== select) {
+                    closeToolbarSelect(otherSelect);
+                }
+            });
+
+            panel.hidden = !shouldOpen;
+            trigger.setAttribute('aria-expanded', String(shouldOpen));
+        });
+
+        closeButton.addEventListener('click', function (event) {
+            event.stopPropagation();
+            closeToolbarSelect(select);
+            trigger.focus();
+        });
+    });
+
+    document.addEventListener('click', function (event) {
+        selects.forEach(function (select) {
+            if (!select.contains(event.target)) {
+                closeToolbarSelect(select);
+            }
+        });
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape') {
+            return;
+        }
+
+        selects.forEach(function (select) {
+            const trigger = select.querySelector('.task-toolbar-trigger');
+
+            if (trigger.getAttribute('aria-expanded') === 'true') {
+                closeToolbarSelect(select);
+                trigger.focus();
+            }
+        });
+    });
+}
 
 function setupToolbarPopovers() {
     const popovers = document.querySelectorAll('.toolbar-popover, .comment-menu, .team-switcher');
