@@ -6,7 +6,59 @@ document.addEventListener('DOMContentLoaded', function () {
     setupToolbarPopovers();
     setupToolbarSelects();
     setupFilterSelects();
+    setupTeamSettings();
 });
+
+function setupTeamSettings() {
+    const renameForm = document.querySelector('[data-settings-rename-form]');
+
+    if (renameForm !== null) {
+        const input = renameForm.querySelector('[data-settings-name]');
+        const submit = renameForm.querySelector('[data-settings-rename-submit]');
+
+        setupChangedValueSubmitState(input, submit);
+    }
+
+    const dialog = document.querySelector('[data-tag-rename-dialog]');
+
+    if (dialog === null) {
+        return;
+    }
+
+    const form = dialog.querySelector('[data-tag-rename-form]');
+    const input = dialog.querySelector('[data-tag-rename-input]');
+    const submit = dialog.querySelector('[data-tag-rename-submit]');
+
+    document.querySelectorAll('[data-tag-rename-open]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            form.action = window.location.pathname + '/tags/' + button.dataset.tagId + '/rename';
+            input.value = button.dataset.tagName;
+            input.dataset.originalValue = button.dataset.tagName;
+            submit.disabled = true;
+            dialog.showModal();
+            input.focus();
+            input.select();
+        });
+    });
+
+    setupChangedValueSubmitState(input, submit);
+
+    dialog.querySelector('[data-tag-rename-close]').addEventListener('click', function () {
+        dialog.close();
+    });
+
+    dialog.addEventListener('click', function (event) {
+        if (event.target === dialog) {
+            dialog.close();
+        }
+    });
+}
+
+function setupChangedValueSubmitState(input, submit) {
+    input.addEventListener('input', function () {
+        submit.disabled = input.value === input.dataset.originalValue;
+    });
+}
 
 function setupFilterSelects() {
     const selects = document.querySelectorAll('[data-filter-select]');

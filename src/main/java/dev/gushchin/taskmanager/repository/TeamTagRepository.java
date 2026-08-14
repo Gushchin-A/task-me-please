@@ -1,5 +1,6 @@
 package dev.gushchin.taskmanager.repository;
 
+import static dev.gushchin.taskmanager.jooq.Tables.TASKS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAM_TAGS;
 
 import dev.gushchin.taskmanager.jooq.tables.records.TeamTagsRecord;
@@ -7,6 +8,7 @@ import dev.gushchin.taskmanager.mapper.TeamTagMapper;
 import dev.gushchin.taskmanager.model.TeamTag;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.jooq.DSLContext;
 import org.springframework.stereotype.Repository;
@@ -53,6 +55,31 @@ public class TeamTagRepository {
                 .fetchOne();
 
         return TeamTagMapper.toModel(record);
+    }
+
+    public TeamTag update(TeamTag teamTag) {
+        TeamTagsRecord record = dsl.update(TEAM_TAGS)
+                .set(TEAM_TAGS.NAME, teamTag.getName())
+                .set(TEAM_TAGS.NORMALIZED_NAME, teamTag.getNormalizedName())
+                .set(TEAM_TAGS.UPDATED_AT, teamTag.getUpdatedAt().atOffset(ZoneOffset.UTC))
+                .set(TEAM_TAGS.IS_DELETED, teamTag.isDeleted())
+                .where(TEAM_TAGS.ID.eq(teamTag.getId()))
+                .returning()
+                .fetchOne();
+
+        return TeamTagMapper.toModel(record);
+    }
+
+    public Set<Long> findUsedIdsByTeamId(Long teamId) {
+        return dsl.selectDistinct(TASKS.TAG_ID)
+                .from(TASKS)
+                .where(TASKS.TEAM_ID.eq(teamId))
+                .and(TASKS.TAG_ID.isNotNull())
+                .fetchSet(TASKS.TAG_ID);
+    }
+
+    public boolean isUsed(Long id) {
+        return dsl.fetchExists(dsl.selectOne().from(TASKS).where(TASKS.TAG_ID.eq(id)));
     }
 
     public void deleteAll() {

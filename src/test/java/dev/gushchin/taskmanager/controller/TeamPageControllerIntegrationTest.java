@@ -190,6 +190,64 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void ownerShouldOpenTeamSettings() throws Exception {
+        mockMvc.perform(get("/teams/" + team.getId() + "/settings").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(view().name("teams/settings"))
+                .andExpect(content().string(containsString("Основные")))
+                .andExpect(content().string(containsString("Название команды")))
+                .andExpect(content().string(containsString("Длина одного тега до 30 символов.")))
+                .andExpect(content().string(containsString("Удалить команду")))
+                .andExpect(content().string(not(containsString("class=\"task-toolbar\""))));
+    }
+
+    @Test
+    void memberShouldNotOpenTeamSettings() throws Exception {
+        mockMvc.perform(get("/teams/" + team.getId() + "/settings").with(user(new AuthUser(member))))
+                .andExpect(status().isOk())
+                .andExpect(view().name("teams/not-found"));
+    }
+
+    @Test
+    void ownerShouldRenameTeam() throws Exception {
+        mockMvc.perform(post("/teams/" + team.getId() + "/settings/name")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("name", "Renamed Team"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/settings"))
+                .andExpect(flash().attribute("successMessage", "Название было изменено."));
+
+        assertEquals("Renamed Team", teamService.findById(team.getId()).getName());
+    }
+
+    @Test
+    void ownerShouldAddAndRenameTagFromSettings() throws Exception {
+        mockMvc.perform(post("/teams/" + team.getId() + "/settings/tags")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("name", "Новости"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/settings"))
+                .andExpect(flash().attribute("successMessage", "Тег был добавлен."));
+
+        TeamTag tag = teamTagService.findByTeamId(team.getId()).stream()
+                .filter(teamTag -> "Новости".equals(teamTag.getName()))
+                .findFirst()
+                .orElseThrow();
+
+        mockMvc.perform(post("/teams/" + team.getId() + "/settings/tags/" + tag.getId() + "/rename")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("name", "События"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/settings"))
+                .andExpect(flash().attribute("successMessage", "Тег был изменён."));
+
+        assertEquals("События", teamTagService.findById(tag.getId()).getName());
+    }
+
+    @Test
     void teamPageShouldShowNavigationActionsAndTaskCards() throws Exception {
         mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
@@ -199,8 +257,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("data-tooltip=\"Сменить команду\"")))
                 .andExpect(content().string(containsString("class=\"team-switcher-menu\"")))
                 .andExpect(content().string(containsString("class=\"team-switcher-all\" href=\"/teams\"")))
-                .andExpect(content().string(containsString("class=\"local-tab-disabled team-settings-action\"")))
-                .andExpect(content().string(containsString("Настройки пока не реализованы")))
+                .andExpect(content().string(containsString("href=\"/teams/" + team.getId() + "/settings\"")))
                 .andExpect(content().string(not(containsString("aria-label=\"Выбрать команду\""))))
                 .andExpect(content().string(not(containsString("Пригласить"))))
                 .andExpect(content().string(not(containsString("Удалить команду"))))
@@ -345,7 +402,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .with(user(new AuthUser(owner)))
                         .param("confirmation", "yes"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/teams/" + team.getId()));
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/settings"));
 
         assertFalse(teamService.findById(team.getId()).isDeleted());
     }
@@ -365,7 +422,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .with(user(new AuthUser(owner)))
                         .param("confirmation", "no"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/teams/" + team.getId()));
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/settings"));
 
         assertFalse(teamService.findById(team.getId()).isDeleted());
     }

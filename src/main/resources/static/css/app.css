@@ -500,6 +500,239 @@ a {
     cursor: not-allowed;
 }
 
+.team-settings-page {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 720px);
+    align-items: baseline;
+    gap: var(--base-size-48);
+    padding-top: var(--base-size-28);
+}
+
+.team-settings-sidebar nav {
+    display: grid;
+    gap: var(--base-size-4);
+}
+
+.team-settings-sidebar a {
+    min-height: 38px;
+    padding: var(--base-size-8) var(--base-size-12);
+    border-radius: var(--borderRadius-medium);
+    color: var(--fgColor-default);
+    font-size: 14px;
+    line-height: 20px;
+    text-decoration: none;
+}
+
+.team-settings-sidebar a:hover {
+    background: var(--control-transparent-bgColor-hover);
+}
+
+.team-settings-sidebar .team-settings-nav-active {
+    background: var(--control-bgColor-rest);
+    font-weight: var(--base-text-weight-semibold);
+}
+
+.team-settings-content {
+    min-width: 0;
+}
+
+.team-settings-header {
+    margin: 0 0 var(--base-size-12);
+}
+
+.team-settings-form {
+    display: grid;
+    width: min(100%, 600px);
+    margin-bottom: var(--base-size-32);
+}
+
+.team-settings-form .field-with-action input {
+    min-height: 34px;
+}
+
+.team-settings-form .field-with-action .button {
+    min-height: 34px;
+    padding: 5px var(--base-size-12);
+    white-space: nowrap;
+}
+
+.team-settings-tags-form {
+    margin-bottom: 0;
+}
+
+.team-settings-tag-list {
+    width: min(100%, 600px);
+    margin: var(--base-size-8) 0 var(--base-size-32);
+}
+
+.team-settings-form .form-help,
+.team-create-form .form-help {
+    padding-left: var(--base-size-4);
+}
+
+.team-settings-action-tooltip {
+    display: inline-flex;
+}
+
+.team-settings-action-tooltip .button:disabled {
+    border-color: var(--borderColor-disabled);
+    background: var(--control-bgColor-disabled);
+    color: var(--control-fgColor-disabled);
+    cursor: not-allowed;
+}
+
+.team-settings-action-tooltip .button:disabled:hover {
+    border-color: var(--borderColor-disabled);
+    background: var(--control-bgColor-disabled);
+}
+
+.team-settings-danger {
+    margin-top: var(--base-size-32);
+}
+
+.team-settings-danger h2 {
+    margin: 0 0 var(--base-size-12);
+    color: var(--fgColor-danger);
+    font-size: 20px;
+    font-weight: var(--base-text-weight-semibold);
+    letter-spacing: -0.01em;
+    line-height: 32px;
+}
+
+.team-settings-danger p {
+    max-width: 56ch;
+    margin: 0 0 var(--base-size-12);
+    color: var(--fgColor-default);
+    font-size: 14px;
+    line-height: 21px;
+}
+
+.team-settings-delete {
+    flex: 0 0 auto;
+    border-color: var(--borderColor-danger-emphasis);
+    background: var(--control-bgColor-rest);
+    color: var(--fgColor-danger);
+}
+
+.team-settings-delete:hover {
+    border-color: var(--button-danger-borderColor-hover);
+    background: var(--button-danger-bgColor-hover);
+    color: var(--button-danger-fgColor-hover);
+}
+
+.settings-dialog {
+    width: min(480px, calc(100% - var(--base-size-32)));
+    padding: 0;
+    border: var(--borderWidth-default) solid var(--overlay-borderColor);
+    border-radius: var(--borderRadius-large);
+    background: var(--overlay-bgColor);
+    box-shadow: var(--shadow-floating-large);
+    color: var(--fgColor-default);
+}
+
+.settings-dialog::backdrop {
+    background: var(--overlay-backdrop-bgColor);
+}
+
+.settings-dialog-form {
+    margin: 0;
+}
+
+.settings-dialog-header,
+.settings-dialog-footer {
+    display: flex;
+    align-items: center;
+    padding: var(--base-size-16);
+}
+
+.settings-dialog-header {
+    justify-content: space-between;
+    border-bottom: var(--borderWidth-default) solid var(--borderColor-default);
+}
+
+.settings-dialog-header h2 {
+    margin: 0;
+    font-size: 18px;
+    line-height: 24px;
+}
+
+.settings-dialog-header button {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: var(--borderRadius-medium);
+    background: transparent;
+    color: var(--fgColor-muted);
+    cursor: pointer;
+    font-size: 22px;
+}
+
+.settings-dialog-header button:hover {
+    background: var(--control-transparent-bgColor-hover);
+    color: var(--fgColor-default);
+}
+
+.settings-dialog-body {
+    padding: var(--base-size-16);
+}
+
+.settings-dialog-body p {
+    margin: 0 0 var(--base-size-20);
+    color: var(--fgColor-muted);
+    font-size: 14px;
+    line-height: 21px;
+}
+
+.settings-dialog-body input {
+    width: 100%;
+    min-height: 38px;
+    padding: 6px 9px;
+    border: var(--borderWidth-default) solid var(--control-borderColor-rest);
+    border-radius: var(--borderRadius-medium);
+    background: var(--bgColor-default);
+    color: var(--fgColor-default);
+}
+
+.settings-dialog-body input:focus {
+    border-color: var(--borderColor-accent-emphasis);
+    outline: none;
+    box-shadow: inset 0 0 0 1px var(--borderColor-accent-emphasis);
+}
+
+.settings-dialog-footer {
+    justify-content: flex-end;
+    border-top: var(--borderWidth-default) solid var(--borderColor-default);
+}
+
+.settings-dialog-footer .button:disabled {
+    border-color: var(--button-primary-borderColor-disabled);
+    background: var(--button-primary-bgColor-disabled);
+    color: var(--button-primary-fgColor-disabled);
+    cursor: not-allowed;
+}
+
+@media (max-width: 760px) {
+    .team-settings-page {
+        grid-template-columns: minmax(0, 1fr);
+        align-items: start;
+        gap: var(--base-size-24);
+    }
+
+    .team-settings-sidebar nav {
+        display: flex;
+        overflow-x: auto;
+    }
+
+    .team-settings-sidebar a {
+        min-height: 44px;
+        flex: 0 0 auto;
+    }
+
+}
+
 .workspace-page {
     width: 100%;
 }
@@ -1622,6 +1855,11 @@ a {
     background: transparent !important;
 }
 
+.tag-chip form {
+    display: inline-flex;
+    margin: 0;
+}
+
 .table-card {
     width: 100%;
     overflow-x: auto;
@@ -2226,6 +2464,39 @@ a {
     width: min(400px, calc(100vw - 32px));
     gap: 10px;
     pointer-events: none;
+}
+
+.app-flash-stack {
+    position: static;
+    display: grid;
+    width: 100%;
+    gap: 0;
+    pointer-events: auto;
+}
+
+.app-flash-stack:empty {
+    display: none;
+}
+
+.app-flash-stack .flash-message {
+    min-height: 50px;
+    padding-right: max(var(--base-size-24), calc((100vw - var(--breakpoint-xlarge)) / 2 + var(--base-size-24)));
+    padding-left: max(var(--base-size-24), calc((100vw - var(--breakpoint-xlarge)) / 2 + var(--base-size-24)));
+    border-width: 0 0 var(--borderWidth-default);
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.app-flash-stack .flash-message-success {
+    background: var(--bgColor-success-muted);
+}
+
+.app-flash-stack .flash-message-error {
+    background: var(--bgColor-danger-muted);
+}
+
+.app-flash-stack .flash-message-warning {
+    background: var(--bgColor-muted);
 }
 
 .flash-message {

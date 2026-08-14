@@ -20,12 +20,11 @@
         Архив
     </a>
 
-    <span
-        class="local-tab-disabled team-settings-action"
-        data-tooltip="Настройки пока не реализованы"
-        tabindex="0"
-        aria-disabled="true"
+    <a
+        class="${"settings".equals(activeTab) ? "local-tab-active" : ""}"
+        href="/teams/${team.getId()}/settings"
+        aria-current="${"settings".equals(activeTab) ? "page" : null}"
     >
         Настройки
-    </span>
+    </a>
 </nav>

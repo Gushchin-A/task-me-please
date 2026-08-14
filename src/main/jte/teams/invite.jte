@@ -19,6 +19,8 @@
     _csrf = _csrf,
     currentUser = currentUser,
     activeSection = "teams",
+    successMessage = successMessage,
+    errorMessage = errorMessage,
     headerContext = @`
         @template.components.teamSwitcher(team = team, navigationTeams = navigationTeams)
     `,
@@ -29,16 +31,6 @@
         )
 
         <section class="workspace-page team-invite-page">
-            <div class="flash-stack" aria-live="polite" aria-atomic="false">
-                @if(successMessage != null)
-                    @template.components.flash(message = successMessage, type = "success")
-                @endif
-
-                @if(errorMessage != null)
-                    @template.components.flash(message = errorMessage, type = "error")
-                @endif
-            </div>
-
             @if(canInvite)
                 <form
                     class="invite-form"

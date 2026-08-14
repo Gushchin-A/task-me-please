@@ -1,12 +1,16 @@
 package dev.gushchin.taskmanager.controller;
 
 import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
+import dev.gushchin.taskmanager.exception.InvalidTeamNameException;
+import dev.gushchin.taskmanager.exception.InvalidTeamTagException;
 import dev.gushchin.taskmanager.exception.TeamInvitationAlreadyPendingException;
 import dev.gushchin.taskmanager.exception.TeamInvitationNotFoundException;
 import dev.gushchin.taskmanager.exception.TeamInvitationNotPendingException;
 import dev.gushchin.taskmanager.exception.TeamMemberAlreadyExistsException;
 import dev.gushchin.taskmanager.exception.TeamMemberNotFoundException;
 import dev.gushchin.taskmanager.exception.TeamNotFoundException;
+import dev.gushchin.taskmanager.exception.TeamTagAlreadyExistsException;
+import dev.gushchin.taskmanager.exception.TeamTagNotFoundException;
 import dev.gushchin.taskmanager.model.Task;
 import dev.gushchin.taskmanager.model.TaskListMode;
 import dev.gushchin.taskmanager.model.TaskSort;
@@ -76,6 +80,9 @@ public class TeamPageController {
     private static final String TEAM_ATTRIBUTE = "team";
     private static final String PAGE_ATTRIBUTE = "page";
     private static final String TEAMS_SHOW_VIEW = "teams/show";
+    private static final String TEAM_SETTINGS_PATH_SUFFIX = "/settings";
+    private static final String TEAM_SETTINGS_VIEW = "teams/settings";
+    private static final String TEAM_TAG_EXISTS_MESSAGE = "Такой тег уже существует.";
 
     private final TeamService teamService;
     private final TaskService taskService;
@@ -357,6 +364,109 @@ public class TeamPageController {
         return showDeleteTeamStep(id, authUser.getId(), 1, model, csrfToken);
     }
 
+    @GetMapping("/teams/{id}/settings")
+    public String teamSettings(
+            @AuthenticationPrincipal AuthUser authUser, @PathVariable Long id, Model model, CsrfToken csrfToken) {
+        if (!isTeamOwner(id, authUser.getId())) {
+            return NOT_FOUND_VIEW;
+        }
+
+        model.addAttribute(TEAM_ATTRIBUTE, teamService.findById(id));
+        model.addAttribute(NAVIGATION_TEAMS_ATTRIBUTE, teamService.findByUserId(authUser.getId()));
+        model.addAttribute("tags", teamTagService.findByTeamId(id));
+        model.addAttribute("usedTagIds", teamTagService.findUsedIdsByTeamId(id));
+        model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
+        addEmptyFlashAttributes(model);
+
+        return TEAM_SETTINGS_VIEW;
+    }
+
+    @PostMapping("/teams/{id}/settings/name")
+    public String renameTeam(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long id,
+            @RequestParam String name,
+            RedirectAttributes redirectAttributes) {
+        if (!isTeamOwner(id, authUser.getId())) {
+            return NOT_FOUND_VIEW;
+        }
+
+        try {
+            teamService.rename(id, name, authUser.getId());
+            redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Название было изменено.");
+        } catch (InvalidTeamNameException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, getTeamNameErrorMessage(ex));
+        }
+
+        return REDIRECT_TEAMS_PREFIX + id + TEAM_SETTINGS_PATH_SUFFIX;
+    }
+
+    @PostMapping("/teams/{id}/settings/tags")
+    public String addTeamTag(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long id,
+            @RequestParam String name,
+            RedirectAttributes redirectAttributes) {
+        if (!isTeamOwner(id, authUser.getId())) {
+            return NOT_FOUND_VIEW;
+        }
+
+        try {
+            teamTagService.create(id, name);
+            redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Тег был добавлен.");
+        } catch (TeamTagAlreadyExistsException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, TEAM_TAG_EXISTS_MESSAGE);
+        } catch (InvalidTeamTagException ex) {
+            redirectAttributes.addFlashAttribute(
+                    ERROR_MESSAGE_ATTRIBUTE, "Не удалось добавить тег. Проверьте название.");
+        }
+
+        return REDIRECT_TEAMS_PREFIX + id + TEAM_SETTINGS_PATH_SUFFIX;
+    }
+
+    @PostMapping("/teams/{teamId}/settings/tags/{tagId}/rename")
+    public String renameTeamTag(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long teamId,
+            @PathVariable Long tagId,
+            @RequestParam String name,
+            RedirectAttributes redirectAttributes) {
+        if (!isTeamOwner(teamId, authUser.getId())) {
+            return NOT_FOUND_VIEW;
+        }
+
+        try {
+            teamTagService.rename(tagId, teamId, name);
+            redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Тег был изменён.");
+        } catch (TeamTagAlreadyExistsException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, TEAM_TAG_EXISTS_MESSAGE);
+        } catch (InvalidTeamTagException | TeamTagNotFoundException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, "Не удалось изменить тег.");
+        }
+
+        return REDIRECT_TEAMS_PREFIX + teamId + TEAM_SETTINGS_PATH_SUFFIX;
+    }
+
+    @PostMapping("/teams/{teamId}/settings/tags/{tagId}/delete")
+    public String deleteTeamTag(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long teamId,
+            @PathVariable Long tagId,
+            RedirectAttributes redirectAttributes) {
+        if (!isTeamOwner(teamId, authUser.getId())) {
+            return NOT_FOUND_VIEW;
+        }
+
+        try {
+            teamTagService.delete(tagId, teamId);
+            redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Тег был удален.");
+        } catch (InvalidTeamTagException | TeamTagNotFoundException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, "Не удалось удалить тег.");
+        }
+
+        return REDIRECT_TEAMS_PREFIX + teamId + TEAM_SETTINGS_PATH_SUFFIX;
+    }
+
     @PostMapping("/teams/{id}/delete")
     public String confirmDeleteTeam(
             @AuthenticationPrincipal AuthUser authUser,
@@ -503,6 +613,14 @@ public class TeamPageController {
         }
     }
 
+    private String getTeamNameErrorMessage(InvalidTeamNameException exception) {
+        return switch (exception.getReason()) {
+            case BLANK -> "Введите название команды.";
+            case TOO_LONG -> "Название команды не должно быть длиннее 255 символов.";
+            case UNCHANGED -> "Название не изменилось. Введите новое название команды.";
+        };
+    }
+
     private boolean isTeamOwner(Long teamId, UUID currentUserId) {
         try {
             return teamMemberService.findById(teamId, currentUserId).getRole() == TeamMemberRole.OWNER;
@@ -524,7 +642,7 @@ public class TeamPageController {
 
         if (!teamId.equals(confirmationTeamId) || confirmationStep == null || !"yes".equals(confirmation)) {
             clearDeleteConfirmation(session);
-            result = REDIRECT_TEAMS_PREFIX + teamId;
+            result = REDIRECT_TEAMS_PREFIX + teamId + TEAM_SETTINGS_PATH_SUFFIX;
         } else if (confirmationStep < FINAL_DELETE_CONFIRMATION_STEP) {
             int nextStep = confirmationStep + 1;
             session.setAttribute(DELETE_CONFIRMATION_STEP_SESSION_ATTRIBUTE, nextStep);

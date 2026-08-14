@@ -1,6 +1,8 @@
 package dev.gushchin.taskmanager.service;
 
 import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
+import dev.gushchin.taskmanager.exception.InvalidTeamNameException;
+import dev.gushchin.taskmanager.exception.InvalidTeamNameException.Reason;
 import dev.gushchin.taskmanager.exception.InvalidTeamTagException;
 import dev.gushchin.taskmanager.exception.TeamNotFoundException;
 import dev.gushchin.taskmanager.model.Team;
@@ -24,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class TeamService {
+    private static final int MAX_TEAM_NAME_LENGTH = 255;
     private static final int MAX_TAGS_PER_TEAM = 20;
     private static final int MAX_TAG_NAME_LENGTH = 30;
 
@@ -127,6 +130,34 @@ public class TeamService {
         team.setDeleted(true);
         team.setUpdatedAt(Instant.now());
         teamRepository.update(team);
+    }
+
+    public Team rename(Long id, String name, UUID currentUserId) {
+        final Team team = findById(id);
+        TeamMember currentMember = teamMemberRepository.findByTeamIdAndUserId(id, currentUserId);
+
+        if (currentMember == null || currentMember.isDeleted() || currentMember.getRole() != TeamMemberRole.OWNER) {
+            throw new AccessDeniedForTaskException();
+        }
+
+        if (name == null || name.isBlank()) {
+            throw new InvalidTeamNameException(Reason.BLANK);
+        }
+
+        String preparedName = name.trim();
+
+        if (preparedName.length() > MAX_TEAM_NAME_LENGTH) {
+            throw new InvalidTeamNameException(Reason.TOO_LONG);
+        }
+
+        if (preparedName.equals(team.getName())) {
+            throw new InvalidTeamNameException(Reason.UNCHANGED);
+        }
+
+        team.setName(preparedName);
+        team.setUpdatedAt(Instant.now());
+
+        return teamRepository.update(team);
     }
 
     private TeamTag createTeamTag(Long teamId, String tagName, Instant now) {

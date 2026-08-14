@@ -8,6 +8,7 @@ import dev.gushchin.taskmanager.repository.TeamTagRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.function.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -36,6 +37,12 @@ public class TeamTagService {
         teamService.findById(teamId);
 
         return findActiveByTeamId(teamId);
+    }
+
+    public Set<Long> findUsedIdsByTeamId(Long teamId) {
+        teamService.findById(teamId);
+
+        return teamTagRepository.findUsedIdsByTeamId(teamId);
     }
 
     @Transactional
@@ -95,5 +102,36 @@ public class TeamTagService {
         }
 
         return teamTag;
+    }
+
+    @Transactional
+    public TeamTag rename(Long tagId, Long teamId, String name) {
+        TeamTag teamTag = findByIdForTeam(tagId, teamId);
+        String preparedName = prepareName(name);
+        String normalizedName = normalizeName(preparedName);
+        TeamTag existingTag = teamTagRepository.findActiveByTeamIdAndNormalizedName(teamId, normalizedName);
+
+        if (existingTag != null && !existingTag.getId().equals(tagId)) {
+            throw new TeamTagAlreadyExistsException(teamId, preparedName);
+        }
+
+        teamTag.setName(preparedName);
+        teamTag.setNormalizedName(normalizedName);
+        teamTag.setUpdatedAt(Instant.now());
+
+        return teamTagRepository.update(teamTag);
+    }
+
+    @Transactional
+    public void delete(Long tagId, Long teamId) {
+        TeamTag teamTag = findByIdForTeam(tagId, teamId);
+
+        if (teamTagRepository.isUsed(tagId)) {
+            throw new InvalidTeamTagException("Assigned team tag cannot be deleted");
+        }
+
+        teamTag.setDeleted(true);
+        teamTag.setUpdatedAt(Instant.now());
+        teamTagRepository.update(teamTag);
     }
 }

@@ -8,6 +8,8 @@
 @param String activeSection
 @param Content headerContext
 @param Content content
+@param String successMessage = null
+@param String errorMessage = null
 
 <!doctype html>
 <html lang="ru" data-color-mode="auto" data-light-theme="light" data-dark-theme="dark">
@@ -117,12 +119,20 @@
             </div>
         </header>
 
+        <div class="flash-stack app-flash-stack" aria-live="polite" aria-atomic="false">
+            @if(successMessage != null)
+                @template.components.flash(message = successMessage, type = "success")
+            @endif
+
+            @if(errorMessage != null)
+                @template.components.flash(message = errorMessage, type = "error")
+            @endif
+        </div>
+
         <main class="app-content app-content-wide" id="main-content">
             ${content}
         </main>
     </div>
-
-    <div class="flash-stack" aria-live="polite" aria-atomic="false"></div>
 
     <script>
         function resetPendingInlineForms(exceptForm) {
