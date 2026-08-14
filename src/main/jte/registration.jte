@@ -11,7 +11,7 @@
 @param String errorMessage
 
 @template.layout.auth(
-    title = "Регистрация",
+    title = "Создайте учетную запись",
     loginUrl = loginUrl,
     registrationUrl = registrationUrl,
     activeTab = "registration",

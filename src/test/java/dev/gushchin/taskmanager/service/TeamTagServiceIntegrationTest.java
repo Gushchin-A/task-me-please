@@ -76,6 +76,27 @@ class TeamTagServiceIntegrationTest extends IntegrationTestBase {
         assertThrows(TeamTagAlreadyExistsException.class, () -> teamTagService.create(team.getId(), "  КИНОПОИСК  "));
     }
 
+    @Test
+    void renameShouldUpdateTagWithoutChangingItsId() {
+        TeamTag tag = teamTagService.create(team.getId(), "Кинопоиск");
+
+        TeamTag renamedTag = teamTagService.rename(tag.getId(), team.getId(), "  Видео  ");
+
+        assertEquals(tag.getId(), renamedTag.getId());
+        assertEquals("Видео", renamedTag.getName());
+        assertEquals("видео", renamedTag.getNormalizedName());
+    }
+
+    @Test
+    void renameShouldRejectDuplicateNormalizedName() {
+        TeamTag tag = teamTagService.create(team.getId(), "Кинопоиск");
+        teamTagService.create(team.getId(), "Музыка");
+
+        assertThrows(
+                TeamTagAlreadyExistsException.class,
+                () -> teamTagService.rename(tag.getId(), team.getId(), "  МУЗЫКА  "));
+    }
+
     private void cleanDatabase() {
         dsl.deleteFrom(COMMENTS).execute();
         dsl.deleteFrom(TASKS).execute();

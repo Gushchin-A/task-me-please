@@ -291,6 +291,42 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void newTaskPageShouldShowLinearPrimerForm() throws Exception {
+        User longNameMember = userService.create("long-name-member@test.com", "Александр Сергеевич", "qwerty");
+        teamMemberService.addMember(team.getId(), longNameMember.getId());
+
+        mockMvc.perform(get("/tasks/new?teamId=" + team.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Создание новой задачи")))
+                .andExpect(content().string(containsString("class=\"task-create-form\"")))
+                .andExpect(content().string(containsString("name=\"teamId\"")))
+                .andExpect(content().string(containsString("maxlength=\"100\"")))
+                .andExpect(content().string(containsString("0</span> / 100 символов")))
+                .andExpect(content().string(containsString("Выберите команду")))
+                .andExpect(content().string(containsString("Выберите исполнителя")))
+                .andExpect(content().string(containsString("Выберите тег")))
+                .andExpect(content().string(containsString("Александр Серге...")))
+                .andExpect(content().string(containsString("Отменить")))
+                .andExpect(content().string(containsString("title=\"Еще не реализовано :(\"")))
+                .andExpect(content().string(not(containsString("class=\"form-card\""))));
+    }
+
+    @Test
+    void createTaskShouldRequireDeadline() throws Exception {
+        mockMvc.perform(post("/tasks")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("teamId", team.getId().toString())
+                        .param("assigneeId", owner.getId().toString())
+                        .param("title", "Task without deadline")
+                        .param("description", "Description")
+                        .param("tagId", kinopoiskTag.getId().toString()))
+                .andExpect(status().isBadRequest());
+
+        assertEquals(1, dsl.fetchCount(TASKS));
+    }
+
+    @Test
     void removedMemberShouldNotOpenTeamOrTask() throws Exception {
         teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
 

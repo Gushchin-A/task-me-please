@@ -57,6 +57,7 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
     private User secondUser;
     private Team firstTeam;
     private Team secondTeam;
+    private TeamTag firstTeamTag;
     private Task assigneeTask;
 
     @BeforeEach
@@ -72,7 +73,7 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
         teamMemberService.addMember(firstTeam.getId(), secondUser.getId());
         teamMemberService.addMember(secondTeam.getId(), secondUser.getId());
 
-        TeamTag firstTeamTag = teamTagService.create(firstTeam.getId(), "Кинопоиск");
+        firstTeamTag = teamTagService.create(firstTeam.getId(), "Кинопоиск");
         TeamTag secondTeamTag = teamTagService.create(secondTeam.getId(), "Плюс");
 
         taskService.create(
@@ -108,11 +109,22 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("Мои задачи")))
                 .andExpect(content().string(containsString("TASKMEPLEASE")))
                 .andExpect(content().string(containsString("class=\"app-header\"")))
+                .andExpect(content().string(containsString("href=\"#main-content\"")))
+                .andExpect(content().string(containsString("aria-current=\"page\"")))
                 .andExpect(content().string(not(containsString("class=\"app-sidebar\""))))
                 .andExpect(content().string(containsString("class=\"app-content app-content-wide\"")))
                 .andExpect(content().string(not(containsString("<h1>Мои задачи</h1>"))))
+                .andExpect(content().string(not(containsString("class=\"page-actions\""))))
                 .andExpect(content().string(containsString("class=\"task-toolbar\"")))
-                .andExpect(content().string(containsString("class=\"toolbar-popover\"")))
+                .andExpect(content().string(containsString("Выберите фильтры")))
+                .andExpect(content().string(not(containsString(">Исполнитель</span>"))))
+                .andExpect(content().string(containsString(">Автор</span>")))
+                .andExpect(content().string(containsString(">Тег</span>")))
+                .andExpect(content().string(containsString(">Команда</span>")))
+                .andExpect(content().string(containsString("Сортировать задачи")))
+                .andExpect(content().string(containsString("По команде")))
+                .andExpect(content().string(containsString("class=\"button button-primary task-create-action\"")))
+                .andExpect(content().string(containsString("class=\"toolbar-popover task-filter-popover\"")))
                 .andExpect(content().string(containsString("class=\"task-grid\"")))
                 .andExpect(content().string(containsString("class=\"task-card\"")))
                 .andExpect(content().string(containsString("Owner author task")))
@@ -146,6 +158,24 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void myTasksPageShouldFilterByAuthorAssigneeAndTag() throws Exception {
+        mockMvc.perform(get("/tasks?authorId=" + owner.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Owner author task")))
+                .andExpect(content().string(not(containsString("Owner assignee task"))));
+
+        mockMvc.perform(get("/tasks?assigneeId=" + owner.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Owner assignee task")))
+                .andExpect(content().string(not(containsString("Owner author task"))));
+
+        mockMvc.perform(get("/tasks?tagId=" + firstTeamTag.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Owner author task")))
+                .andExpect(content().string(not(containsString("Owner assignee task"))));
+    }
+
+    @Test
     void myTasksPageShouldFilterByAssigneeRole() throws Exception {
         mockMvc.perform(get("/tasks?role=ASSIGNEE").with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
@@ -163,6 +193,71 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void taskPagesWithoutHistoryShouldHideWorkspaceNavigation() throws Exception {
+        dsl.deleteFrom(TASKS).execute();
+
+        mockMvc.perform(get("/tasks").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("class=\"empty-state task-empty-state\"")))
+                .andExpect(content().string(containsString("class=\"empty-state-icon\"")))
+                .andExpect(content().string(not(containsString("class=\"local-tabs\""))))
+                .andExpect(content().string(not(containsString("class=\"task-count\""))))
+                .andExpect(content().string(not(containsString("class=\"toolbar-popover\""))))
+                .andExpect(content().string(containsString("class=\"button button-primary task-create-action\"")))
+                .andExpect(content().string(containsString("Задачи не найдены")));
+
+        mockMvc.perform(get("/tasks/archive").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("class=\"empty-state task-empty-state\"")))
+                .andExpect(content().string(containsString("class=\"empty-state-icon\"")))
+                .andExpect(content().string(not(containsString("class=\"local-tabs\""))))
+                .andExpect(content().string(not(containsString("class=\"task-count\""))))
+                .andExpect(content().string(not(containsString("class=\"toolbar-popover\""))))
+                .andExpect(content().string(containsString("class=\"button button-primary task-create-action\"")))
+                .andExpect(content().string(containsString("В архиве пока что пусто")))
+                .andExpect(content()
+                        .string(containsString(
+                                "Сюда вы сможете перенести выполненные, неактуальные или удаленные задачи")));
+    }
+
+    @Test
+    void taskPagesWithoutTeamsShouldOfferTeamCreation() throws Exception {
+        dsl.deleteFrom(TASKS).execute();
+        dsl.deleteFrom(TEAM_INVITATIONS).execute();
+        dsl.deleteFrom(TEAM_TAGS).execute();
+        dsl.deleteFrom(TEAM_MEMBERS).execute();
+        dsl.deleteFrom(TEAMS).execute();
+
+        mockMvc.perform(get("/tasks").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("class=\"local-tabs\""))))
+                .andExpect(content().string(not(containsString("class=\"task-count\""))))
+                .andExpect(content().string(not(containsString("class=\"toolbar-popover\""))))
+                .andExpect(content().string(containsString("class=\"button button-primary team-create-action\"")))
+                .andExpect(content().string(containsString("href=\"/teams/new\"")))
+                .andExpect(content().string(containsString("class=\"empty-state-icons\"")))
+                .andExpect(content().string(containsString("class=\"empty-state-group-icon\"")))
+                .andExpect(content().string(containsString("Актуальные задачи и команды не найдены")))
+                .andExpect(content().string(containsString("Чтобы работать с задачами, создайте команду")))
+                .andExpect(content().string(containsString("попросите добавить вас в существующую")))
+                .andExpect(content().string(not(containsString("добавить вас в существующую команду"))));
+    }
+
+    @Test
+    void archiveWithoutTasksShouldKeepWorkspaceNavigationWhenTaskHistoryExists() throws Exception {
+        mockMvc.perform(get("/tasks/archive").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("class=\"local-tabs\"")))
+                .andExpect(content().string(containsString("class=\"task-count\">Задачи (0)")))
+                .andExpect(content().string(containsString("class=\"toolbar-popover task-filter-popover\"")))
+                .andExpect(content().string(containsString("class=\"button button-primary task-create-action\"")))
+                .andExpect(content().string(containsString("В архиве пока что пусто")))
+                .andExpect(content()
+                        .string(containsString(
+                                "Сюда вы сможете перенести выполненные, неактуальные или удаленные задачи")));
+    }
+
+    @Test
     void removedMemberShouldNotSeeRemovedTeamInTeamsPage() throws Exception {
         teamMemberService.removeMember(firstTeam.getId(), secondUser.getId(), owner.getId());
 
@@ -173,14 +268,35 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    void teamsPageShouldUseTeamCards() throws Exception {
+    void teamsPageShouldUseTeamList() throws Exception {
         mockMvc.perform(get("/teams").with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("class=\"workspace-page teams-page\"")))
-                .andExpect(content().string(containsString("class=\"team-grid\"")))
-                .andExpect(content().string(containsString("class=\"team-card\"")))
+                .andExpect(content().string(containsString("class=\"teams-toolbar\"")))
+                .andExpect(content().string(containsString("Команды (2)")))
+                .andExpect(content().string(containsString("class=\"team-list\"")))
+                .andExpect(content().string(containsString("class=\"team-list-item\"")))
                 .andExpect(content().string(containsString("data-tooltip=\"Открыть команду\"")))
                 .andExpect(content().string(not(containsString("Открыть задачи команды"))));
+    }
+
+    @Test
+    void emptyTeamsPageShouldUseSharedBlankSlate() throws Exception {
+        dsl.deleteFrom(TASKS).execute();
+        dsl.deleteFrom(TEAM_INVITATIONS).execute();
+        dsl.deleteFrom(TEAM_TAGS).execute();
+        dsl.deleteFrom(TEAM_MEMBERS).execute();
+        dsl.deleteFrom(TEAMS).execute();
+
+        mockMvc.perform(get("/teams").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("class=\"teams-toolbar\"")))
+                .andExpect(content().string(containsString("class=\"button button-primary team-create-action\"")))
+                .andExpect(content().string(containsString("class=\"empty-state team-empty-state\"")))
+                .andExpect(content().string(containsString("class=\"empty-state-icon\"")))
+                .andExpect(content().string(containsString("Команд пока нет")))
+                .andExpect(content()
+                        .string(containsString("Создайте команду, чтобы распределять задачи и работать вместе")));
     }
 
     @Test

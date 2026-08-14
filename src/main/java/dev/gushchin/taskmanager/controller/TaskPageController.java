@@ -17,14 +17,17 @@ import dev.gushchin.taskmanager.service.TeamService;
 import dev.gushchin.taskmanager.service.TeamTagService;
 import dev.gushchin.taskmanager.service.UserService;
 import dev.gushchin.taskmanager.view.CommentView;
+import dev.gushchin.taskmanager.view.MyTasksFilterRequest;
 import dev.gushchin.taskmanager.view.MyTasksPageView;
 import dev.gushchin.taskmanager.view.MyTasksPageView.MyTasksPageFilters;
+import dev.gushchin.taskmanager.view.MyTasksPageView.MyTasksPageResources;
 import dev.gushchin.taskmanager.view.MyTasksPageView.MyTasksRoleCounts;
 import dev.gushchin.taskmanager.view.TaskParticipantView;
 import dev.gushchin.taskmanager.view.TaskView;
 import dev.gushchin.taskmanager.view.TaskWithTeamView;
 import dev.gushchin.taskmanager.view.TeamTasksStats;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.StringJoiner;
 import java.util.UUID;
@@ -34,6 +37,7 @@ import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -66,12 +70,16 @@ public class TaskPageController {
     @GetMapping("/tasks")
     public String tasksPage(
             @AuthenticationPrincipal AuthUser authUser,
-            @RequestParam(required = false) TaskStatus status,
-            @RequestParam(required = false) Long teamId,
-            @RequestParam(required = false) TaskRoleFilter role,
-            @RequestParam(required = false) TaskSort sort,
+            @ModelAttribute MyTasksFilterRequest filters,
             Model model,
             CsrfToken csrfToken) {
+        TaskStatus status = filters.getStatus();
+        Long teamId = filters.getTeamId();
+        TaskRoleFilter role = filters.getRole();
+        TaskSort sort = filters.getSort();
+        UUID authorId = filters.getAuthorId();
+        UUID assigneeId = filters.getAssigneeId();
+        Long tagId = filters.getTagId();
         List<Team> teams = teamService.findByUserId(authUser.getId());
         List<Long> teamIds = teams.stream().map(Team::getId).toList();
 
@@ -81,6 +89,9 @@ public class TaskPageController {
         List<Task> teamFilteredTasks = taskService.filterByTeamId(modeFilteredTasks, teamId);
         List<Task> roleFilteredTasks = taskService.filterByRole(teamFilteredTasks, role, authUser.getId());
         List<Task> statusFilteredTasks = taskService.filterByStatus(roleFilteredTasks, status);
+        List<Task> tagFilteredTasks = taskService.filterByTagId(statusFilteredTasks, tagId);
+        List<Task> authorFilteredTasks = taskService.filterByAuthorId(tagFilteredTasks, authorId);
+        List<Task> assigneeFilteredTasks = taskService.filterByAssigneeId(authorFilteredTasks, assigneeId);
 
         List<Task> statusScopedTasks = taskService.filterByStatus(teamFilteredTasks, status);
         int authorTasksCount = taskService
@@ -92,7 +103,7 @@ public class TaskPageController {
 
         TeamTasksStats stats = taskService.getStats(roleFilteredTasks);
 
-        List<TaskWithTeamView> taskCards = statusFilteredTasks.stream()
+        List<TaskWithTeamView> taskCards = assigneeFilteredTasks.stream()
                 .map(task -> toTaskWithTeamView(task, authUser.getId()))
                 .toList();
 
@@ -100,11 +111,12 @@ public class TaskPageController {
 
         MyTasksPageView page = new MyTasksPageView(
                 sortedTaskCards,
-                teams,
+                new MyTasksPageResources(teams, getFilterParticipants(visibleTasks), getTeamTags(teams)),
                 roleFilteredTasks.size(),
                 stats,
-                new MyTasksPageFilters(status, teamId, role, sort),
+                new MyTasksPageFilters(status, teamId, role, sort, authorId, assigneeId, tagId),
                 new MyTasksRoleCounts(authorTasksCount, assigneeTasksCount),
+                !visibleTasks.isEmpty(),
                 TaskListMode.ACTIVE);
 
         model.addAttribute(PAGE_ATTRIBUTE, page);
@@ -116,12 +128,16 @@ public class TaskPageController {
     @GetMapping("/tasks/archive")
     public String archivedTasksPage(
             @AuthenticationPrincipal AuthUser authUser,
-            @RequestParam(required = false) TaskStatus status,
-            @RequestParam(required = false) Long teamId,
-            @RequestParam(required = false) TaskRoleFilter role,
-            @RequestParam(required = false) TaskSort sort,
+            @ModelAttribute MyTasksFilterRequest filters,
             Model model,
             CsrfToken csrfToken) {
+        TaskStatus status = filters.getStatus();
+        Long teamId = filters.getTeamId();
+        TaskRoleFilter role = filters.getRole();
+        TaskSort sort = filters.getSort();
+        UUID authorId = filters.getAuthorId();
+        UUID assigneeId = filters.getAssigneeId();
+        Long tagId = filters.getTagId();
         List<Team> teams = teamService.findByUserId(authUser.getId());
         List<Long> teamIds = teams.stream().map(Team::getId).toList();
 
@@ -131,6 +147,9 @@ public class TaskPageController {
         List<Task> teamFilteredTasks = taskService.filterByTeamId(modeFilteredTasks, teamId);
         List<Task> roleFilteredTasks = taskService.filterByRole(teamFilteredTasks, role, authUser.getId());
         List<Task> statusFilteredTasks = taskService.filterByStatus(roleFilteredTasks, status);
+        List<Task> tagFilteredTasks = taskService.filterByTagId(statusFilteredTasks, tagId);
+        List<Task> authorFilteredTasks = taskService.filterByAuthorId(tagFilteredTasks, authorId);
+        List<Task> assigneeFilteredTasks = taskService.filterByAssigneeId(authorFilteredTasks, assigneeId);
 
         List<Task> statusScopedTasks = taskService.filterByStatus(teamFilteredTasks, status);
         int authorTasksCount = taskService
@@ -142,7 +161,7 @@ public class TaskPageController {
 
         TeamTasksStats stats = taskService.getStats(roleFilteredTasks);
 
-        List<TaskWithTeamView> taskCards = statusFilteredTasks.stream()
+        List<TaskWithTeamView> taskCards = assigneeFilteredTasks.stream()
                 .map(task -> toTaskWithTeamView(task, authUser.getId()))
                 .toList();
 
@@ -150,11 +169,12 @@ public class TaskPageController {
 
         MyTasksPageView page = new MyTasksPageView(
                 sortedTaskCards,
-                teams,
+                new MyTasksPageResources(teams, getFilterParticipants(visibleTasks), getTeamTags(teams)),
                 roleFilteredTasks.size(),
                 stats,
-                new MyTasksPageFilters(status, teamId, role, sort),
+                new MyTasksPageFilters(status, teamId, role, sort, authorId, assigneeId, tagId),
                 new MyTasksRoleCounts(authorTasksCount, assigneeTasksCount),
+                !visibleTasks.isEmpty(),
                 TaskListMode.ARCHIVE);
 
         model.addAttribute(PAGE_ATTRIBUTE, page);
@@ -312,7 +332,7 @@ public class TaskPageController {
             @RequestParam UUID assigneeId,
             @RequestParam String title,
             @RequestParam String description,
-            @RequestParam(required = false) LocalDate deadlineDate,
+            @RequestParam LocalDate deadlineDate,
             @RequestParam Long tagId) {
         teamMemberService.findById(teamId, authUser.getId());
         teamMemberService.findById(teamId, assigneeId);
@@ -469,6 +489,32 @@ public class TaskPageController {
         User user = userService.findById(userId);
 
         return new TaskParticipantView(user.getId(), user.getName(), !teamMemberService.isActiveMember(teamId, userId));
+    }
+
+    private List<TaskParticipantView> getFilterParticipants(List<Task> tasks) {
+        List<TaskParticipantView> participants = new ArrayList<>();
+
+        for (Task task : tasks) {
+            addFilterParticipant(participants, toTaskParticipant(task.getTeamId(), task.getAuthorId()));
+            addFilterParticipant(participants, toTaskParticipant(task.getTeamId(), task.getAssigneeId()));
+        }
+
+        return participants;
+    }
+
+    private void addFilterParticipant(List<TaskParticipantView> participants, TaskParticipantView participant) {
+        boolean alreadyAdded = participants.stream()
+                .anyMatch(existingParticipant -> existingParticipant.id().equals(participant.id()));
+
+        if (!alreadyAdded) {
+            participants.add(participant);
+        }
+    }
+
+    private List<TeamTag> getTeamTags(List<Team> teams) {
+        return teams.stream()
+                .flatMap(team -> teamTagService.findByTeamId(team.getId()).stream())
+                .toList();
     }
 
     private String buildTeamRedirect(Long teamId, TaskStatus selectedStatus, TaskSort selectedSort) {

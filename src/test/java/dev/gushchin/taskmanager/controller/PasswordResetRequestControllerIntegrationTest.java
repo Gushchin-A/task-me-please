@@ -25,6 +25,7 @@ import dev.gushchin.taskmanager.IntegrationTestBase;
 import dev.gushchin.taskmanager.exception.TransactionalEmailSendingException;
 import dev.gushchin.taskmanager.jooq.tables.records.AccountTokensRecord;
 import dev.gushchin.taskmanager.model.AccountTokenType;
+import dev.gushchin.taskmanager.model.PasswordResetRequestResult;
 import dev.gushchin.taskmanager.model.User;
 import dev.gushchin.taskmanager.repository.UserRepository;
 import dev.gushchin.taskmanager.service.PasswordResetRequestService;
@@ -39,15 +40,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MvcResult;
 
 @SuppressWarnings("PMD.UnitTestShouldIncludeAssert")
 class PasswordResetRequestControllerIntegrationTest extends IntegrationTestBase {
     private static final String EMAIL = "reset-request@test.com";
-    private static final String NEUTRAL_RESULT_MESSAGE =
-            "Если аккаунт с таким email существует, мы отправили ссылку для восстановления password.";
     private static final String PASSWORD = "qwerty";
 
     @Autowired
@@ -86,9 +83,12 @@ class PasswordResetRequestControllerIntegrationTest extends IntegrationTestBase 
                 .andExpect(content().string(containsString("data-submit-loading")))
                 .andExpect(content().string(containsString("data-loading-text=\"Отправляем письмо…\"")))
                 .andExpect(content().string(containsString("name=\"email\"")))
-                .andExpect(content().string(containsString("data-remaining-attempts>5</span>")))
-                .andExpect(content().string(containsString("Почему количество попыток в сутки ограничено")))
-                .andExpect(content().string(containsString("support@example.com")));
+                .andExpect(content().string(containsString("Сбросить пароль")))
+                .andExpect(content()
+                        .string(containsString(
+                                "Введите адрес электронной почты вашей учетной записи, и мы вышлем вам ссылку")))
+                .andExpect(content().string(containsString("Есть аккаунт?")))
+                .andExpect(content().string(containsString(">Войти</a>")));
     }
 
     @Test
@@ -121,32 +121,40 @@ class PasswordResetRequestControllerIntegrationTest extends IntegrationTestBase 
     }
 
     @Test
-    void requestPageShouldShowCountdownAndRemainingAttempts() throws Exception {
+    void requestPageShouldShowSentStateWithoutForm() throws Exception {
         createVerifiedUser(EMAIL);
 
-        MvcResult result = mockMvc.perform(post("/forgot-password").with(csrf()).param("email", EMAIL))
+        mockMvc.perform(post("/forgot-password").with(csrf()).param("email", EMAIL))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/forgot-password"))
-                .andReturn();
+                .andExpect(flash().attribute("requestResult", PasswordResetRequestResult.SENT));
 
-        mockMvc.perform(get("/forgot-password")
-                        .session((MockHttpSession) result.getRequest().getSession()))
+        mockMvc.perform(get("/forgot-password").flashAttr("requestResult", PasswordResetRequestResult.SENT))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("data-request-countdown=")))
-                .andExpect(content().string(containsString("data-remaining-attempts>4</span>")))
-                .andExpect(content().string(containsString("data-loading-text=\"Отправляем письмо…\"")))
-                .andExpect(content().string(containsString("disabled")));
+                .andExpect(content().string(containsString("Отправили вам ссылку для сброса пароля")))
+                .andExpect(content().string(containsString("Назад на страницу входа")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("action=\"/forgot-password\""))));
     }
 
     @Test
     void requestShouldReturnSameResultForUnknownUnverifiedAndDeletedUsers() throws Exception {
-        requestPasswordReset("unknown@test.com");
+        requestPasswordReset("unknown@test.com", PasswordResetRequestResult.INVALID_ACCOUNT);
         User unverifiedUser = userService.create("unverified@test.com", "Unverified", PASSWORD);
-        requestPasswordReset(unverifiedUser.getEmail());
+        requestPasswordReset(unverifiedUser.getEmail(), PasswordResetRequestResult.INVALID_ACCOUNT);
         User deletedUser = createVerifiedUser("deleted@test.com");
         deletedUser.setDeleted(true);
         userRepository.update(deletedUser);
-        requestPasswordReset(deletedUser.getEmail());
+        requestPasswordReset(deletedUser.getEmail(), PasswordResetRequestResult.INVALID_ACCOUNT);
+
+        mockMvc.perform(get("/forgot-password")
+                        .flashAttr("requestResult", PasswordResetRequestResult.INVALID_ACCOUNT)
+                        .flashAttr("email", "unknown@test.com"))
+                .andExpect(status().isOk())
+                .andExpect(content()
+                        .string(containsString(
+                                "Этот адрес электронной почты недействителен, не подтверждён или не привязан")))
+                .andExpect(content().string(containsString("value=\"unknown@test.com\"")))
+                .andExpect(content().string(containsString("auth-inline-error")));
 
         assertEquals(0, dsl.fetchCount(ACCOUNT_TOKENS));
         verify(emailSender, never()).send(anyString(), anyString(), anyString());
@@ -195,7 +203,13 @@ class PasswordResetRequestControllerIntegrationTest extends IntegrationTestBase 
         dsl.update(ACCOUNT_TOKENS)
                 .set(ACCOUNT_TOKENS.CREATED_AT, OffsetDateTime.now().minusMinutes(2))
                 .execute();
-        requestPasswordReset(EMAIL);
+        requestPasswordReset(EMAIL, PasswordResetRequestResult.LIMIT_REACHED);
+
+        mockMvc.perform(get("/forgot-password").flashAttr("requestResult", PasswordResetRequestResult.LIMIT_REACHED))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("В сервисе используется ограниченный лимит писем в день")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("<h1 class=\"auth-title\""))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("action=\"/forgot-password\""))));
 
         assertEquals(PasswordResetRequestService.MAX_REQUEST_ATTEMPTS, dsl.fetchCount(ACCOUNT_TOKENS));
     }
@@ -222,10 +236,14 @@ class PasswordResetRequestControllerIntegrationTest extends IntegrationTestBase 
     }
 
     private void requestPasswordReset(String email) throws Exception {
+        requestPasswordReset(email, PasswordResetRequestResult.SENT);
+    }
+
+    private void requestPasswordReset(String email, PasswordResetRequestResult result) throws Exception {
         mockMvc.perform(post("/forgot-password").with(csrf()).param("email", email))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/forgot-password"))
-                .andExpect(flash().attribute("successMessage", NEUTRAL_RESULT_MESSAGE));
+                .andExpect(flash().attribute("requestResult", result));
     }
 
     private User createVerifiedUser(String email) {

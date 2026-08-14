@@ -19,28 +19,18 @@
     _csrf = _csrf,
     currentUser = currentUser,
     activeSection = "teams",
+    successMessage = successMessage,
+    errorMessage = errorMessage,
+    headerContext = @`
+        @template.components.teamSwitcher(team = team, navigationTeams = navigationTeams)
+    `,
     content = @`
         @template.components.teamNavigation(
             team = team,
-            teams = navigationTeams,
-            activeTab = "invite",
-            tasksCount = -1,
-            archiveCount = -1,
-            membersCount = -1,
-            canInvite = canInvite
+            activeTab = "invite"
         )
 
         <section class="workspace-page team-invite-page">
-            <div class="flash-stack" aria-live="polite" aria-atomic="false">
-                @if(successMessage != null)
-                    @template.components.flash(message = successMessage, type = "success")
-                @endif
-
-                @if(errorMessage != null)
-                    @template.components.flash(message = errorMessage, type = "error")
-                @endif
-            </div>
-
             @if(canInvite)
                 <form
                     class="invite-form"

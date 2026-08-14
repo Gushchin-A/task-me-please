@@ -99,12 +99,33 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Task Me Please")))
                 .andExpect(content().string(containsString("class=\"auth-logo\"")))
+                .andExpect(content().string(containsString("class=\"auth-logo-mark\"")))
+                .andExpect(content().string(containsString("class=\"auth-logo-name\">TaskMePlease")))
+                .andExpect(content().string(containsString("class=\"auth-title\">Войдите, чтобы продолжить")))
                 .andExpect(content().string(containsString("action=\"/login\"")))
                 .andExpect(content().string(containsString("data-submit-loading")))
                 .andExpect(content().string(containsString("data-loading-text=\"Выполняется вход…\"")))
                 .andExpect(content().string(containsString("name=\"username\"")))
                 .andExpect(content().string(containsString("name=\"remember-me\"")))
-                .andExpect(content().string(containsString("Запомнить меня")));
+                .andExpect(content().string(containsString("class=\"auth-label-row\"")))
+                .andExpect(content().string(containsString("class=\"auth-label-link\"")))
+                .andExpect(content().string(containsString("Запомнить меня")))
+                .andExpect(content().string(containsString("Нет аккаунта?")))
+                .andExpect(content().string(containsString("Создать аккаунт")));
+    }
+
+    @Test
+    void authLayoutShouldUseLocalPrimerResourcesAndThemeAttributes() throws Exception {
+        mockMvc.perform(get("/login"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-color-mode=\"auto\"")))
+                .andExpect(content().string(containsString("data-light-theme=\"light\"")))
+                .andExpect(content().string(containsString("data-dark-theme=\"dark\"")))
+                .andExpect(content().string(containsString("href=\"/css/primer/primitives.css\"")))
+                .andExpect(content().string(containsString("href=\"/css/primer/functional/themes/light.css\"")))
+                .andExpect(content().string(containsString("href=\"/css/primer/functional/themes/dark.css\"")))
+                .andExpect(content().string(not(containsString("primer.style"))))
+                .andExpect(content().string(not(containsString("github.com/primer"))));
     }
 
     @Test
@@ -112,9 +133,14 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/registration"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Task Me Please")))
+                .andExpect(content().string(containsString("class=\"auth-title\">Создайте учетную запись")))
                 .andExpect(content().string(containsString("action=\"/registration\"")))
+                .andExpect(content().string(containsString("name=\"name\"")))
+                .andExpect(content().string(containsString("name=\"email\"")))
+                .andExpect(content().string(containsString("name=\"password\"")))
                 .andExpect(content().string(containsString("data-loading-text=\"Создаём аккаунт…\"")))
-                .andExpect(content().string(containsString("Создать аккаунт")));
+                .andExpect(content().string(containsString("Создать аккаунт")))
+                .andExpect(content().string(containsString("Уже есть аккаунт?")));
     }
 
     @Test
@@ -303,15 +329,12 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/verification-pending")
                         .session((MockHttpSession) result.getRequest().getSession()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Мы отправили письмо на " + EMAIL)))
-                .andExpect(content().string(containsString("Отправить письмо повторно")))
-                .andExpect(content().string(containsString("Повторных попыток осталось:")))
-                .andExpect(content().string(containsString("data-remaining-attempts>5</span>")))
-                .andExpect(content().string(containsString("data-resend-countdown=")))
-                .andExpect(content().string(containsString("data-loading-text=\"Отправляем письмо…\"")))
-                .andExpect(content().string(containsString("disabled")))
-                .andExpect(content().string(containsString("Почему количество попыток в сутки ограничено")))
-                .andExpect(content().string(containsString("support@example.com")));
+                .andExpect(content().string(containsString("Подтвердите email")))
+                .andExpect(content().string(containsString("Отправили вам ссылку для подтверждения")))
+                .andExpect(content().string(containsString("проверьте папку «Спам»")))
+                .andExpect(content().string(containsString("Назад на страницу входа")))
+                .andExpect(content().string(not(containsString("Отправить письмо повторно"))))
+                .andExpect(content().string(not(containsString("Повторных попыток осталось:"))));
     }
 
     @Test
@@ -332,7 +355,7 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/verification-pending")
                         .session((MockHttpSession) result.getRequest().getSession()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("name=\"redirect\" value=\"" + redirect + "\"")));
+                .andExpect(content().string(containsString("redirect=/invitations/token-123")));
     }
 
     @Test
@@ -652,9 +675,9 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
 
         mockMvc.perform(get("/verification-pending").session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("data-remaining-attempts>0</span>")))
-                .andExpect(content().string(containsString("data-loading-text=\"Отправляем письмо…\"")))
-                .andExpect(content().string(containsString("disabled")));
+                .andExpect(content().string(containsString("В сервисе используется ограниченный лимит писем в день")))
+                .andExpect(content().string(not(containsString("<h1 class=\"auth-title\""))))
+                .andExpect(content().string(not(containsString("Отправить письмо повторно"))));
     }
 
     @Test
@@ -723,11 +746,24 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("data-tooltip=\"Ваш профиль\"")))
                 .andExpect(content().string(containsString("data-profile-initial>A</span>")))
+                .andExpect(content().string(containsString("data-profile-focus")))
                 .andExpect(content().string(containsString("Auth user")))
                 .andExpect(content().string(containsString(EMAIL)))
                 .andExpect(content().string(containsString("Настройки пока не реализованы")))
                 .andExpect(content().string(containsString("action=\"/logout\"")))
                 .andExpect(content().string(containsString("Выйти из профиля")));
+    }
+
+    @Test
+    void authenticatedLayoutShouldUsePrimerThemeAttributes() throws Exception {
+        User user = userService.create(EMAIL, "Auth user", PASSWORD);
+
+        mockMvc.perform(get("/tasks").with(user(new AuthUser(user))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-color-mode=\"auto\"")))
+                .andExpect(content().string(containsString("data-light-theme=\"light\"")))
+                .andExpect(content().string(containsString("data-dark-theme=\"dark\"")))
+                .andExpect(content().string(containsString("href=\"/css/primer/primitives.css\"")));
     }
 
     @Test
@@ -745,6 +781,24 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
     @Test
     void staticImagesShouldBeAvailableWithoutAuthentication() throws Exception {
         mockMvc.perform(get("/images/favicon.svg")).andExpect(status().isOk());
+    }
+
+    @Test
+    void localPrimerStylesShouldBeAvailableWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/css/primer/primitives.css"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("functional/size/radius.css")));
+        mockMvc.perform(get("/css/primer/functional/themes/light.css"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("--fgColor-default")));
+        mockMvc.perform(get("/css/primer/functional/themes/dark.css"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("--bgColor-default")));
+        mockMvc.perform(get("/css/app.css"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("var(--fgColor-default)")))
+                .andExpect(content().string(not(containsString("--tmp-"))))
+                .andExpect(content().string(not(containsString("--color-bg:"))));
     }
 
     @Test

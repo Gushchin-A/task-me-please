@@ -18,13 +18,11 @@
     _csrf = _csrf,
     currentUser = currentUser,
     activeSection = "tasks",
+    headerContext = null,
     content = @`
         <section class="workspace-page tasks-page">
-            <div class="page-actions">
-                <a class="button button-primary" href="/tasks/new">Создать задачу</a>
-            </div>
-
-            <nav class="local-tabs" aria-label="Режим списка задач">
+            @if(page.showTaskWorkspaceNavigation())
+                <nav class="local-tabs" aria-label="Режим списка задач">
                 <a
                     class="${page.activeMode() ? "local-tab-active" : ""}"
                     href="/tasks"
@@ -40,139 +38,96 @@
                 >
                     Архив
                 </a>
-            </nav>
+                </nav>
 
-            <div class="task-toolbar">
-                <strong>Задачи (${page.totalTasksCount()})</strong>
-
-                <details class="toolbar-popover">
-                    <summary class="button button-secondary toolbar-icon-button" data-tooltip="Фильтры">
-                        <span aria-hidden="true">▽</span>
-                        <span class="visually-hidden">Фильтры</span>
-                    </summary>
-
-                    <div class="toolbar-popover-panel">
-
-                <a href="${page.allStatusesUrl()}">
-                    @if(page.selectedStatus() == null)
-                        <strong>Все</strong>
+                @template.components.myTasksToolbar(page = page)
+            @else
+                <div class="page-actions tasks-onboarding-actions">
+                    @if(page.showTeamPrerequisiteState())
+                        <a class="button button-primary team-create-action" href="/teams/new">
+                            Создать команду
+                        </a>
                     @else
-                        Все
+                        <a class="button button-primary task-create-action" href="/tasks/new">
+                            Создать задачу
+                        </a>
                     @endif
-                </a>
-
-                <a href="${page.statusUrl(TaskStatus.OPEN)}">
-                    @if(page.selectedStatus() == TaskStatus.OPEN)
-                        <strong>Открыто (${page.stats().openCount()})</strong>
-                    @else
-                        Открыто (${page.stats().openCount()})
-                    @endif
-                </a>
-
-                <a href="${page.statusUrl(TaskStatus.IN_PROGRESS)}">
-                    @if(page.selectedStatus() == TaskStatus.IN_PROGRESS)
-                        <strong>В работе (${page.stats().inProgressCount()})</strong>
-                    @else
-                        В работе (${page.stats().inProgressCount()})
-                    @endif
-                </a>
-
-                <a href="${page.statusUrl(TaskStatus.DONE)}">
-                    @if(page.selectedStatus() == TaskStatus.DONE)
-                        <strong>Готово (${page.stats().doneCount()})</strong>
-                    @else
-                        Готово (${page.stats().doneCount()})
-                    @endif
-                </a>
-
-                <a href="${page.statusUrl(TaskStatus.NOT_RELEVANT)}">
-                    @if(page.selectedStatus() == TaskStatus.NOT_RELEVANT)
-                        <strong>Не актуально (${page.stats().notRelevantCount()})</strong>
-                    @else
-                        Не актуально (${page.stats().notRelevantCount()})
-                    @endif
-                </a>
-
-                <a href="${page.roleUrl(TaskRoleFilter.AUTHOR)}">
-                    @if(page.selectedRole() == TaskRoleFilter.AUTHOR)
-                        <strong>Я автор (${page.authorTasksCount()})</strong>
-                    @else
-                        Я автор (${page.authorTasksCount()})
-                    @endif
-                </a>
-
-                <a href="${page.roleUrl(TaskRoleFilter.ASSIGNEE)}">
-                    @if(page.selectedRole() == TaskRoleFilter.ASSIGNEE)
-                        <strong>Я исполнитель (${page.assigneeTasksCount()})</strong>
-                    @else
-                        Я исполнитель (${page.assigneeTasksCount()})
-                    @endif
-                </a>
-
-                @if(page.selectedRole() != null)
-                    <a href="${page.allRolesUrl()}">
-                        Сбросить фильтр по роли
-                    </a>
-                @endif
-                    </div>
-                </details>
-
-                <details class="toolbar-popover">
-                    <summary class="button button-secondary" data-tooltip="Команды">Команда</summary>
-
-                    <div class="toolbar-popover-panel">
-
-                <a href="${page.allTeamsUrl()}">
-                    @if(page.selectedTeamId() == null)
-                        <strong>Все</strong>
-                    @else
-                        Все
-                    @endif
-                </a>
-
-                @for(Team team : page.visibleTeams())
-                    <a href="${page.teamUrl(team.getId())}">
-                        @if(page.selectedTeamId() != null && page.selectedTeamId().equals(team.getId()))
-                            <strong>${team.getName()}</strong>
-                        @else
-                            ${team.getName()}
-                        @endif
-                    </a>
-                @endfor
-                    </div>
-                </details>
-
-                <details class="toolbar-popover">
-                    <summary class="button button-secondary toolbar-icon-button" data-tooltip="Сортировка">
-                        <span aria-hidden="true">⇅</span>
-                        <span class="visually-hidden">Сортировка</span>
-                    </summary>
-
-                    <div class="toolbar-popover-panel">
-
-				<a href="${page.sortUrl(TaskSort.DEADLINE)}">
-					@if(page.selectedSort() == TaskSort.DEADLINE)
-						<strong>Дедлайн</strong>
-					@else
-						Дедлайн
-					@endif
-				</a>
-
-				<a href="${page.sortUrl(TaskSort.TAG)}">
-					@if(page.selectedSort() == TaskSort.TAG)
-						<strong>Тег</strong>
-					@else
-						Тег
-					@endif
-				</a>
-                    </div>
-                </details>
-            </div>
+                </div>
+            @endif
 
             @if(page.tasks().isEmpty())
-                <div class="empty-state">
-                    <h2>Задачи не найдены</h2>
-                    <p>Измените фильтры или создайте новую задачу.</p>
+                <div class="empty-state task-empty-state">
+                    @if(page.showTeamPrerequisiteState())
+                        <div class="empty-state-icons" aria-hidden="true">
+                            <svg
+                                class="empty-state-group-icon"
+                                focusable="false"
+                                viewBox="0 0 24 24"
+                                width="24"
+                                height="24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.5"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <path d="M7.5 5.25H5.75A2.75 2.75 0 0 0 3 8v11.25A1.75 1.75 0 0 0 4.75 21h14.5A1.75 1.75 0 0 0 21 19.25V8a2.75 2.75 0 0 0-2.75-2.75H16.5"></path>
+                                <path d="M7.5 2.75v4M16.5 2.75v4"></path>
+                                <path d="M7.5 10h7M7.5 13.5h5"></path>
+                                <path d="m14 17 1.75 1.75 3.25-4.5"></path>
+                            </svg>
+
+                            <svg
+                                class="empty-state-group-icon"
+                                focusable="false"
+                                viewBox="0 0 24 24"
+                                width="24"
+                                height="24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.5"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <circle cx="12" cy="7" r="3.25"></circle>
+                                <circle cx="5.25" cy="8.25" r="2.25"></circle>
+                                <circle cx="18.75" cy="8.25" r="2.25"></circle>
+                                <path d="M6.5 20.25H3.25v-3.5a4.25 4.25 0 0 1 5.25-4.13"></path>
+                                <path d="M17.5 20.25h3.25v-3.5a4.25 4.25 0 0 0-5.25-4.13"></path>
+                                <path d="M7.25 20.25v-4.5a4.75 4.75 0 0 1 9.5 0v4.5Z"></path>
+                            </svg>
+                        </div>
+
+                        <h2>Актуальные задачи и команды не найдены</h2>
+                        <p>Чтобы работать с задачами, создайте команду или попросите добавить вас в существующую</p>
+                    @else
+                        <svg
+                            class="empty-state-icon"
+                            aria-hidden="true"
+                            focusable="false"
+                            viewBox="0 0 24 24"
+                            width="24"
+                            height="24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.5"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <path d="M7.5 5.25H5.75A2.75 2.75 0 0 0 3 8v11.25A1.75 1.75 0 0 0 4.75 21h14.5A1.75 1.75 0 0 0 21 19.25V8a2.75 2.75 0 0 0-2.75-2.75H16.5"></path>
+                            <path d="M7.5 2.75v4M16.5 2.75v4"></path>
+                            <path d="M7.5 10h7M7.5 13.5h5"></path>
+                            <path d="m14 17 1.75 1.75 3.25-4.5"></path>
+                        </svg>
+
+                        @if(page.archiveMode())
+                            <h2>В архиве пока что пусто</h2>
+                            <p>Сюда вы сможете перенести выполненные, неактуальные или удаленные задачи</p>
+                        @else
+                            <h2>Задачи не найдены</h2>
+                            <p>Измените фильтры или создайте новую задачу</p>
+                        @endif
+                    @endif
                 </div>
             @else
                 <ul class="task-grid">

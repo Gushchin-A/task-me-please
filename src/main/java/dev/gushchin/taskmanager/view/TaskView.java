@@ -4,6 +4,7 @@ import dev.gushchin.taskmanager.model.Task;
 import dev.gushchin.taskmanager.model.TaskStatus;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
@@ -20,6 +21,7 @@ public record TaskView(
         TaskState state) {
     private static final DateTimeFormatter DEADLINE_FORMATTER =
             DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.forLanguageTag("ru"));
+    private static final ZoneId APPLICATION_TIME_ZONE = ZoneId.of("Europe/Moscow");
 
     public static TaskView from(Task task, String tagName, String authorName, String assigneeName) {
         return from(
@@ -134,7 +136,7 @@ public record TaskView(
         }
 
         LocalDate deadlineDate = getDeadlineDate();
-        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        LocalDate today = LocalDate.now(APPLICATION_TIME_ZONE);
 
         return deadlineDate.isBefore(today);
     }
@@ -145,7 +147,7 @@ public record TaskView(
 
     private String formatDeadlineDate() {
         LocalDate deadlineDate = getDeadlineDate();
-        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        LocalDate today = LocalDate.now(APPLICATION_TIME_ZONE);
         String deadlineText = deadlineDate.format(DEADLINE_FORMATTER);
 
         if (deadlineDate.equals(today)) {

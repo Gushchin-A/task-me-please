@@ -7,6 +7,7 @@
     _csrf = null,
     currentUser = currentUser,
     activeSection = "teams",
+    headerContext = null,
     content = @`
         <section class="workspace-page form-page empty-state">
             <h1>Такая страница не найдена</h1>

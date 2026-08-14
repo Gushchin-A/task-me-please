@@ -1,12 +1,15 @@
 @param boolean authenticated
 
 <!doctype html>
-<html lang="ru">
+<html lang="ru" data-color-mode="auto" data-light-theme="light" data-dark-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Приглашение недействительно</title>
     <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/primer/primitives.css">
+    <link rel="stylesheet" href="/css/primer/functional/themes/light.css">
+    <link rel="stylesheet" href="/css/primer/functional/themes/dark.css">
     <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>

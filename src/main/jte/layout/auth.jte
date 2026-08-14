@@ -12,7 +12,7 @@
 @param Content content
 
 <!doctype html>
-<html lang="ru">
+<html lang="ru" data-color-mode="auto" data-light-theme="light" data-dark-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -20,46 +20,26 @@
     <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="/images/favicon-32x32.png" sizes="32x32" type="image/png">
     <link rel="apple-touch-icon" href="/images/favicon-180x180.png">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Archivo+Black&amp;family=Inter:wght@400;500;600;700&amp;display=swap"
-    >
+    <link rel="stylesheet" href="/css/primer/primitives.css">
+    <link rel="stylesheet" href="/css/primer/functional/themes/light.css">
+    <link rel="stylesheet" href="/css/primer/functional/themes/dark.css">
     <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
     <main class="auth-page">
         <div class="auth-shell">
             <a class="auth-logo" href="/" aria-label="Task Me Please">
-                TASKMEPLEASE
+                <span class="auth-logo-mark" aria-hidden="true"></span>
+                <span class="auth-logo-name">TaskMePlease</span>
             </a>
 
-            <p class="auth-tagline">
-                Личные и командные задачи в одном рабочем пространстве
-            </p>
+            @if(!activeTab.isBlank()
+                    && !activeTab.equals("forgot-password-limited")
+                    && !activeTab.equals("verification-limited"))
+                <h1 class="auth-title">${title}</h1>
+            @endif
 
             <section class="auth-panel" aria-labelledby="${activeTab.isBlank() ? "auth-heading" : null}">
-                @if(!activeTab.isBlank())
-                    <nav class="auth-tabs" aria-label="Авторизация">
-                        <a
-                            href="${loginUrl}"
-                            class="auth-tab ${activeTab.equals("login") ? "auth-tab-active" : ""}"
-                            aria-current="${activeTab.equals("login") ? "page" : "false"}"
-                        >
-                            <span>Вход</span>
-                        </a>
-
-                        <a
-                            href="${registrationUrl}"
-                            class="auth-tab ${activeTab.equals("registration") ? "auth-tab-active" : ""}"
-                            aria-current="${activeTab.equals("registration") ? "page" : "false"}"
-                        >
-                            <span>Регистрация</span>
-                        </a>
-                    </nav>
-                @endif
-
                 @if(inviteContext != null)
                     <div class="auth-invite">
                         <strong>Приглашение в команду</strong>
@@ -72,13 +52,35 @@
                 @endif
 
                 ${content}
-
-                @if(activeTab.isBlank())
-                    <a class="auth-back-link" href="${loginUrl}">
-                        ← Вернуться назад
-                    </a>
-                @endif
             </section>
+
+            @if(activeTab.equals("login"))
+                <p class="auth-switch">
+                    Нет аккаунта?
+                    <a href="${registrationUrl}">Создать аккаунт</a>
+                </p>
+            @elseif(activeTab.equals("registration"))
+                <p class="auth-switch">
+                    Уже есть аккаунт?
+                    <a href="${loginUrl}">Войти</a>
+                </p>
+            @elseif(activeTab.equals("forgot-password"))
+                <p class="auth-switch">
+                    Есть аккаунт?
+                    <a href="${loginUrl}">Войти</a>
+                </p>
+            @elseif(activeTab.equals("forgot-password-sent")
+                    || activeTab.equals("forgot-password-limited")
+                    || activeTab.equals("verification-pending")
+                    || activeTab.equals("verification-limited"))
+                <p class="auth-switch">
+                    <a href="${loginUrl}">Назад на страницу входа</a>
+                </p>
+            @else
+                <a class="auth-back-link" href="${loginUrl}">
+                    ← Вернуться назад
+                </a>
+            @endif
         </div>
     </main>
 

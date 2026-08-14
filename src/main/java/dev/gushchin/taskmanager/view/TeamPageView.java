@@ -47,6 +47,10 @@ public record TeamPageView(
         return counts.archiveTasksCount();
     }
 
+    public boolean hasNoTasks() {
+        return activeTasksCount() == 0 && archiveTasksCount() == 0;
+    }
+
     public int membersCount() {
         return counts.membersCount();
     }
@@ -122,6 +126,14 @@ public record TeamPageView(
 
     public String sortUrl(TaskSort sort) {
         return buildUrl(selectedStatus(), sort, selectedAuthorId(), selectedAssigneeId(), selectedTagId());
+    }
+
+    public String clearFiltersUrl() {
+        return buildUrl(null, selectedSort(), null, null, null);
+    }
+
+    public String defaultSortUrl() {
+        return buildUrl(selectedStatus(), null, selectedAuthorId(), selectedAssigneeId(), selectedTagId());
     }
 
     public String allAuthorsUrl() {
