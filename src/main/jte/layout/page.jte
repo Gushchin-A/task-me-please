@@ -6,6 +6,7 @@
 @param CsrfToken _csrf
 @param UserAvatarView currentUser
 @param String activeSection
+@param Content headerContext
 @param Content content
 
 <!doctype html>
@@ -32,7 +33,10 @@
                     TASKMEPLEASE
                 </a>
 
-                <nav class="app-nav" aria-label="Основная навигация">
+                @if(headerContext != null)
+                    ${headerContext}
+                @else
+                    <nav class="app-nav" aria-label="Основная навигация">
                     <a
                         class="app-nav-link ${"tasks".equals(activeSection) ? "app-nav-link-active" : ""}"
                         href="/tasks"
@@ -48,7 +52,8 @@
                     >
                         Мои команды
                     </a>
-                </nav>
+                    </nav>
+                @endif
 
                 @if(currentUser != null)
                     <div class="app-profile" data-profile>

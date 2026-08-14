@@ -139,6 +139,15 @@ function setupToolbarPopovers() {
     const popovers = document.querySelectorAll('.toolbar-popover, .comment-menu, .team-switcher');
 
     popovers.forEach(function (popover) {
+        const closeButton = popover.querySelector('[data-team-switcher-close]');
+
+        if (closeButton !== null) {
+            closeButton.addEventListener('click', function () {
+                popover.open = false;
+                popover.querySelector('summary').focus();
+            });
+        }
+
         popover.addEventListener('toggle', function () {
             if (!popover.open) {
                 return;

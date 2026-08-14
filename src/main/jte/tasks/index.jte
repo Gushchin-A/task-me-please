@@ -18,6 +18,7 @@
     _csrf = _csrf,
     currentUser = currentUser,
     activeSection = "tasks",
+    headerContext = null,
     content = @`
         <section class="workspace-page tasks-page">
             @if(page.showTaskWorkspaceNavigation())
@@ -39,134 +40,7 @@
                 </a>
                 </nav>
 
-                <div class="task-toolbar">
-                <span class="task-count">Задачи (${page.totalTasksCount()})</span>
-
-                    <details class="toolbar-popover">
-                    <summary class="button button-secondary toolbar-icon-button" data-tooltip="Фильтры">
-                        <span aria-hidden="true">▽</span>
-                        <span class="visually-hidden">Фильтры</span>
-                    </summary>
-
-                    <div class="toolbar-popover-panel">
-
-                <a href="${page.allStatusesUrl()}">
-                    @if(page.selectedStatus() == null)
-                        <strong>Все</strong>
-                    @else
-                        Все
-                    @endif
-                </a>
-
-                <a href="${page.statusUrl(TaskStatus.OPEN)}">
-                    @if(page.selectedStatus() == TaskStatus.OPEN)
-                        <strong>Открыто (${page.stats().openCount()})</strong>
-                    @else
-                        Открыто (${page.stats().openCount()})
-                    @endif
-                </a>
-
-                <a href="${page.statusUrl(TaskStatus.IN_PROGRESS)}">
-                    @if(page.selectedStatus() == TaskStatus.IN_PROGRESS)
-                        <strong>В работе (${page.stats().inProgressCount()})</strong>
-                    @else
-                        В работе (${page.stats().inProgressCount()})
-                    @endif
-                </a>
-
-                <a href="${page.statusUrl(TaskStatus.DONE)}">
-                    @if(page.selectedStatus() == TaskStatus.DONE)
-                        <strong>Готово (${page.stats().doneCount()})</strong>
-                    @else
-                        Готово (${page.stats().doneCount()})
-                    @endif
-                </a>
-
-                <a href="${page.statusUrl(TaskStatus.NOT_RELEVANT)}">
-                    @if(page.selectedStatus() == TaskStatus.NOT_RELEVANT)
-                        <strong>Не актуально (${page.stats().notRelevantCount()})</strong>
-                    @else
-                        Не актуально (${page.stats().notRelevantCount()})
-                    @endif
-                </a>
-
-                <a href="${page.roleUrl(TaskRoleFilter.AUTHOR)}">
-                    @if(page.selectedRole() == TaskRoleFilter.AUTHOR)
-                        <strong>Я автор (${page.authorTasksCount()})</strong>
-                    @else
-                        Я автор (${page.authorTasksCount()})
-                    @endif
-                </a>
-
-                <a href="${page.roleUrl(TaskRoleFilter.ASSIGNEE)}">
-                    @if(page.selectedRole() == TaskRoleFilter.ASSIGNEE)
-                        <strong>Я исполнитель (${page.assigneeTasksCount()})</strong>
-                    @else
-                        Я исполнитель (${page.assigneeTasksCount()})
-                    @endif
-                </a>
-
-                @if(page.selectedRole() != null)
-                    <a href="${page.allRolesUrl()}">
-                        Сбросить фильтр по роли
-                    </a>
-                @endif
-                    </div>
-                    </details>
-
-                    <details class="toolbar-popover">
-                    <summary class="button button-secondary" data-tooltip="Команды">Команда</summary>
-
-                    <div class="toolbar-popover-panel">
-
-                <a href="${page.allTeamsUrl()}">
-                    @if(page.selectedTeamId() == null)
-                        <strong>Все</strong>
-                    @else
-                        Все
-                    @endif
-                </a>
-
-                @for(Team team : page.visibleTeams())
-                    <a href="${page.teamUrl(team.getId())}">
-                        @if(page.selectedTeamId() != null && page.selectedTeamId().equals(team.getId()))
-                            <strong>${team.getName()}</strong>
-                        @else
-                            ${team.getName()}
-                        @endif
-                    </a>
-                @endfor
-                    </div>
-                    </details>
-
-                    <details class="toolbar-popover">
-                    <summary class="button button-secondary toolbar-icon-button" data-tooltip="Сортировка">
-                        <span aria-hidden="true">⇅</span>
-                        <span class="visually-hidden">Сортировка</span>
-                    </summary>
-
-                    <div class="toolbar-popover-panel">
-
-				<a href="${page.sortUrl(TaskSort.DEADLINE)}">
-					@if(page.selectedSort() == TaskSort.DEADLINE)
-						<strong>Дедлайн</strong>
-					@else
-						Дедлайн
-					@endif
-				</a>
-
-				<a href="${page.sortUrl(TaskSort.TAG)}">
-					@if(page.selectedSort() == TaskSort.TAG)
-						<strong>Тег</strong>
-					@else
-						Тег
-					@endif
-				</a>
-                    </div>
-                    </details>
-
-                <a class="button button-primary task-create-action" href="/tasks/new">Создать задачу</a>
-                </div>
+                @template.components.myTasksToolbar(page = page)
             @else
                 <div class="page-actions tasks-onboarding-actions">
                     @if(page.showTeamPrerequisiteState())

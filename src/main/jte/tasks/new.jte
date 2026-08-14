@@ -17,6 +17,7 @@
     _csrf = _csrf,
     currentUser = currentUser,
     activeSection = "tasks",
+    headerContext = null,
     content = @`
         <section class="workspace-page form-page task-create-page">
             <a class="back-link team-create-back-link" href="/tasks">

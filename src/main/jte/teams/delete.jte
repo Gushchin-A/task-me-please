@@ -14,6 +14,9 @@
     _csrf = _csrf,
     currentUser = currentUser,
     activeSection = "teams",
+    headerContext = @`
+        @template.components.teamSwitcher(team = team, navigationTeams = navigationTeams)
+    `,
     content = @`
         @template.components.teamNavigation(
             team = team,

@@ -57,6 +57,7 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
     private User secondUser;
     private Team firstTeam;
     private Team secondTeam;
+    private TeamTag firstTeamTag;
     private Task assigneeTask;
 
     @BeforeEach
@@ -72,7 +73,7 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
         teamMemberService.addMember(firstTeam.getId(), secondUser.getId());
         teamMemberService.addMember(secondTeam.getId(), secondUser.getId());
 
-        TeamTag firstTeamTag = teamTagService.create(firstTeam.getId(), "Кинопоиск");
+        firstTeamTag = teamTagService.create(firstTeam.getId(), "Кинопоиск");
         TeamTag secondTeamTag = teamTagService.create(secondTeam.getId(), "Плюс");
 
         taskService.create(
@@ -115,8 +116,15 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(not(containsString("<h1>Мои задачи</h1>"))))
                 .andExpect(content().string(not(containsString("class=\"page-actions\""))))
                 .andExpect(content().string(containsString("class=\"task-toolbar\"")))
+                .andExpect(content().string(containsString("Выберите фильтры")))
+                .andExpect(content().string(not(containsString(">Исполнитель</span>"))))
+                .andExpect(content().string(containsString(">Автор</span>")))
+                .andExpect(content().string(containsString(">Тег</span>")))
+                .andExpect(content().string(containsString(">Команда</span>")))
+                .andExpect(content().string(containsString("Сортировать задачи")))
+                .andExpect(content().string(containsString("По команде")))
                 .andExpect(content().string(containsString("class=\"button button-primary task-create-action\"")))
-                .andExpect(content().string(containsString("class=\"toolbar-popover\"")))
+                .andExpect(content().string(containsString("class=\"toolbar-popover task-filter-popover\"")))
                 .andExpect(content().string(containsString("class=\"task-grid\"")))
                 .andExpect(content().string(containsString("class=\"task-card\"")))
                 .andExpect(content().string(containsString("Owner author task")))
@@ -144,6 +152,24 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
     @Test
     void myTasksPageShouldFilterByAuthorRole() throws Exception {
         mockMvc.perform(get("/tasks?role=AUTHOR").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Owner author task")))
+                .andExpect(content().string(not(containsString("Owner assignee task"))));
+    }
+
+    @Test
+    void myTasksPageShouldFilterByAuthorAssigneeAndTag() throws Exception {
+        mockMvc.perform(get("/tasks?authorId=" + owner.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Owner author task")))
+                .andExpect(content().string(not(containsString("Owner assignee task"))));
+
+        mockMvc.perform(get("/tasks?assigneeId=" + owner.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Owner assignee task")))
+                .andExpect(content().string(not(containsString("Owner author task"))));
+
+        mockMvc.perform(get("/tasks?tagId=" + firstTeamTag.getId()).with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Owner author task")))
                 .andExpect(content().string(not(containsString("Owner assignee task"))));
@@ -223,7 +249,7 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("class=\"local-tabs\"")))
                 .andExpect(content().string(containsString("class=\"task-count\">Задачи (0)")))
-                .andExpect(content().string(containsString("class=\"toolbar-popover\"")))
+                .andExpect(content().string(containsString("class=\"toolbar-popover task-filter-popover\"")))
                 .andExpect(content().string(containsString("class=\"button button-primary task-create-action\"")))
                 .andExpect(content().string(containsString("В архиве пока что пусто")))
                 .andExpect(content()

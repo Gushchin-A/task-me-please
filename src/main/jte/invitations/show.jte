@@ -14,6 +14,7 @@
     _csrf = _csrf,
     currentUser = currentUser,
     activeSection = null,
+    headerContext = null,
     content = @`
         <section>
             <h1>Приглашение в команду</h1>

@@ -9,6 +9,7 @@
     _csrf = _csrf,
     currentUser = currentUser,
     activeSection = "teams",
+    headerContext = null,
     content = @`
         <section class="workspace-page form-page team-create-page">
             <a class="back-link team-create-back-link" href="/teams">

@@ -12,6 +12,7 @@
     _csrf = _csrf,
     currentUser = currentUser,
     activeSection = "teams",
+    headerContext = null,
     content = @`
         <section class="workspace-page teams-page">
             <div class="teams-toolbar">

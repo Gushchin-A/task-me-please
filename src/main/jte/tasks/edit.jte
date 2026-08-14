@@ -18,6 +18,7 @@
     _csrf = _csrf,
     currentUser = currentUser,
     activeSection = "tasks",
+    headerContext = null,
     content = @`
         <section class="workspace-page form-page">
             <a class="back-link" href="/tasks/${task.id()}">
