@@ -146,6 +146,19 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void newTeamPageShouldShowFlatPrimerForm() throws Exception {
+        mockMvc.perform(get("/teams/new").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(view().name("teams/new"))
+                .andExpect(content().string(containsString("Создание новой команды")))
+                .andExpect(content().string(containsString("Вернуться назад")))
+                .andExpect(content().string(containsString("class=\"team-create-form\"")))
+                .andExpect(content().string(containsString("Длина одного тега до 30 символов.")))
+                .andExpect(content().string(not(containsString("Обязательные поля отмечены"))))
+                .andExpect(content().string(not(containsString("class=\"form-card\""))));
+    }
+
+    @Test
     void membersPageShouldShowOnlyVisibleTasksCount() throws Exception {
         mockMvc.perform(get("/teams/" + team.getId() + "/members").with(user(new AuthUser(member))))
                 .andExpect(status().isOk())

@@ -153,6 +153,7 @@ a {
     font-weight: 600;
     line-height: 1.2;
     text-decoration: none;
+    transition: background-color 80ms ease-out, border-color 80ms ease-out, color 80ms ease-out;
 }
 
 .button-primary {
@@ -168,13 +169,12 @@ a {
 
 .button-secondary {
     border-color: var(--borderColor-default);
-    background: var(--bgColor-default);
+    background: var(--control-bgColor-rest);
     color: var(--fgColor-default);
 }
 
 .button-secondary:hover {
-    border-color: var(--borderColor-emphasis);
-    background: var(--control-bgColor-rest);
+    background: var(--control-bgColor-hover);
 }
 
 .button-danger {
@@ -586,6 +586,49 @@ a {
     color: var(--fgColor-link);
 }
 
+.team-create-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--base-size-8);
+    margin-bottom: var(--base-size-12);
+    color: var(--fgColor-muted);
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.team-create-back-link svg {
+    flex: 0 0 auto;
+}
+
+.team-create-back-link:hover {
+    text-decoration: underline;
+}
+
+.team-create-header {
+    margin-bottom: var(--base-size-24);
+}
+
+.team-create-header h1 {
+    font-size: 20px;
+    font-weight: var(--base-text-weight-semibold);
+    letter-spacing: -0.01em;
+    line-height: 32px;
+}
+
+.team-create-header p {
+    max-width: 680px;
+    margin-top: 0;
+    line-height: 21px;
+}
+
+.form-page-description {
+    max-width: 680px;
+    margin: 0;
+    color: var(--fgColor-muted);
+    font-size: 14px;
+    line-height: 21px;
+}
+
 .local-tabs {
     display: flex;
     gap: 4px;
@@ -794,12 +837,27 @@ a {
     line-height: 21px;
 }
 
-.task-create-action {
+.task-create-action,
+.team-create-action {
     min-height: 32px;
-    margin-left: 4px;
     padding: 5px 12px;
     font-size: 14px;
     line-height: 20px;
+}
+
+.task-create-action {
+    margin-left: 4px;
+}
+
+.teams-page-actions,
+.tasks-onboarding-actions {
+    min-height: 58px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.tasks-onboarding-actions .task-create-action {
+    margin-left: 0;
 }
 
 .team-details-page .task-toolbar {
@@ -906,10 +964,18 @@ a {
 .workspace-page textarea {
     min-height: 36px;
     padding: 6px 9px;
-    border: var(--borderWidth-default) solid var(--borderColor-emphasis);
+    border: var(--borderWidth-default) solid var(--control-borderColor-rest);
     border-radius: var(--borderRadius-medium);
     background: var(--bgColor-default);
     color: var(--fgColor-default);
+}
+
+.workspace-page input:focus,
+.workspace-page select:focus,
+.workspace-page textarea:focus {
+    border-color: var(--borderColor-accent-emphasis);
+    outline: none;
+    box-shadow: inset 0 0 0 1px var(--borderColor-accent-emphasis);
 }
 
 .task-card select:hover,
@@ -929,15 +995,14 @@ a {
     padding: 6px 9px;
     border: var(--borderWidth-default) solid var(--borderColor-default);
     border-radius: var(--borderRadius-medium);
-    background: var(--bgColor-default);
+    background: var(--control-bgColor-rest);
     color: var(--fgColor-default);
     cursor: pointer;
 }
 
 .task-card button:not(.button):hover,
 .workspace-page button:not(.button):hover {
-    border-color: var(--borderColor-emphasis);
-    background: var(--control-bgColor-rest);
+    background: var(--control-bgColor-hover);
 }
 
 .empty-state {
@@ -970,24 +1035,41 @@ a {
     font-size: 14px;
 }
 
-.task-empty-state {
+.task-empty-state,
+.team-empty-state {
     width: 100%;
     max-width: none;
     min-height: 248px;
-    padding: 32px 24px;
+    align-content: start;
+    padding: 80px 24px 32px;
     border-style: solid;
     border-color: var(--borderColor-default);
     border-radius: var(--borderRadius-medium);
 }
 
-.task-empty-state .empty-state-icon {
+.task-empty-state .empty-state-icon,
+.team-empty-state .empty-state-icon {
     width: 24px;
     height: 24px;
     margin-bottom: 12px;
     color: var(--fgColor-muted);
 }
 
-.task-empty-state h2 {
+.empty-state-icons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: var(--fgColor-muted);
+}
+
+.empty-state-group-icon {
+    width: 24px;
+    height: 24px;
+}
+
+.task-empty-state h2,
+.team-empty-state h2 {
     margin: 0 0 4px;
     color: var(--fgColor-default);
     font-size: 16px;
@@ -995,7 +1077,8 @@ a {
     line-height: 24px;
 }
 
-.task-empty-state p {
+.task-empty-state p,
+.team-empty-state p {
     margin: 0;
     color: var(--fgColor-muted);
     font-size: 14px;
@@ -1019,6 +1102,352 @@ a {
 .form-card h2 {
     margin: 0;
     font-size: 20px;
+}
+
+.team-create-form {
+    display: grid;
+    width: min(100%, 720px);
+    gap: var(--base-size-24);
+}
+
+.team-create-form .form-field > input {
+    min-height: 34px;
+}
+
+.team-create-form .field-with-action input {
+    min-height: 34px;
+}
+
+.team-create-form .field-with-action .button,
+.team-create-form .team-create-submit .button {
+    min-height: 34px;
+    padding: 5px var(--base-size-12);
+    line-height: 20px;
+}
+
+.required-marker {
+    color: var(--fgColor-default);
+}
+
+.team-create-submit {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--base-size-8);
+    margin-top: var(--base-size-4);
+}
+
+.task-create-form {
+    display: grid;
+    width: min(100%, 720px);
+    gap: var(--base-size-24);
+}
+
+.task-create-unavailable {
+    display: grid;
+    justify-items: start;
+    gap: var(--base-size-12);
+    color: var(--fgColor-muted);
+    font-size: 14px;
+}
+
+.task-create-unavailable p {
+    margin: 0;
+}
+
+.task-create-field {
+    justify-items: start;
+}
+
+.task-create-field > label,
+.task-create-field > input,
+.task-create-field > textarea,
+.task-create-field > .task-description-editor,
+.task-create-field > .task-file-placeholder,
+.task-create-field > .form-help {
+    justify-self: stretch;
+}
+
+.task-team-field,
+.task-assignee-field {
+    width: min(100%, 300px);
+}
+
+.task-title-field,
+.task-description-field {
+    width: 100%;
+}
+
+.task-deadline-field {
+    width: min(100%, 300px);
+}
+
+.task-tag-field {
+    width: min(100%, 300px);
+}
+
+.task-create-field > input:not([type="hidden"]) {
+    min-height: 34px;
+}
+
+.task-title-count {
+    text-align: left;
+}
+
+.task-deadline-field > input {
+    background: var(--control-bgColor-rest);
+    transition: background-color 80ms ease-out, border-color 80ms ease-out, box-shadow 80ms ease-out;
+}
+
+.task-deadline-field > input:hover {
+    background: var(--control-bgColor-hover);
+}
+
+.primer-select {
+    position: relative;
+    width: 100%;
+}
+
+.primer-select-trigger {
+    display: flex;
+    width: 100%;
+    min-height: 34px !important;
+    align-items: center;
+    gap: var(--base-size-8);
+    padding: 5px var(--base-size-12) !important;
+    border-color: var(--button-default-borderColor-rest) !important;
+    background: var(--control-bgColor-rest) !important;
+    box-shadow: var(--button-default-shadow-resting);
+    font-size: 14px;
+    font-weight: var(--base-text-weight-medium);
+    line-height: 20px;
+    text-align: left;
+    transition: background-color 80ms ease-out, border-color 80ms ease-out, box-shadow 80ms ease-out;
+}
+
+.primer-select-trigger:hover {
+    background: var(--control-bgColor-hover) !important;
+}
+
+.primer-select-trigger > svg {
+    flex: 0 0 auto;
+    margin-left: auto;
+}
+
+.primer-select-value {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.participant-avatar {
+    display: grid;
+    width: 22px;
+    height: 22px;
+    flex: 0 0 auto;
+    place-items: center;
+    border: var(--borderWidth-default) solid var(--control-borderColor-rest);
+    border-radius: 50%;
+    background: var(--bgColor-default);
+    color: var(--fgColor-muted);
+    font-size: 10px;
+    font-weight: var(--base-text-weight-semibold);
+}
+
+.primer-select-panel {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + var(--base-size-4));
+    left: 0;
+    width: 320px;
+    max-width: calc(100vw - var(--base-size-32));
+    overflow: hidden;
+    border: var(--borderWidth-default) solid var(--control-borderColor-rest);
+    border-radius: var(--borderRadius-large);
+    background: var(--bgColor-default);
+    box-shadow: var(--shadow-floating-small);
+}
+
+.primer-select-heading {
+    padding: 10px var(--base-size-12) var(--base-size-8);
+    font-size: 14px;
+    font-weight: var(--base-text-weight-semibold);
+    line-height: 20px;
+}
+
+.primer-select-options {
+    max-height: 226px;
+    padding: var(--base-size-4) var(--base-size-8) var(--base-size-8);
+    overflow-y: auto;
+    border-top: var(--borderWidth-default) solid var(--control-borderColor-rest);
+}
+
+.primer-select-option {
+    display: flex;
+    width: 100%;
+    min-height: 40px !important;
+    align-items: center;
+    gap: var(--base-size-8);
+    padding: 6px var(--base-size-8) !important;
+    border: 0 !important;
+    border-radius: var(--borderRadius-medium);
+    background: var(--bgColor-default) !important;
+    font-size: 14px;
+    font-weight: var(--base-text-weight-normal);
+    line-height: 20px;
+    text-align: left;
+}
+
+.primer-select-option:hover,
+.primer-select-option:focus-visible {
+    background: var(--control-transparent-bgColor-hover) !important;
+    outline: none;
+}
+
+.primer-select-check {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    color: transparent;
+}
+
+.primer-select-option[aria-selected="true"] .primer-select-check {
+    color: var(--fgColor-default);
+}
+
+.primer-select-option-copy {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.task-description-editor {
+    overflow: hidden;
+    border: var(--borderWidth-default) solid var(--control-borderColor-rest);
+    border-radius: var(--borderRadius-medium);
+    background: var(--control-bgColor-rest);
+}
+
+.task-editor-toolbar {
+    display: flex;
+    min-height: 42px;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: var(--borderWidth-default) solid var(--control-borderColor-rest);
+    background: var(--control-bgColor-rest);
+}
+
+.task-editor-tabs {
+    display: flex;
+    align-self: stretch;
+    align-items: flex-end;
+    padding-left: var(--base-size-8);
+}
+
+.task-editor-tab {
+    min-height: 35px !important;
+    margin-bottom: -1px;
+    padding: 0 var(--base-size-12) !important;
+    border: var(--borderWidth-default) solid transparent !important;
+    border-bottom: 0 !important;
+    border-radius: var(--borderRadius-medium) var(--borderRadius-medium) 0 0 !important;
+    background: transparent !important;
+    color: var(--fgColor-muted) !important;
+    font-size: 14px;
+    font-weight: var(--base-text-weight-normal);
+}
+
+.task-editor-tab-active {
+    border-color: var(--control-borderColor-rest) !important;
+    background: var(--bgColor-default) !important;
+    color: var(--fgColor-default) !important;
+    font-weight: var(--base-text-weight-medium);
+}
+
+.task-editor-actions {
+    display: flex;
+    gap: var(--base-size-4);
+    padding-right: var(--base-size-8);
+}
+
+.task-editor-actions button {
+    display: grid;
+    width: 32px;
+    min-height: 32px !important;
+    place-items: center;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: var(--fgColor-muted) !important;
+}
+
+.task-editor-actions button:hover {
+    background: var(--control-transparent-bgColor-hover) !important;
+    color: var(--fgColor-default) !important;
+}
+
+.task-description-editor textarea {
+    display: block;
+    width: calc(100% - var(--base-size-16));
+    min-height: 180px;
+    margin: var(--base-size-8);
+    padding: var(--base-size-12);
+    border: var(--borderWidth-default) solid var(--control-borderColor-rest);
+    border-radius: var(--borderRadius-medium);
+    background: var(--bgColor-default);
+    outline: none;
+    box-shadow: none;
+    box-sizing: border-box;
+    line-height: 21px;
+    resize: vertical;
+}
+
+.task-description-editor textarea:focus {
+    border-color: var(--borderColor-accent-emphasis);
+    box-shadow: inset 0 0 0 1px var(--borderColor-accent-emphasis);
+}
+
+.task-description-preview {
+    display: block;
+    width: 100%;
+    min-height: 180px;
+    margin: 0;
+    padding: var(--base-size-12);
+    overflow: auto;
+    overflow-wrap: anywhere;
+    background: var(--bgColor-default);
+    box-sizing: border-box;
+    line-height: 21px;
+    white-space: pre-wrap;
+}
+
+.task-description-editor-preview .task-editor-actions {
+    visibility: hidden;
+}
+
+.task-description-editor textarea[hidden],
+.task-description-preview[hidden] {
+    display: none;
+}
+
+.task-file-placeholder {
+    display: inline-flex;
+    min-height: 32px !important;
+    align-items: center;
+    justify-self: start !important;
+    gap: var(--base-size-8);
+    padding: 5px 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: var(--fgColor-muted) !important;
+    cursor: not-allowed !important;
+    font-size: 12px;
+    line-height: 20px;
+}
+
+.task-file-placeholder:hover {
+    color: var(--fgColor-default) !important;
 }
 
 .form-field {
@@ -1540,18 +1969,25 @@ a {
 .auth-field input:focus {
     border-color: var(--borderColor-accent-emphasis);
     outline: none;
-    box-shadow: none;
+    box-shadow: inset 0 0 0 1px var(--borderColor-accent-emphasis);
 }
 
 .auth-field input:autofill,
 .auth-field input:-webkit-autofill,
-.auth-field input:-webkit-autofill:hover,
-.auth-field input:-webkit-autofill:focus {
+.auth-field input:-webkit-autofill:hover {
     background-color: var(--bgColor-default);
     box-shadow: inset 0 0 0 1000px var(--bgColor-default);
     caret-color: var(--fgColor-default);
     color: var(--fgColor-default);
     -webkit-text-fill-color: var(--fgColor-default);
+}
+
+.auth-field input:autofill:focus,
+.auth-field input:-webkit-autofill:focus {
+    border-color: var(--borderColor-accent-emphasis);
+    box-shadow:
+        inset 0 0 0 1px var(--borderColor-accent-emphasis),
+        inset 0 0 0 1000px var(--bgColor-default);
 }
 
 .auth-checkbox {
@@ -1851,6 +2287,33 @@ a {
     .field-with-action {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .task-create-field,
+    .task-team-field,
+    .task-assignee-field,
+    .task-deadline-field,
+    .task-tag-field {
+        width: 100%;
+    }
+
+    .task-create-field > input:not([type="hidden"]),
+    .primer-select-trigger {
+        min-height: 44px !important;
+    }
+
+    .primer-select-panel {
+        width: min(320px, calc(100vw - var(--base-size-32)));
+    }
+
+    .task-editor-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .task-editor-actions {
+        padding: var(--base-size-4) var(--base-size-8);
+        border-top: var(--borderWidth-default) solid var(--control-borderColor-rest);
     }
 
     .invite-form {

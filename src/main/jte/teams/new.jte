@@ -10,16 +10,37 @@
     currentUser = currentUser,
     activeSection = "teams",
     content = @`
-        <section class="workspace-page form-page">
-            <header class="page-header page-header-compact">
+        <section class="workspace-page form-page team-create-page">
+            <a class="back-link team-create-back-link" href="/teams">
+                <svg
+                    aria-hidden="true"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                >
+                    <path
+                        d="M6.75 3.25 2 8m0 0 4.75 4.75M2 8h12"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    ></path>
+                </svg>
+                <span>Вернуться назад</span>
+            </a>
+
+            <header class="page-header page-header-compact team-create-header">
                 <div>
-                    <a class="back-link" href="/teams">← К командам</a>
-                    <h1>Создать команду</h1>
-                    <p>Название и теги помогут участникам быстрее ориентироваться в задачах.</p>
+                    <h1>Создание новой команды</h1>
+                    <p class="form-page-description">
+                        Придумайте название и заполните теги. Теги помогут участникам быстрее
+                        ориентироваться в задачах. Команду можно создать и без них.
+                    </p>
                 </div>
             </header>
 
-            <form class="form-card" method="post" action="/teams" id="create-team-form">
+            <form class="team-create-form" method="post" action="/teams" id="create-team-form">
                 <input
                     type="hidden"
                     name="${_csrf.getParameterName()}"
@@ -27,7 +48,9 @@
                 >
 
                 <div class="form-field">
-                    <label for="team-name">Название команды</label>
+                    <label for="team-name">
+                        Название команды <span class="required-marker" aria-hidden="true">*</span>
+                    </label>
 
                     <input
                         id="team-name"
@@ -38,9 +61,7 @@
                 </div>
 
                 <div class="form-field">
-                    <label for="tag-name">
-                        Теги команды
-                    </label>
+                    <label for="tag-name">Теги</label>
 
                     <div class="field-with-action">
                         <input
@@ -60,16 +81,18 @@
                     </div>
 
                     <p class="form-help">
-                        Можно добавить до 20 тегов.
-                        Максимальная длина одного тега — 30 символов.
+                        Длина одного тега до 30 символов. После создания команды их можно
+                        редактировать и удалять в настройках. Всего можно добавить до 20 тегов.
                     </p>
 
                     <div class="tag-list" id="team-tags"></div>
                 </div>
 
-                <button class="button button-primary" type="submit">
-                    Создать
-                </button>
+                <div class="team-create-submit">
+                    <button class="button button-primary" type="submit">
+                        Создать команду
+                    </button>
+                </div>
             </form>
         </section>
 

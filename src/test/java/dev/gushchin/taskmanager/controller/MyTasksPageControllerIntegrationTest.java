@@ -167,14 +167,15 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    void emptyTaskListsShouldUseSharedBlankSlate() throws Exception {
+    void taskPagesWithoutHistoryShouldHideWorkspaceNavigation() throws Exception {
         dsl.deleteFrom(TASKS).execute();
 
         mockMvc.perform(get("/tasks").with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("class=\"empty-state task-empty-state\"")))
                 .andExpect(content().string(containsString("class=\"empty-state-icon\"")))
-                .andExpect(content().string(containsString("class=\"task-count\">Задачи (0)")))
+                .andExpect(content().string(not(containsString("class=\"local-tabs\""))))
+                .andExpect(content().string(not(containsString("class=\"task-count\""))))
                 .andExpect(content().string(not(containsString("class=\"toolbar-popover\""))))
                 .andExpect(content().string(containsString("class=\"button button-primary task-create-action\"")))
                 .andExpect(content().string(containsString("Задачи не найдены")));
@@ -183,10 +184,47 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("class=\"empty-state task-empty-state\"")))
                 .andExpect(content().string(containsString("class=\"empty-state-icon\"")))
-                .andExpect(content().string(containsString("class=\"task-count\">Задачи (0)")))
+                .andExpect(content().string(not(containsString("class=\"local-tabs\""))))
+                .andExpect(content().string(not(containsString("class=\"task-count\""))))
                 .andExpect(content().string(not(containsString("class=\"toolbar-popover\""))))
                 .andExpect(content().string(containsString("class=\"button button-primary task-create-action\"")))
-                .andExpect(content().string(containsString("Задачи не найдены")));
+                .andExpect(content().string(containsString("Задачи не найдены")))
+                .andExpect(content().string(containsString("Измените фильтры или создайте новую задачу")));
+    }
+
+    @Test
+    void taskPagesWithoutTeamsShouldOfferTeamCreation() throws Exception {
+        dsl.deleteFrom(TASKS).execute();
+        dsl.deleteFrom(TEAM_INVITATIONS).execute();
+        dsl.deleteFrom(TEAM_TAGS).execute();
+        dsl.deleteFrom(TEAM_MEMBERS).execute();
+        dsl.deleteFrom(TEAMS).execute();
+
+        mockMvc.perform(get("/tasks").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("class=\"local-tabs\""))))
+                .andExpect(content().string(not(containsString("class=\"task-count\""))))
+                .andExpect(content().string(not(containsString("class=\"toolbar-popover\""))))
+                .andExpect(content().string(containsString("class=\"button button-primary team-create-action\"")))
+                .andExpect(content().string(containsString("href=\"/teams/new\"")))
+                .andExpect(content().string(containsString("class=\"empty-state-icons\"")))
+                .andExpect(content().string(containsString("class=\"empty-state-group-icon\"")))
+                .andExpect(content().string(containsString("Актуальные задачи и команды не найдены")))
+                .andExpect(content().string(containsString("Чтобы работать с задачами, создайте команду")))
+                .andExpect(content().string(containsString("попросите добавить вас в существующую")))
+                .andExpect(content().string(not(containsString("добавить вас в существующую команду"))));
+    }
+
+    @Test
+    void archiveWithoutTasksShouldKeepWorkspaceNavigationWhenTaskHistoryExists() throws Exception {
+        mockMvc.perform(get("/tasks/archive").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("class=\"local-tabs\"")))
+                .andExpect(content().string(containsString("class=\"task-count\">Задачи (0)")))
+                .andExpect(content().string(containsString("class=\"toolbar-popover\"")))
+                .andExpect(content().string(containsString("class=\"button button-primary task-create-action\"")))
+                .andExpect(content().string(containsString("Задачи в архиве не найдены")))
+                .andExpect(content().string(containsString("Измените фильтры или перенесите задачу в архив")));
     }
 
     @Test
@@ -208,6 +246,25 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("class=\"team-card\"")))
                 .andExpect(content().string(containsString("data-tooltip=\"Открыть команду\"")))
                 .andExpect(content().string(not(containsString("Открыть задачи команды"))));
+    }
+
+    @Test
+    void emptyTeamsPageShouldUseSharedBlankSlate() throws Exception {
+        dsl.deleteFrom(TASKS).execute();
+        dsl.deleteFrom(TEAM_INVITATIONS).execute();
+        dsl.deleteFrom(TEAM_TAGS).execute();
+        dsl.deleteFrom(TEAM_MEMBERS).execute();
+        dsl.deleteFrom(TEAMS).execute();
+
+        mockMvc.perform(get("/teams").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("class=\"page-actions teams-page-actions\"")))
+                .andExpect(content().string(containsString("class=\"button button-primary team-create-action\"")))
+                .andExpect(content().string(containsString("class=\"empty-state team-empty-state\"")))
+                .andExpect(content().string(containsString("class=\"empty-state-icon\"")))
+                .andExpect(content().string(containsString("Команд пока нет")))
+                .andExpect(content()
+                        .string(containsString("Создайте команду, чтобы распределять задачи и работать вместе")));
     }
 
     @Test

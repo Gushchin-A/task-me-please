@@ -105,6 +105,7 @@ public class TaskPageController {
                 stats,
                 new MyTasksPageFilters(status, teamId, role, sort),
                 new MyTasksRoleCounts(authorTasksCount, assigneeTasksCount),
+                !visibleTasks.isEmpty(),
                 TaskListMode.ACTIVE);
 
         model.addAttribute(PAGE_ATTRIBUTE, page);
@@ -155,6 +156,7 @@ public class TaskPageController {
                 stats,
                 new MyTasksPageFilters(status, teamId, role, sort),
                 new MyTasksRoleCounts(authorTasksCount, assigneeTasksCount),
+                !visibleTasks.isEmpty(),
                 TaskListMode.ARCHIVE);
 
         model.addAttribute(PAGE_ATTRIBUTE, page);
@@ -312,7 +314,7 @@ public class TaskPageController {
             @RequestParam UUID assigneeId,
             @RequestParam String title,
             @RequestParam String description,
-            @RequestParam(required = false) LocalDate deadlineDate,
+            @RequestParam LocalDate deadlineDate,
             @RequestParam Long tagId) {
         teamMemberService.findById(teamId, authUser.getId());
         teamMemberService.findById(teamId, assigneeId);

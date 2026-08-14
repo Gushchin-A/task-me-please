@@ -15,6 +15,7 @@ public record MyTasksPageView(
         TeamTasksStats stats,
         MyTasksPageFilters filters,
         MyTasksRoleCounts roleCounts,
+        boolean hasTaskHistory,
         TaskListMode mode) {
     private static final long VISIBLE_TEAMS_LIMIT = 5L;
 
@@ -76,6 +77,18 @@ public record MyTasksPageView(
 
     public boolean activeMode() {
         return mode == TaskListMode.ACTIVE;
+    }
+
+    public boolean hasAccessibleTeams() {
+        return !teams.isEmpty();
+    }
+
+    public boolean showTeamPrerequisiteState() {
+        return !hasAccessibleTeams() && !hasTaskHistory;
+    }
+
+    public boolean showTaskWorkspaceNavigation() {
+        return hasTaskHistory;
     }
 
     public String sortUrl(TaskSort sort) {
