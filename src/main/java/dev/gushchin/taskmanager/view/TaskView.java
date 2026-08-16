@@ -2,6 +2,7 @@ package dev.gushchin.taskmanager.view;
 
 import dev.gushchin.taskmanager.model.Task;
 import dev.gushchin.taskmanager.model.TaskStatus;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -22,6 +23,17 @@ public record TaskView(
     private static final DateTimeFormatter DEADLINE_FORMATTER =
             DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.forLanguageTag("ru"));
     private static final ZoneId APPLICATION_TIME_ZONE = ZoneId.of("Europe/Moscow");
+    private static final int MINIMUM_ELAPSED_UNIT = 1;
+    private static final int MINUTES_PER_HOUR = 60;
+    private static final int HOURS_PER_DAY = 24;
+    private static final int HOURS_PER_TWO_DAYS = 48;
+    private static final int PLURAL_BASE = 100;
+    private static final int PLURAL_LAST_DIGIT_BASE = 10;
+    private static final int PLURAL_TEEN_START = 11;
+    private static final int PLURAL_TEEN_END = 14;
+    private static final int PLURAL_FEW_START = 2;
+    private static final int PLURAL_FEW_END = 4;
+    private static final String YESTERDAY_TEXT = "вчера";
 
     public static TaskView from(Task task, String tagName, String authorName, String assigneeName) {
         return from(
@@ -47,7 +59,7 @@ public record TaskView(
                 task.getId(),
                 task.getTitle(),
                 task.getDescription(),
-                new TaskTimeline(task.getDeadlineAt(), task.getCreatedAt()),
+                new TaskTimeline(task.getDeadlineAt(), task.getCreatedAt(), task.getUpdatedAt()),
                 task.getStatus(),
                 new TaskTag(task.getTagId(), tagName),
                 new TaskParticipants(author, assignee),
@@ -60,6 +72,10 @@ public record TaskView(
 
     public Instant createdAt() {
         return timeline.createdAt();
+    }
+
+    public Instant updatedAt() {
+        return timeline.updatedAt();
     }
 
     public Long tagId() {
@@ -141,6 +157,75 @@ public record TaskView(
         return deadlineDate.isBefore(today);
     }
 
+    public boolean deadlineToday() {
+        if (deadlineAt() == null) {
+            return false;
+        }
+
+        return getDeadlineDate().equals(LocalDate.now(APPLICATION_TIME_ZONE));
+    }
+
+    public String statusText() {
+        return switch (status) {
+            case OPEN -> "Открыто";
+            case IN_PROGRESS -> "В работе";
+            case DONE -> "Готово";
+            case NOT_RELEVANT -> "Неактуально";
+        };
+    }
+
+    public String statusCssClass() {
+        return status.name().toLowerCase(Locale.ROOT).replace('_', '-');
+    }
+
+    public String updatedAtText() {
+        String updatedAtText;
+
+        if (updatedAt() == null) {
+            updatedAtText = "";
+        } else {
+            updatedAtText = formatUpdatedAt(Duration.between(updatedAt(), Instant.now()));
+        }
+
+        return updatedAtText;
+    }
+
+    private static String formatUpdatedAt(Duration elapsed) {
+        long minutes = Math.max(0, elapsed.toMinutes());
+        long hours = elapsed.toHours();
+        String updatedAtText;
+
+        if (minutes < MINIMUM_ELAPSED_UNIT) {
+            updatedAtText = "только что";
+        } else if (minutes < MINUTES_PER_HOUR) {
+            updatedAtText = formatRelativeTime(minutes, "минуту", "минуты", "минут");
+        } else if (hours < HOURS_PER_DAY) {
+            updatedAtText = formatRelativeTime(hours, "час", "часа", "часов");
+        } else if (hours < HOURS_PER_TWO_DAYS) {
+            updatedAtText = YESTERDAY_TEXT;
+        } else {
+            updatedAtText = formatRelativeTime(elapsed.toDays(), "день", "дня", "дней");
+        }
+
+        return updatedAtText;
+    }
+
+    private static String formatRelativeTime(long value, String singular, String few, String many) {
+        long lastTwoDigits = value % PLURAL_BASE;
+        long lastDigit = value % PLURAL_LAST_DIGIT_BASE;
+        String unit = many;
+
+        if (lastTwoDigits < PLURAL_TEEN_START || lastTwoDigits > PLURAL_TEEN_END) {
+            if (lastDigit == MINIMUM_ELAPSED_UNIT) {
+                unit = singular;
+            } else if (lastDigit >= PLURAL_FEW_START && lastDigit <= PLURAL_FEW_END) {
+                unit = few;
+            }
+        }
+
+        return value + " " + unit + " назад";
+    }
+
     private LocalDate getDeadlineDate() {
         return deadlineAt().atZone(ZoneOffset.UTC).toLocalDate();
     }
@@ -155,13 +240,13 @@ public record TaskView(
         } else if (deadlineDate.equals(today.plusDays(1))) {
             deadlineText = "завтра";
         } else if (deadlineDate.equals(today.minusDays(1))) {
-            deadlineText = "вчера";
+            deadlineText = YESTERDAY_TEXT;
         }
 
         return deadlineText;
     }
 
-    public record TaskTimeline(Instant deadlineAt, Instant createdAt) {}
+    public record TaskTimeline(Instant deadlineAt, Instant createdAt, Instant updatedAt) {}
 
     public record TaskTag(Long id, String name) {}
 

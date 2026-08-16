@@ -949,10 +949,6 @@ a {
     background: var(--bgColor-default);
 }
 
-.task-card:hover {
-    border-color: var(--borderColor-emphasis);
-}
-
 .teams-toolbar {
     display: flex;
     align-items: center;
@@ -1276,40 +1272,6 @@ a {
     color: var(--fgColor-default);
 }
 
-.task-card {
-    padding: 14px;
-}
-
-.task-card h3 {
-    margin: 0 0 14px;
-    font-size: 17px;
-    line-height: 1.35;
-}
-
-.task-card h3 a {
-    color: var(--fgColor-default);
-    text-decoration: none;
-}
-
-.task-card h3 a:hover {
-    color: var(--fgColor-link);
-}
-
-.task-card > div {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    margin-top: 10px;
-    color: var(--fgColor-muted);
-    font-size: 13px;
-}
-
-.task-card form {
-    color: var(--fgColor-default);
-}
-
-.task-card select,
 .workspace-page input,
 .workspace-page select,
 .workspace-page textarea {
@@ -1329,19 +1291,16 @@ a {
     box-shadow: inset 0 0 0 1px var(--borderColor-accent-emphasis);
 }
 
-.task-card select:hover,
 .task-metadata-panel select:hover {
     background: var(--control-bgColor-rest);
 }
 
-.task-card select:focus-visible,
 .task-metadata-panel select:focus-visible {
     outline: var(--focus-outline);
     outline-offset: 1px;
 }
 
-.task-card button:not(.button),
-.workspace-page button:not(.button) {
+.workspace-page button:not(.button):not(.task-card-menu) {
     min-height: 34px;
     padding: 6px 9px;
     border: var(--borderWidth-default) solid var(--borderColor-default);
@@ -1351,9 +1310,220 @@ a {
     cursor: pointer;
 }
 
-.task-card button:not(.button):hover,
-.workspace-page button:not(.button):hover {
+.workspace-page button:not(.button):not(.task-card-menu):hover {
     background: var(--control-bgColor-hover);
+}
+
+.task-card {
+    display: grid;
+    min-height: 190px;
+    overflow: hidden;
+    align-content: start;
+}
+
+.task-card-header {
+    display: flex;
+    min-height: 36px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px 0 12px;
+    border-bottom: var(--borderWidth-default) solid var(--borderColor-muted);
+}
+
+.task-card-status-open .task-card-header {
+    background: var(--bgColor-attention-muted);
+}
+
+.task-card-status-in-progress .task-card-header {
+    background: var(--bgColor-accent-muted);
+}
+
+.task-card-status-done .task-card-header {
+    background: var(--bgColor-success-muted);
+}
+
+.task-card-status-not-relevant .task-card-header {
+    background: var(--bgColor-muted);
+}
+
+.task-card-status {
+    font-size: 12px;
+    font-weight: var(--base-text-weight-semibold);
+    line-height: 18px;
+}
+
+.task-card-status-open .task-card-status {
+    color: var(--fgColor-attention);
+}
+
+.task-card-status-in-progress .task-card-status {
+    color: var(--fgColor-accent);
+}
+
+.task-card-status-done .task-card-status {
+    color: var(--fgColor-success);
+}
+
+.task-card-status-not-relevant .task-card-status {
+    color: var(--fgColor-muted);
+}
+
+.task-card-menu {
+    display: grid;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: var(--borderRadius-medium);
+    background: transparent;
+    color: var(--fgColor-muted);
+    cursor: pointer;
+}
+
+.task-card-menu svg {
+    width: 16px;
+    height: 16px;
+}
+
+.task-card-menu:hover {
+    background: var(--control-transparent-bgColor-hover);
+    color: var(--fgColor-default);
+}
+
+.task-card-menu:focus-visible {
+    outline: var(--focus-outline);
+    outline-offset: var(--focus-outline-offset);
+}
+
+.task-card-body {
+    display: grid;
+    min-height: 153px;
+    align-content: start;
+    gap: 9px;
+    padding: 10px 12px 11px;
+}
+
+.task-card h3 {
+    height: 38px;
+    margin: 0;
+    font-size: 14px;
+    line-height: 19px;
+}
+
+.task-card h3 a {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--fgColor-link);
+    text-decoration: none;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.task-card h3 a:hover {
+    text-decoration: underline;
+}
+
+.task-card h3 a:focus-visible {
+    border-radius: var(--borderRadius-small);
+    outline: var(--focus-outline);
+    outline-offset: var(--focus-outline-offset);
+}
+
+.task-card-labels {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.task-card-tag,
+.task-card-deadline {
+    padding: 3px 7px;
+    border-radius: var(--borderRadius-full);
+    background: var(--bgColor-muted);
+    color: var(--fgColor-muted);
+    font-size: 11px;
+    line-height: 16px;
+}
+
+.task-card-tag {
+    max-width: calc(100% - 92px);
+    overflow: hidden;
+    margin-left: -7px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.task-card-deadline {
+    flex: 0 0 auto;
+}
+
+.task-card-deadline-urgent {
+    background: var(--bgColor-danger-muted);
+    color: var(--fgColor-danger);
+}
+
+.task-card-people {
+    display: grid;
+    gap: 2px;
+    margin: 0;
+    padding-top: 7px;
+    border-top: var(--borderWidth-default) solid var(--borderColor-muted);
+}
+
+.task-card-people div {
+    display: flex;
+    min-width: 0;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.task-card-people dt,
+.task-card-people dd {
+    overflow: hidden;
+    margin: 0;
+    font-size: 11px;
+    line-height: 17px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.task-card-people dt {
+    color: var(--fgColor-muted);
+}
+
+.task-card-people dd {
+    color: var(--fgColor-default);
+    font-weight: var(--base-text-weight-medium);
+}
+
+.task-card-people .task-card-former-member {
+    color: var(--fgColor-danger);
+}
+
+.task-card-footer {
+    display: flex;
+    align-self: end;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: auto;
+    color: var(--fgColor-muted);
+    font-size: 11px;
+    line-height: 17px;
+}
+
+.task-card-footer a {
+    overflow: hidden;
+    color: var(--fgColor-muted);
+    text-overflow: ellipsis;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.task-card-footer a:hover {
+    color: var(--fgColor-link);
+    text-decoration: underline;
 }
 
 .empty-state {
