@@ -23,6 +23,7 @@ public class Task {
     private Long tagId;
     private Instant createdAt;
     private Instant updatedAt;
+    private UUID archivedBy;
     private boolean archived;
     private boolean deleted;
 }

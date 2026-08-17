@@ -56,6 +56,7 @@ class TaskViewTest {
                 1L,
                 updatedAt,
                 updatedAt,
+                null,
                 false,
                 false);
 

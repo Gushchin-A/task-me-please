@@ -25,6 +25,7 @@ public final class TaskMapper {
                 record.getTagId(),
                 record.getCreatedAt().toInstant(),
                 record.getUpdatedAt().toInstant(),
+                record.getArchivedBy(),
                 Boolean.TRUE.equals(record.getIsArchived()),
                 Boolean.TRUE.equals(record.getIsDeleted()));
     }

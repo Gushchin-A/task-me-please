@@ -1300,7 +1300,7 @@ a {
     outline-offset: 1px;
 }
 
-.workspace-page button:not(.button):not(.task-card-menu) {
+.workspace-page button:not(.button):not(.task-card-menu):not(.task-card-action-option):not(.task-edit-dialog-close) {
     min-height: 34px;
     padding: 6px 9px;
     border: var(--borderWidth-default) solid var(--borderColor-default);
@@ -1310,14 +1310,13 @@ a {
     cursor: pointer;
 }
 
-.workspace-page button:not(.button):not(.task-card-menu):hover {
+.workspace-page button:not(.button):not(.task-card-menu):not(.task-card-action-option):not(.task-edit-dialog-close):hover {
     background: var(--control-bgColor-hover);
 }
 
 .task-card {
     display: grid;
     min-height: 190px;
-    overflow: hidden;
     align-content: start;
 }
 
@@ -1328,6 +1327,7 @@ a {
     justify-content: space-between;
     padding: 0 8px 0 12px;
     border-bottom: var(--borderWidth-default) solid var(--borderColor-muted);
+    border-radius: var(--borderRadius-large) var(--borderRadius-large) 0 0;
 }
 
 .task-card-status-open .task-card-header {
@@ -1394,6 +1394,133 @@ a {
 .task-card-menu:focus-visible {
     outline: var(--focus-outline);
     outline-offset: var(--focus-outline-offset);
+}
+
+.task-card-actions {
+    position: relative;
+}
+
+.task-card-actions > summary {
+    list-style: none;
+}
+
+.task-card-actions > summary::-webkit-details-marker {
+    display: none;
+}
+
+.task-card-actions-panel {
+    position: absolute;
+    z-index: var(--zIndex-dropdown);
+    top: calc(100% + var(--base-size-4));
+    right: 0;
+    display: grid;
+    width: 190px;
+    gap: var(--base-size-2);
+    padding: var(--base-size-6);
+    border: var(--borderWidth-default) solid var(--borderColor-default);
+    border-radius: var(--borderRadius-medium);
+    background: var(--bgColor-default);
+    box-shadow: var(--shadow-floating-small);
+}
+
+.task-card-actions-panel a,
+.task-card-actions-panel button {
+    display: block;
+    width: 100%;
+    min-height: 32px;
+    padding: var(--base-size-6) var(--base-size-8);
+    border: 0;
+    border-radius: var(--borderRadius-medium);
+    background: transparent;
+    color: var(--fgColor-default);
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    line-height: 20px;
+    text-align: left;
+    text-decoration: none;
+}
+
+.task-card-actions-panel a:hover,
+.task-card-actions-panel button:hover {
+    background: var(--control-transparent-bgColor-hover);
+}
+
+.task-card-actions-panel form,
+.task-card-actions-panel [data-tooltip] {
+    display: block;
+    margin: 0;
+}
+
+.task-card-actions-panel .task-card-delete-action {
+    color: var(--fgColor-danger);
+}
+
+.task-card-actions-divider {
+    height: var(--borderWidth-default);
+    margin: var(--base-size-4) calc(var(--base-size-6) * -1);
+    background: var(--borderColor-default);
+}
+
+.task-edit-dialog {
+    width: min(520px, calc(100% - var(--base-size-32)));
+    overflow: visible;
+}
+
+.task-edit-dialog .settings-dialog-header h2 {
+    font-size: 18px;
+    line-height: 24px;
+}
+
+.task-edit-dialog-body {
+    display: grid;
+    gap: var(--base-size-12);
+    padding-bottom: calc(var(--base-size-16) + 34px);
+}
+
+.task-edit-dialog-body .form-field > label {
+    font-size: 14px;
+    font-weight: var(--base-text-weight-semibold);
+    line-height: 20px;
+}
+
+.settings-dialog-body .task-title-count {
+    margin: 0;
+}
+
+.task-edit-dialog-body .task-status-field {
+    width: min(100%, 300px);
+}
+
+.task-edit-dialog-body .primer-select-panel {
+    z-index: calc(var(--zIndex-modal) + 1);
+}
+
+.task-edit-dialog-body .primer-select-options {
+    max-height: 132px;
+    overscroll-behavior: contain;
+}
+
+.settings-dialog-body .task-title-count,
+.settings-dialog-body .task-edit-description-help {
+    margin: 0;
+    padding-left: var(--base-size-4);
+    font-size: 13px;
+    line-height: 20px;
+}
+
+.task-edit-description-help a {
+    color: var(--fgColor-link);
+    text-decoration: none;
+}
+
+.task-edit-description-help a:hover {
+    text-decoration: underline;
+}
+
+.task-edit-dialog-footer {
+    justify-content: flex-end;
+    gap: var(--base-size-8);
 }
 
 .task-card-body {

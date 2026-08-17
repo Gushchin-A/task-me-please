@@ -166,6 +166,10 @@ public record TaskView(
     }
 
     public String statusText() {
+        return statusText(status);
+    }
+
+    public static String statusText(TaskStatus status) {
         return switch (status) {
             case OPEN -> "Открыто";
             case IN_PROGRESS -> "В работе";

@@ -130,7 +130,11 @@
                         @template.components.taskCard(
                             task = taskCard.task(),
                             teamId = taskCard.teamId(),
-                            teamName = taskCard.teamName()
+                            teamName = taskCard.teamName(),
+                            members = taskCard.members(),
+                            tags = taskCard.tags(),
+                            returnTo = page.archiveMode() ? "tasksArchive" : "tasks",
+                            _csrf = _csrf
                         )
                     @endfor
                 </ul>

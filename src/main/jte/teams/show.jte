@@ -379,7 +379,15 @@
             @else
                 <ul class="task-grid">
                     @for(TaskView task : page.tasks())
-                        @template.components.taskCard(task = task, teamId = null, teamName = null)
+                        @template.components.taskCard(
+                            task = task,
+                            teamId = null,
+                            teamName = null,
+                            members = page.members(),
+                            tags = page.tags(),
+                            returnTo = page.archiveMode() ? "teamArchive" : "team",
+                            _csrf = _csrf
+                        )
                     @endfor
                 </ul>
             @endif

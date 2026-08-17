@@ -22,6 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import dev.gushchin.taskmanager.IntegrationTestBase;
+import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
 import dev.gushchin.taskmanager.exception.TeamMemberNotFoundException;
 import dev.gushchin.taskmanager.model.Comment;
 import dev.gushchin.taskmanager.model.Task;
@@ -312,6 +313,29 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void cardEditShouldUpdateFieldsWithoutChangingDescription() throws Exception {
+        mockMvc.perform(post("/tasks/" + task.getId() + "/edit")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("title", "Updated title")
+                        .param("status", TaskStatus.IN_PROGRESS.name())
+                        .param("assigneeId", owner.getId().toString())
+                        .param("deadlineDate", LocalDate.of(2035, 2, 10).toString())
+                        .param("tagId", plusTag.getId().toString())
+                        .param("returnTo", "tasks"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks"));
+
+        Task updatedTask = taskService.findById(task.getId());
+
+        assertEquals("Updated title", updatedTask.getTitle());
+        assertEquals("Task description", updatedTask.getDescription());
+        assertEquals(TaskStatus.IN_PROGRESS, updatedTask.getStatus());
+        assertEquals(owner.getId(), updatedTask.getAssigneeId());
+        assertEquals(plusTag.getId(), updatedTask.getTagId());
+    }
+
+    @Test
     void createTaskShouldRequireDeadline() throws Exception {
         mockMvc.perform(post("/tasks")
                         .with(csrf())
@@ -436,6 +460,30 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isNotFound());
 
         assertTrue(taskService.findById(task.getId()).isArchived());
+    }
+
+    @Test
+    void onlyArchiverOrTeamOwnerShouldRestoreTask() {
+        Task memberTask = taskService.create(
+                team.getId(),
+                secondUser.getId(),
+                owner.getId(),
+                "Member task",
+                "Description",
+                DEADLINE_DATE,
+                kinopoiskTag.getId());
+
+        taskService.archive(memberTask.getId(), owner.getId());
+
+        assertThrows(
+                AccessDeniedForTaskException.class,
+                () -> taskService.restoreFromArchive(memberTask.getId(), secondUser.getId()));
+
+        taskService.restoreFromArchive(memberTask.getId(), owner.getId());
+        taskService.archive(memberTask.getId(), secondUser.getId());
+        taskService.restoreFromArchive(memberTask.getId(), secondUser.getId());
+
+        assertFalse(taskService.findById(memberTask.getId()).isArchived());
     }
 
     @Test

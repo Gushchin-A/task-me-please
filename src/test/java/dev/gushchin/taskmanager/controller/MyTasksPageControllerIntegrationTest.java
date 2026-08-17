@@ -128,7 +128,22 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("class=\"task-grid\"")))
                 .andExpect(content().string(containsString("class=\"task-card task-card-status-")))
                 .andExpect(content().string(containsString("class=\"task-card-header\"")))
+                .andExpect(content().string(containsString("<details class=\"task-card-actions\">")))
                 .andExpect(content().string(containsString("class=\"task-card-footer\"")))
+                .andExpect(content().string(containsString("Открыть задачу")))
+                .andExpect(content().string(containsString("Скопировать ссылку")))
+                .andExpect(content().string(containsString("class=\"task-card-actions-divider\"")))
+                .andExpect(content().string(containsString("Изменить задачу")))
+                .andExpect(content().string(containsString("Удалить задачу")))
+                .andExpect(content().string(containsString("Задача будет перемещена в архив")))
+                .andExpect(content().string(containsString("Изменение задачи")))
+                .andExpect(content().string(containsString("Название задачи")))
+                .andExpect(content().string(containsString("/ 100 символов")))
+                .andExpect(content().string(containsString("data-task-edit-select")))
+                .andExpect(content().string(containsString("data-selected-avatar")))
+                .andExpect(content().string(containsString("Выберите исполнителя")))
+                .andExpect(content().string(containsString("Для редактирования описания откройте")))
+                .andExpect(content().string(containsString("страницу задачи")))
                 .andExpect(content().string(containsString("Owner author task")))
                 .andExpect(content().string(containsString("Owner assignee task")))
                 .andExpect(content().string(containsString("First Team")))
@@ -257,6 +272,17 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content()
                         .string(containsString(
                                 "Сюда вы сможете перенести выполненные, неактуальные или удаленные задачи")));
+    }
+
+    @Test
+    void archivedTaskShouldNotHighlightOverdueDeadline() throws Exception {
+        taskService.updateDeadline(assigneeTask.getId(), LocalDate.now().minusDays(1), secondUser.getId());
+        taskService.archive(assigneeTask.getId(), secondUser.getId());
+
+        mockMvc.perform(get("/tasks/archive").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Owner assignee task")))
+                .andExpect(content().string(not(containsString("task-card-deadline-urgent"))));
     }
 
     @Test

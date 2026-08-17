@@ -7,7 +7,187 @@ document.addEventListener('DOMContentLoaded', function () {
     setupToolbarSelects();
     setupFilterSelects();
     setupTeamSettings();
+    setupTaskCards();
 });
+
+function setupTaskCards() {
+    document.querySelectorAll('[data-task-link-copy]').forEach(function (button) {
+        button.addEventListener('click', async function () {
+            const taskUrl = new URL(button.dataset.taskUrl, window.location.origin).href;
+
+            try {
+                await navigator.clipboard.writeText(taskUrl);
+            } catch (error) {
+                const input = document.createElement('textarea');
+
+                input.value = taskUrl;
+                input.style.position = 'fixed';
+                input.style.opacity = '0';
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                input.remove();
+            }
+
+            button.closest('.task-card-actions').open = false;
+            showFlashMessage('Ссылка на задачу скопирована.');
+        });
+    });
+
+    document.querySelectorAll('[data-task-edit-dialog]').forEach(function (dialog) {
+        const card = dialog.closest('.task-card');
+        const openButton = card.querySelector('[data-task-edit-open]');
+        const form = dialog.querySelector('[data-task-edit-form]');
+        const submit = dialog.querySelector('[data-task-edit-submit]');
+        const titleInput = dialog.querySelector('input[name="title"]');
+        const titleLength = dialog.querySelector('[data-task-title-length]');
+        const selects = dialog.querySelectorAll('[data-task-edit-select]');
+        const closeButtons = dialog.querySelectorAll('[data-task-edit-close], [data-task-edit-cancel]');
+        const originalValues = new URLSearchParams(new FormData(form)).toString();
+
+        function closeSelect(select) {
+            const trigger = select.querySelector(':scope > .primer-select-trigger');
+
+            trigger.nextElementSibling.hidden = true;
+            trigger.setAttribute('aria-expanded', 'false');
+        }
+
+        function closeSelects(exceptSelect) {
+            selects.forEach(function (select) {
+                if (select !== exceptSelect) {
+                    closeSelect(select);
+                }
+            });
+        }
+
+        function resetTaskForm() {
+            form.reset();
+            titleLength.textContent = titleInput.value.length;
+
+            selects.forEach(function (select) {
+                const hiddenInput = select.parentElement.querySelector('input[type="hidden"]');
+                const selectedOption = Array.from(select.querySelectorAll('.primer-select-option'))
+                        .find(function (option) {
+                            return option.dataset.value === hiddenInput.value;
+                        });
+                const value = select.querySelector('.primer-select-value');
+                const selectedAvatar = select.querySelector('[data-selected-avatar]');
+
+                select.querySelectorAll('.primer-select-option').forEach(function (option) {
+                    option.setAttribute('aria-selected', String(option === selectedOption));
+                });
+
+                if (selectedOption) {
+                    value.textContent = selectedOption.dataset.label;
+                    value.title = selectedOption.dataset.fullLabel || selectedOption.dataset.label;
+
+                    if (selectedAvatar && selectedOption.dataset.avatar) {
+                        selectedAvatar.textContent = selectedOption.dataset.avatar;
+                    }
+                }
+            });
+        }
+
+        function updateSubmitState() {
+            submit.disabled = new URLSearchParams(new FormData(form)).toString() === originalValues;
+        }
+
+        function closeDialog() {
+            closeSelects();
+            dialog.close();
+            resetTaskForm();
+            updateSubmitState();
+            openButton.focus();
+        }
+
+        selects.forEach(function (select) {
+            const trigger = select.querySelector(':scope > .primer-select-trigger');
+            const panel = trigger.nextElementSibling;
+
+            trigger.addEventListener('click', function (event) {
+                event.stopPropagation();
+
+                const shouldOpen = panel.hidden;
+
+                closeSelects(select);
+                panel.hidden = !shouldOpen;
+                trigger.setAttribute('aria-expanded', String(shouldOpen));
+
+                if (shouldOpen) {
+                    const selectedOption = panel.querySelector('[aria-selected="true"]');
+
+                    selectedOption?.focus();
+                }
+            });
+
+            select.querySelectorAll('.primer-select-option').forEach(function (option) {
+                option.addEventListener('click', function () {
+                    const hiddenInput = select.parentElement.querySelector('input[type="hidden"]');
+                    const value = select.querySelector('.primer-select-value');
+                    const selectedAvatar = select.querySelector('[data-selected-avatar]');
+
+                    hiddenInput.value = option.dataset.value;
+                    value.textContent = option.dataset.label;
+                    value.title = option.dataset.fullLabel || option.dataset.label;
+
+                    if (selectedAvatar && option.dataset.avatar) {
+                        selectedAvatar.textContent = option.dataset.avatar;
+                    }
+
+                    select.querySelectorAll('.primer-select-option').forEach(function (otherOption) {
+                        otherOption.setAttribute('aria-selected', String(otherOption === option));
+                    });
+
+                    closeSelect(select);
+                    hiddenInput.dispatchEvent(new Event('change', {bubbles: true}));
+                    trigger.focus();
+                });
+            });
+        });
+
+        openButton.addEventListener('click', function () {
+            card.querySelector('.task-card-actions').open = false;
+            resetTaskForm();
+            updateSubmitState();
+            dialog.showModal();
+            titleInput.focus();
+        });
+
+        form.addEventListener('input', updateSubmitState);
+        form.addEventListener('change', updateSubmitState);
+        titleInput.addEventListener('input', function () {
+            titleLength.textContent = titleInput.value.length;
+        });
+
+        closeButtons.forEach(function (button) {
+            button.addEventListener('click', closeDialog);
+        });
+
+        dialog.addEventListener('click', function (event) {
+            if (event.target === dialog) {
+                closeDialog();
+            } else if (!event.target.closest('[data-task-edit-select]')) {
+                closeSelects();
+            }
+        });
+
+        dialog.addEventListener('cancel', function (event) {
+            event.preventDefault();
+
+            const openSelect = Array.from(selects).find(function (select) {
+                return select.querySelector(':scope > .primer-select-trigger')
+                        .getAttribute('aria-expanded') === 'true';
+            });
+
+            if (openSelect) {
+                closeSelect(openSelect);
+                openSelect.querySelector(':scope > .primer-select-trigger').focus();
+            } else {
+                closeDialog();
+            }
+        });
+    });
+}
 
 function setupTeamSettings() {
     const renameForm = document.querySelector('[data-settings-rename-form]');
@@ -188,7 +368,7 @@ function setupToolbarSelects() {
 }
 
 function setupToolbarPopovers() {
-    const popovers = document.querySelectorAll('.toolbar-popover, .comment-menu, .team-switcher');
+    const popovers = document.querySelectorAll('.toolbar-popover, .comment-menu, .task-card-actions, .team-switcher');
 
     popovers.forEach(function (popover) {
         const closeButton = popover.querySelector('[data-team-switcher-close]');

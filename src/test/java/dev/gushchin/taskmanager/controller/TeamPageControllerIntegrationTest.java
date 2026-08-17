@@ -190,6 +190,18 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void archivedTeamTaskShouldNotHighlightOverdueDeadline() throws Exception {
+        Task archivedTask = taskService.findByTeamId(team.getId()).getFirst();
+        taskService.updateDeadline(archivedTask.getId(), LocalDate.now().minusDays(1), owner.getId());
+        taskService.archive(archivedTask.getId(), owner.getId());
+
+        mockMvc.perform(get("/teams/" + team.getId() + "/archive").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString(archivedTask.getTitle())))
+                .andExpect(content().string(not(containsString("task-card-deadline-urgent"))));
+    }
+
+    @Test
     void ownerShouldOpenTeamSettings() throws Exception {
         mockMvc.perform(get("/teams/" + team.getId() + "/settings").with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
@@ -268,7 +280,6 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("aria-label=\"Закрыть фильтры\"")))
                 .andExpect(content().string(containsString("aria-label=\"Закрыть сортировку\"")))
                 .andExpect(content().string(containsString("data-filter-select")))
-                .andExpect(content().string(not(containsString("Выберите статус"))))
                 .andExpect(content().string(not(containsString("Все статусы"))))
                 .andExpect(content().string(not(containsString("Все исполнители"))))
                 .andExpect(content().string(not(containsString("Все авторы"))))
@@ -280,6 +291,20 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("class=\"task-grid\"")))
                 .andExpect(content().string(containsString("Visible task")))
                 .andExpect(content().string(not(containsString("Всего задач в команде"))));
+    }
+
+    @Test
+    void taskCardMenuShouldUseArchiveForDoneTaskAndDeleteForOtherStatuses() throws Exception {
+        Task doneTask = taskService.findByTeamId(team.getId()).stream()
+                .filter(task -> "Visible task".equals(task.getTitle()))
+                .findFirst()
+                .orElseThrow();
+        taskService.updateStatus(doneTask.getId(), TaskStatus.DONE, owner.getId());
+
+        mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Перенести в архив")))
+                .andExpect(content().string(containsString("Удалить задачу")));
     }
 
     @Test

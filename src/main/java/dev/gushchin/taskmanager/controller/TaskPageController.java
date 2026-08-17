@@ -2,6 +2,7 @@ package dev.gushchin.taskmanager.controller;
 
 import dev.gushchin.taskmanager.model.Comment;
 import dev.gushchin.taskmanager.model.Task;
+import dev.gushchin.taskmanager.model.TaskDetailsUpdate;
 import dev.gushchin.taskmanager.model.TaskListMode;
 import dev.gushchin.taskmanager.model.TaskRoleFilter;
 import dev.gushchin.taskmanager.model.TaskSort;
@@ -41,6 +42,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequiredArgsConstructor
@@ -54,11 +56,14 @@ public class TaskPageController {
     private static final String REDIRECT_TASKS_PREFIX = "redirect:/tasks/";
     private static final String RETURN_TO_TASK = "task";
     private static final String RETURN_TO_TASKS = "tasks";
+    private static final String RETURN_TO_TASKS_ARCHIVE = "tasksArchive";
+    private static final String RETURN_TO_TEAM_ARCHIVE = "teamArchive";
     private static final String SORT_QUERY_PARAM = "sort=";
     private static final String TASK_ATTRIBUTE = RETURN_TO_TASK;
     private static final String TEAM_ATTRIBUTE = "team";
     private static final String PAGE_ATTRIBUTE = "page";
     private static final String TASKS_INDEX_VIEW = "tasks/index";
+    private static final String SUCCESS_MESSAGE_ATTRIBUTE = "successMessage";
 
     private final TeamService teamService;
     private final TaskService taskService;
@@ -271,18 +276,26 @@ public class TaskPageController {
     public String updateTask(
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long id,
-            @RequestParam String title,
-            @RequestParam String description,
-            @RequestParam(required = false) LocalDate deadlineDate,
-            @RequestParam Long tagId,
-            @RequestParam UUID assigneeId) {
+            InlineTaskUpdateRequest request,
+            @RequestParam(required = false) String returnTo,
+            RedirectAttributes redirectAttributes) {
         Task task = taskService.findById(id);
+        String updatedDescription = request.getDescription() == null ? task.getDescription() : request.getDescription();
+        TaskStatus updatedStatus = request.getStatus() == null ? task.getStatus() : request.getStatus();
+        TaskDetailsUpdate update = new TaskDetailsUpdate(
+                request.getTitle(),
+                updatedDescription,
+                request.getDeadlineDate(),
+                updatedStatus,
+                request.getTagId(),
+                request.getAssigneeId());
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
-        teamMemberService.findById(task.getTeamId(), assigneeId);
-        taskService.updateDetails(id, title, description, deadlineDate, tagId, assigneeId, authUser.getId());
+        teamMemberService.findById(task.getTeamId(), request.getAssigneeId());
+        taskService.updateDetails(id, update, authUser.getId());
+        redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Задача изменена.");
 
-        return REDIRECT_TASKS_PREFIX + id;
+        return buildRedirectAfterInlineUpdate(task, request, returnTo);
     }
 
     @PostMapping("/tasks/{id}/comments")
@@ -423,34 +436,32 @@ public class TaskPageController {
     public String archiveTask(
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long id,
-            @RequestParam(required = false) String returnTo) {
+            InlineTaskUpdateRequest request,
+            @RequestParam(required = false) String returnTo,
+            RedirectAttributes redirectAttributes) {
         Task task = taskService.findById(id);
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
         taskService.archive(id, authUser.getId());
+        redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Задача перемещена в архив.");
 
-        if (RETURN_TO_TASK.equals(returnTo)) {
-            return REDIRECT_TASKS_PREFIX + id;
-        }
-
-        return REDIRECT_TEAMS_PREFIX + task.getTeamId();
+        return buildRedirectAfterInlineUpdate(task, request, returnTo);
     }
 
     @PostMapping("/tasks/{id}/restore")
     public String restoreTaskFromArchive(
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long id,
-            @RequestParam(required = false) String returnTo) {
+            InlineTaskUpdateRequest request,
+            @RequestParam(required = false) String returnTo,
+            RedirectAttributes redirectAttributes) {
         Task task = taskService.findById(id);
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
         taskService.restoreFromArchive(id, authUser.getId());
+        redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Задача возвращена из архива.");
 
-        if (RETURN_TO_TASK.equals(returnTo)) {
-            return REDIRECT_TASKS_PREFIX + id;
-        }
-
-        return REDIRECT_TEAMS_PREFIX + task.getTeamId();
+        return buildRedirectAfterInlineUpdate(task, request, returnTo);
     }
 
     private TaskWithTeamView toTaskWithTeamView(Task task, UUID userId) {
@@ -563,19 +574,25 @@ public class TaskPageController {
     }
 
     private String buildRedirectAfterInlineUpdate(Task task, InlineTaskUpdateRequest request, String returnTo) {
-        if (RETURN_TO_TASK.equals(returnTo)) {
-            return REDIRECT_TASKS_PREFIX + task.getId();
-        }
+        String redirect;
 
-        if (RETURN_TO_TASKS.equals(returnTo)) {
-            return buildTasksRedirect(
+        if (RETURN_TO_TASK.equals(returnTo)) {
+            redirect = REDIRECT_TASKS_PREFIX + task.getId();
+        } else if (RETURN_TO_TASKS.equals(returnTo)) {
+            redirect = buildTasksRedirect(
                     request.getSelectedStatus(),
                     request.getSelectedSort(),
                     request.getSelectedTeamId(),
                     request.getSelectedRole());
+        } else if (RETURN_TO_TASKS_ARCHIVE.equals(returnTo)) {
+            redirect = "redirect:/tasks/archive";
+        } else if (RETURN_TO_TEAM_ARCHIVE.equals(returnTo)) {
+            redirect = REDIRECT_TEAMS_PREFIX + task.getTeamId() + "/archive";
+        } else {
+            redirect = buildTeamRedirect(task.getTeamId(), request.getSelectedStatus(), request.getSelectedSort());
         }
 
-        return buildTeamRedirect(task.getTeamId(), request.getSelectedStatus(), request.getSelectedSort());
+        return redirect;
     }
 
     private void checkCommentBelongsToTask(Task task, Comment comment) {
