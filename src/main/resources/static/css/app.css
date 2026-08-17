@@ -505,7 +505,7 @@ a {
     grid-template-columns: 220px minmax(0, 720px);
     align-items: baseline;
     gap: var(--base-size-48);
-    padding-top: var(--base-size-28);
+    padding-top: var(--base-size-12);
 }
 
 .team-settings-sidebar nav {
@@ -586,22 +586,9 @@ a {
     background: var(--control-bgColor-disabled);
 }
 
-.team-settings-danger {
-    margin-top: var(--base-size-32);
-}
-
-.team-settings-danger h2 {
-    margin: 0 0 var(--base-size-12);
-    color: var(--fgColor-danger);
-    font-size: 20px;
-    font-weight: var(--base-text-weight-semibold);
-    letter-spacing: -0.01em;
-    line-height: 32px;
-}
-
-.team-settings-danger p {
+.team-settings-delete-section p {
     max-width: 56ch;
-    margin: 0 0 var(--base-size-12);
+    margin: 0 0 var(--base-size-16);
     color: var(--fgColor-default);
     font-size: 14px;
     line-height: 21px;

@@ -209,8 +209,22 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("Основные")))
                 .andExpect(content().string(containsString("Название команды")))
                 .andExpect(content().string(containsString("Длина одного тега до 30 символов.")))
-                .andExpect(content().string(containsString("Удалить команду")))
+                .andExpect(content().string(containsString("settings?section=delete")))
+                .andExpect(content().string(not(containsString("class=\"team-settings-delete\""))))
                 .andExpect(content().string(not(containsString("class=\"task-toolbar\""))));
+    }
+
+    @Test
+    void ownerShouldOpenTeamDeletionSettings() throws Exception {
+        mockMvc.perform(get("/teams/" + team.getId() + "/settings")
+                        .param("section", "delete")
+                        .with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(view().name("teams/settings"))
+                .andExpect(content().string(containsString("<h1>Удаление команды</h1>")))
+                .andExpect(content().string(containsString("После удаления команды она и все ее задачи")))
+                .andExpect(content().string(containsString("class=\"button team-settings-delete\"")))
+                .andExpect(content().string(not(containsString("Название команды"))));
     }
 
     @Test
