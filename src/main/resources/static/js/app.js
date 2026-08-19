@@ -8,7 +8,159 @@ document.addEventListener('DOMContentLoaded', function () {
     setupFilterSelects();
     setupTeamSettings();
     setupTaskCards();
+    setupTaskDetail();
 });
+
+function setupTaskDetail() {
+    const detail = document.querySelector('[data-task-detail]');
+
+    if (detail === null) {
+        return;
+    }
+
+    const titleRow = detail.querySelector('.task-title-row');
+    const titleOpen = detail.querySelector('[data-task-title-edit-open]');
+    const titleForm = detail.querySelector('[data-task-title-edit-form]');
+    const titleCancel = detail.querySelector('[data-task-title-edit-cancel]');
+
+    if (titleOpen !== null && titleForm !== null && titleCancel !== null) {
+        const titleInput = titleForm.querySelector('input[name="title"]');
+
+        titleOpen.addEventListener('click', function () {
+            titleRow.hidden = true;
+            titleForm.hidden = false;
+            titleInput.focus();
+            titleInput.select();
+        });
+
+        titleCancel.addEventListener('click', function () {
+            titleForm.reset();
+            titleForm.hidden = true;
+            titleRow.hidden = false;
+            titleOpen.focus();
+        });
+    }
+
+    const descriptionOpen = detail.querySelector('[data-description-edit-open]');
+    const descriptionView = detail.querySelector('[data-description-view]');
+    const descriptionForm = detail.querySelector('[data-description-edit-form]');
+    const descriptionCancel = detail.querySelector('[data-description-edit-cancel]');
+
+    if (descriptionOpen !== null && descriptionView !== null
+            && descriptionForm !== null && descriptionCancel !== null) {
+        const descriptionInput = descriptionForm.querySelector('textarea[name="description"]');
+
+        descriptionOpen.addEventListener('click', function () {
+            descriptionView.hidden = true;
+            descriptionForm.hidden = false;
+            descriptionOpen.hidden = true;
+            descriptionInput.focus();
+        });
+
+        descriptionCancel.addEventListener('click', function () {
+            descriptionForm.reset();
+            descriptionForm.hidden = true;
+            descriptionView.hidden = false;
+            descriptionOpen.hidden = false;
+            descriptionOpen.focus();
+        });
+    }
+
+    const parameters = detail.querySelector('[data-task-parameters]');
+
+    if (parameters === null) {
+        return;
+    }
+
+    const editOpen = parameters.querySelector('[data-task-parameters-edit-open]');
+    const forms = Array.from(parameters.querySelectorAll('[data-task-parameter-form]'));
+    const values = Array.from(parameters.querySelectorAll('[data-task-parameter-value]'));
+    const actions = parameters.querySelector('[data-task-parameters-actions]');
+    const cancel = parameters.querySelector('[data-task-parameters-cancel]');
+    const save = parameters.querySelector('[data-task-parameters-save]');
+
+    if (editOpen === null || actions === null || cancel === null || save === null) {
+        return;
+    }
+
+    function hasChanges() {
+        return forms.some(function (form) {
+            const control = form.querySelector('select, input[type="date"]');
+
+            return !control.disabled && control.value !== control.dataset.originalValue;
+        });
+    }
+
+    function updateSaveState() {
+        save.disabled = !hasChanges();
+    }
+
+    function closeEditor() {
+        forms.forEach(function (form) {
+            form.reset();
+            form.hidden = true;
+        });
+        values.forEach(function (value) {
+            value.hidden = false;
+        });
+        actions.hidden = true;
+        editOpen.hidden = false;
+        updateSaveState();
+        editOpen.focus();
+    }
+
+    editOpen.addEventListener('click', function () {
+        values.forEach(function (value) {
+            value.hidden = true;
+        });
+        forms.forEach(function (form) {
+            form.hidden = false;
+        });
+        actions.hidden = false;
+        editOpen.hidden = true;
+        updateSaveState();
+
+        const firstEnabledControl = parameters.querySelector('select:not(:disabled), input[type="date"]:not(:disabled)');
+
+        firstEnabledControl?.focus();
+    });
+
+    forms.forEach(function (form) {
+        form.addEventListener('change', updateSaveState);
+        form.addEventListener('input', updateSaveState);
+    });
+
+    cancel.addEventListener('click', closeEditor);
+
+    save.addEventListener('click', async function () {
+        const changedForms = forms.filter(function (form) {
+            const control = form.querySelector('select, input[type="date"]');
+
+            return !control.disabled && control.value !== control.dataset.originalValue;
+        });
+
+        save.disabled = true;
+
+        try {
+            for (const form of changedForms) {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    credentials: 'same-origin'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Task parameters update failed');
+                }
+            }
+
+            window.location.reload();
+        } catch (error) {
+            save.disabled = false;
+            showFlashMessage('Не удалось изменить параметры задачи. Попробуйте ещё раз.');
+        }
+    });
+}
 
 function setupTaskCards() {
     document.querySelectorAll('[data-task-link-copy]').forEach(function (button) {

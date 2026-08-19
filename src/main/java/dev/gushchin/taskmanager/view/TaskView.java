@@ -194,6 +194,14 @@ public record TaskView(
         return updatedAtText;
     }
 
+    public String createdAtText() {
+        if (createdAt() == null) {
+            return "";
+        }
+
+        return formatUpdatedAt(Duration.between(createdAt(), Instant.now()));
+    }
+
     private static String formatUpdatedAt(Duration elapsed) {
         long minutes = Math.max(0, elapsed.toMinutes());
         long hours = elapsed.toHours();

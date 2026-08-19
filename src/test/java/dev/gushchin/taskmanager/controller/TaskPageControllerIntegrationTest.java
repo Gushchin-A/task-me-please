@@ -134,10 +134,26 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("Кинопоиск")))
                 .andExpect(content().string(containsString("Initial comment")))
                 .andExpect(content().string(containsString("class=\"task-detail-layout\"")))
-                .andExpect(content().string(containsString("class=\"comment-timeline\"")))
+                .andExpect(content().string(containsString("class=\"task-parameters-panel\"")))
+                .andExpect(content().string(containsString("class=\"task-conversation\"")))
                 .andExpect(content().string(containsString("class=\"comment-avatar\"")))
+                .andExpect(content().string(containsString("Добавить комментарий")))
+                .andExpect(content().string(containsString("placeholder=\"Оставьте комментарий\"")))
                 .andExpect(content().string(containsString(">O</span>")))
                 .andExpect(content().string(containsString("15 июня 2026 18:17")));
+    }
+
+    @Test
+    void assigneeShouldSeeStatusEditingAndReadOnlyTaskParameters() throws Exception {
+        mockMvc.perform(get("/tasks/" + task.getId()).with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-tooltip=\"Изменить параметры задачи\"")))
+                .andExpect(content().string(containsString("name=\"status\"")))
+                .andExpect(content().string(containsString("task-parameter-read-only")))
+                .andExpect(content().string(containsString("name=\"deadlineDate\"")))
+                .andExpect(content().string(containsString("name=\"authorId\"")))
+                .andExpect(content().string(containsString("name=\"assigneeId\"")))
+                .andExpect(content().string(containsString("name=\"tagId\"")));
     }
 
     @Test
@@ -553,7 +569,7 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/tasks/" + task.getId()).with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Second")))
-                .andExpect(content().string(containsString("color: red;")))
+                .andExpect(content().string(containsString("task-card-former-member")))
                 .andExpect(content().string(containsString("Пользователь был удалён из команды")));
 
         mockMvc.perform(get("/tasks/new?teamId=" + team.getId()).with(user(new AuthUser(owner))))
