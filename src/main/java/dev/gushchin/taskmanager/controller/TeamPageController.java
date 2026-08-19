@@ -81,6 +81,9 @@ public class TeamPageController {
     private static final String PAGE_ATTRIBUTE = "page";
     private static final String TEAMS_SHOW_VIEW = "teams/show";
     private static final String TEAM_SETTINGS_PATH_SUFFIX = "/settings";
+    private static final String TEAM_SETTINGS_SECTION_DELETE = "delete";
+    private static final String TEAM_SETTINGS_SECTION_ATTRIBUTE = "settingsSection";
+    private static final String TEAM_SETTINGS_SECTION_GENERAL = "general";
     private static final String TEAM_SETTINGS_VIEW = "teams/settings";
     private static final String TEAM_TAG_EXISTS_MESSAGE = "Такой тег уже существует.";
 
@@ -366,15 +369,24 @@ public class TeamPageController {
 
     @GetMapping("/teams/{id}/settings")
     public String teamSettings(
-            @AuthenticationPrincipal AuthUser authUser, @PathVariable Long id, Model model, CsrfToken csrfToken) {
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long id,
+            @RequestParam(defaultValue = TEAM_SETTINGS_SECTION_GENERAL) String section,
+            Model model,
+            CsrfToken csrfToken) {
         if (!isTeamOwner(id, authUser.getId())) {
             return NOT_FOUND_VIEW;
         }
+
+        String settingsSection = TEAM_SETTINGS_SECTION_DELETE.equals(section)
+                ? TEAM_SETTINGS_SECTION_DELETE
+                : TEAM_SETTINGS_SECTION_GENERAL;
 
         model.addAttribute(TEAM_ATTRIBUTE, teamService.findById(id));
         model.addAttribute(NAVIGATION_TEAMS_ATTRIBUTE, teamService.findByUserId(authUser.getId()));
         model.addAttribute("tags", teamTagService.findByTeamId(id));
         model.addAttribute("usedTagIds", teamTagService.findUsedIdsByTeamId(id));
+        model.addAttribute(TEAM_SETTINGS_SECTION_ATTRIBUTE, settingsSection);
         model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
         addEmptyFlashAttributes(model);
 

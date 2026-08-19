@@ -3,6 +3,7 @@ package dev.gushchin.taskmanager.service;
 import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
 import dev.gushchin.taskmanager.exception.TaskNotFoundException;
 import dev.gushchin.taskmanager.model.Task;
+import dev.gushchin.taskmanager.model.TaskDetailsUpdate;
 import dev.gushchin.taskmanager.model.TaskRoleFilter;
 import dev.gushchin.taskmanager.model.TaskSort;
 import dev.gushchin.taskmanager.model.TaskStatus;
@@ -92,6 +93,7 @@ public class TaskService {
                 tagId,
                 now,
                 now,
+                null,
                 false,
                 false);
 
@@ -302,25 +304,25 @@ public class TaskService {
         return taskRepository.updateDeadline(task.getId(), deadlineAt, Instant.now());
     }
 
-    public Task updateDetails(
-            Long id,
-            String title,
-            String description,
-            LocalDate deadlineDate,
-            Long tagId,
-            UUID assigneeId,
-            UUID userId) {
+    public Task updateDetails(Long id, TaskDetailsUpdate update, UUID userId) {
         Task task = findByIdForUser(id, userId);
 
         checkCanUpdateTask(task, userId);
-        teamMemberService.findById(task.getTeamId(), assigneeId);
-        teamTagService.findByIdForTeam(tagId, task.getTeamId());
+        teamMemberService.findById(task.getTeamId(), update.assigneeId());
+        teamTagService.findByIdForTeam(update.tagId(), task.getTeamId());
 
-        Instant deadlineAt =
-                deadlineDate == null ? null : deadlineDate.atStartOfDay().toInstant(ZoneOffset.UTC);
+        Instant deadlineAt = update.deadlineDate() == null
+                ? null
+                : update.deadlineDate().atStartOfDay().toInstant(ZoneOffset.UTC);
 
-        return taskRepository.updateDetails(
-                task.getId(), title, description, deadlineAt, tagId, assigneeId, Instant.now());
+        task.setTitle(update.title());
+        task.setDescription(update.description());
+        task.setDeadlineAt(deadlineAt);
+        task.setStatus(update.status());
+        task.setTagId(update.tagId());
+        task.setAssigneeId(update.assigneeId());
+
+        return taskRepository.updateDetails(task, Instant.now());
     }
 
     public Task archive(Long id, UUID userId) {
@@ -330,7 +332,7 @@ public class TaskService {
             throw new AccessDeniedForTaskException();
         }
 
-        return taskRepository.archive(task.getId(), Instant.now());
+        return taskRepository.archive(task.getId(), userId, Instant.now());
     }
 
     public Task restoreFromArchive(Long id, UUID userId) {
@@ -373,10 +375,6 @@ public class TaskService {
 
     public boolean isTeamOwner(Task task, UUID userId) {
         return taskPermissionService.isTeamOwner(task, userId);
-    }
-
-    public boolean canBeArchived(Task task) {
-        return taskPermissionService.canBeArchived(task);
     }
 
     private String getTagName(Long tagId) {

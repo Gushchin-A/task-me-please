@@ -9,6 +9,7 @@
 @param List<Team> navigationTeams
 @param List<TeamTag> tags
 @param Set<Long> usedTagIds
+@param String settingsSection
 @param String successMessage
 @param String errorMessage
 @param CsrfToken _csrf
@@ -30,145 +31,160 @@
         <section class="workspace-page team-settings-page">
             <aside class="team-settings-sidebar">
                 <nav aria-label="Настройки команды">
-                    <a class="team-settings-nav-active" href="/teams/${team.getId()}/settings" aria-current="page">
+                    <a
+                        class="${"general".equals(settingsSection) ? "team-settings-nav-active" : ""}"
+                        href="/teams/${team.getId()}/settings"
+                        aria-current="${"general".equals(settingsSection) ? "page" : null}"
+                    >
                         Основные настройки
                     </a>
                     <a href="/teams/${team.getId()}/members">Участники</a>
+                    <a
+                        class="${"delete".equals(settingsSection) ? "team-settings-nav-active" : ""}"
+                        href="/teams/${team.getId()}/settings?section=delete"
+                        aria-current="${"delete".equals(settingsSection) ? "page" : null}"
+                    >
+                        Удаление команды
+                    </a>
                 </nav>
             </aside>
 
             <div class="team-settings-content">
-                <header class="team-create-header team-settings-header">
-                    <h1>Основные настройки</h1>
-                </header>
+                @if("delete".equals(settingsSection))
+                    <header class="team-create-header team-settings-header">
+                        <h1>Удаление команды</h1>
+                    </header>
 
-                <form
-                    class="team-settings-form"
-                    method="post"
-                    action="/teams/${team.getId()}/settings/name"
-                    data-settings-rename-form
-                    data-submit-loading
-                >
-                    <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
-
-                    <div class="form-field">
-                        <label for="team-name">Название команды</label>
-
-                        <div class="field-with-action">
-                            <input
-                                id="team-name"
-                                type="text"
-                                name="name"
-                                value="${team.getName()}"
-                                maxlength="255"
-                                required
-                                autocomplete="off"
-                                data-settings-name
-                                data-original-value="${team.getName()}"
-                            >
-
-                            <span class="team-settings-action-tooltip" data-tooltip="Начните редактировать название">
-                                <button
-                                    class="button button-secondary"
-                                    type="submit"
-                                    disabled
-                                    data-settings-rename-submit
-                                    data-loading-text="Обработка..."
-                                >
-                                    Изменить
-                                </button>
-                            </span>
-                        </div>
-                    </div>
-                </form>
-
-                <form
-                    class="team-settings-form team-settings-tags-form"
-                    method="post"
-                    action="/teams/${team.getId()}/settings/tags"
-                >
-                    <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
-
-                    <div class="form-field">
-                        <label for="tag-name">Теги</label>
-
-                        <div class="field-with-action">
-                            <input
-                                id="tag-name"
-                                type="text"
-                                name="name"
-                                maxlength="30"
-                                placeholder="Например, Кинопоиск"
-                                required
-                            >
-
-                            <button class="button button-secondary" type="submit">
-                                Добавить
-                            </button>
-                        </div>
-
-                        <p class="form-help">
-                            Длина одного тега до 30 символов. Всего можно добавить до 20 тегов.
-                        </p>
-                    </div>
-                </form>
-
-                <div class="tag-list team-settings-tag-list">
-                    @for(TeamTag tag : tags)
-                        <span class="tag-chip">
-                            <span>${tag.getName()}</span>
-                            @if(usedTagIds.contains(tag.getId()))
-                                <button
-                                    class="tag-chip-remove"
-                                    type="button"
-                                    aria-label="Изменить тег ${tag.getName()}"
-                                    data-tag-rename-open
-                                    data-tag-id="${tag.getId()}"
-                                    data-tag-name="${tag.getName()}"
-                                >
-                                    ×
-                                </button>
-                            @else
-                                <form
-                                    method="post"
-                                    action="/teams/${team.getId()}/settings/tags/${tag.getId()}/delete"
-                                >
-                                    <input
-                                        type="hidden"
-                                        name="${_csrf.getParameterName()}"
-                                        value="${_csrf.getToken()}"
-                                    >
-                                    <button
-                                        class="tag-chip-remove"
-                                        type="submit"
-                                        aria-label="Удалить тег ${tag.getName()}"
-                                    >
-                                        ×
-                                    </button>
-                                </form>
-                            @endif
-                        </span>
-                    @endfor
-                </div>
-
-                <section class="team-settings-danger">
-                    <div>
-                        <h2>Удаление команды</h2>
+                    <section class="team-settings-delete-section">
                         <p>
                             После удаления команды она и все ее задачи исчезнут навсегда.
                             Пожалуйста, будьте внимательны.
                         </p>
-                    </div>
 
-                    <a class="button team-settings-delete" href="/teams/${team.getId()}/delete">
-                        Удалить команду
-                    </a>
-                </section>
+                        <a class="button team-settings-delete" href="/teams/${team.getId()}/delete">
+                            Удалить команду
+                        </a>
+                    </section>
+                @else
+                    <header class="team-create-header team-settings-header">
+                        <h1>Основные настройки</h1>
+                    </header>
+
+                    <form
+                        class="team-settings-form"
+                        method="post"
+                        action="/teams/${team.getId()}/settings/name"
+                        data-settings-rename-form
+                        data-submit-loading
+                    >
+                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+
+                        <div class="form-field">
+                            <label for="team-name">Название команды</label>
+
+                            <div class="field-with-action">
+                                <input
+                                    id="team-name"
+                                    type="text"
+                                    name="name"
+                                    value="${team.getName()}"
+                                    maxlength="255"
+                                    required
+                                    autocomplete="off"
+                                    data-settings-name
+                                    data-original-value="${team.getName()}"
+                                >
+
+                                <span class="team-settings-action-tooltip" data-tooltip="Начните редактировать название">
+                                    <button
+                                        class="button button-secondary"
+                                        type="submit"
+                                        disabled
+                                        data-settings-rename-submit
+                                        data-loading-text="Обработка..."
+                                    >
+                                        Изменить
+                                    </button>
+                                </span>
+                            </div>
+                        </div>
+                    </form>
+
+                    <form
+                        class="team-settings-form team-settings-tags-form"
+                        method="post"
+                        action="/teams/${team.getId()}/settings/tags"
+                    >
+                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+
+                        <div class="form-field">
+                            <label for="tag-name">Теги</label>
+
+                            <div class="field-with-action">
+                                <input
+                                    id="tag-name"
+                                    type="text"
+                                    name="name"
+                                    maxlength="30"
+                                    placeholder="Например, Кинопоиск"
+                                    required
+                                >
+
+                                <button class="button button-secondary" type="submit">
+                                    Добавить
+                                </button>
+                            </div>
+
+                            <p class="form-help">
+                                Длина одного тега до 30 символов. Всего можно добавить до 20 тегов.
+                            </p>
+                        </div>
+                    </form>
+
+                    <div class="tag-list team-settings-tag-list">
+                        @for(TeamTag tag : tags)
+                            <span class="tag-chip">
+                                <span>${tag.getName()}</span>
+                                @if(usedTagIds.contains(tag.getId()))
+                                    <button
+                                        class="tag-chip-remove"
+                                        type="button"
+                                        aria-label="Изменить тег ${tag.getName()}"
+                                        data-tag-rename-open
+                                        data-tag-id="${tag.getId()}"
+                                        data-tag-name="${tag.getName()}"
+                                    >
+                                        ×
+                                    </button>
+                                @else
+                                    <form
+                                        method="post"
+                                        action="/teams/${team.getId()}/settings/tags/${tag.getId()}/delete"
+                                    >
+                                        <input
+                                            type="hidden"
+                                            name="${_csrf.getParameterName()}"
+                                            value="${_csrf.getToken()}"
+                                        >
+                                        <button
+                                            class="tag-chip-remove"
+                                            type="submit"
+                                            aria-label="Удалить тег ${tag.getName()}"
+                                        >
+                                            ×
+                                        </button>
+                                    </form>
+                                @endif
+                            </span>
+                        @endfor
+                    </div>
+                @endif
             </div>
         </section>
 
-        <dialog class="settings-dialog" data-tag-rename-dialog>
-            <form class="settings-dialog-form" method="post" data-tag-rename-form data-submit-loading>
+        @if("general".equals(settingsSection))
+            <dialog class="settings-dialog" data-tag-rename-dialog>
+                <form class="settings-dialog-form" method="post" data-tag-rename-form data-submit-loading>
                 <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
 
                 <header class="settings-dialog-header">
@@ -207,7 +223,8 @@
                         Изменить
                     </button>
                 </footer>
-            </form>
-        </dialog>
+                </form>
+            </dialog>
+        @endif
     `
 )

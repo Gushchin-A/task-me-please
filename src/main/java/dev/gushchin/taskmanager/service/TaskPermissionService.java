@@ -1,7 +1,6 @@
 package dev.gushchin.taskmanager.service;
 
 import dev.gushchin.taskmanager.model.Task;
-import dev.gushchin.taskmanager.model.TaskStatus;
 import dev.gushchin.taskmanager.model.TeamMember;
 import dev.gushchin.taskmanager.model.TeamMemberRole;
 import dev.gushchin.taskmanager.model.TeamTaskVisibility;
@@ -37,15 +36,11 @@ public class TaskPermissionService {
     }
 
     public boolean canArchiveTask(Task task, UUID userId) {
-        return canUpdateTask(task, userId) && canBeArchived(task);
+        return canUpdateTask(task, userId) && !task.isArchived();
     }
 
     public boolean canRestoreTask(Task task, UUID userId) {
-        return canUpdateTask(task, userId);
-    }
-
-    public boolean canBeArchived(Task task) {
-        return task.getStatus() == TaskStatus.DONE || task.getStatus() == TaskStatus.NOT_RELEVANT;
+        return task.isArchived() && (isTeamOwner(task, userId) || userId.equals(task.getArchivedBy()));
     }
 
     public boolean isTeamOwner(Task task, UUID userId) {

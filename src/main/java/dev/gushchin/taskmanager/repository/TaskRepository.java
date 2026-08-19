@@ -43,6 +43,7 @@ public class TaskRepository {
                                 : task.getDeadlineAt().atOffset(ZoneOffset.UTC))
                 .set(TASKS.STATUS, task.getStatus().name())
                 .set(TASKS.TAG_ID, task.getTagId())
+                .set(TASKS.ARCHIVED_BY, task.getArchivedBy())
                 .set(TASKS.IS_ARCHIVED, task.isArchived())
                 .set(TASKS.IS_DELETED, task.isDeleted())
                 .set(TASKS.CREATED_AT, task.getCreatedAt().atOffset(ZoneOffset.UTC))
@@ -108,31 +109,30 @@ public class TaskRepository {
         return TaskMapper.toModel(record);
     }
 
-    public Task updateDetails(
-            Long id,
-            String title,
-            String description,
-            Instant deadlineAt,
-            Long tagId,
-            UUID assigneeId,
-            Instant updatedAt) {
+    public Task updateDetails(Task task, Instant updatedAt) {
         TasksRecord record = dsl.update(TASKS)
-                .set(TASKS.TITLE, title)
-                .set(TASKS.DESCRIPTION, description)
-                .set(TASKS.DEADLINE_AT, deadlineAt == null ? null : deadlineAt.atOffset(ZoneOffset.UTC))
-                .set(TASKS.TAG_ID, tagId)
-                .set(TASKS.ASSIGNEE_ID, assigneeId)
+                .set(TASKS.TITLE, task.getTitle())
+                .set(TASKS.DESCRIPTION, task.getDescription())
+                .set(
+                        TASKS.DEADLINE_AT,
+                        task.getDeadlineAt() == null
+                                ? null
+                                : task.getDeadlineAt().atOffset(ZoneOffset.UTC))
+                .set(TASKS.STATUS, task.getStatus().name())
+                .set(TASKS.TAG_ID, task.getTagId())
+                .set(TASKS.ASSIGNEE_ID, task.getAssigneeId())
                 .set(TASKS.UPDATED_AT, updatedAt.atOffset(ZoneOffset.UTC))
-                .where(TASKS.ID.eq(id))
+                .where(TASKS.ID.eq(task.getId()))
                 .returning()
                 .fetchOne();
 
         return TaskMapper.toModel(record);
     }
 
-    public Task archive(Long id, Instant updatedAt) {
+    public Task archive(Long id, UUID archivedBy, Instant updatedAt) {
         TasksRecord record = dsl.update(TASKS)
                 .set(TASKS.IS_ARCHIVED, true)
+                .set(TASKS.ARCHIVED_BY, archivedBy)
                 .set(TASKS.UPDATED_AT, updatedAt.atOffset(ZoneOffset.UTC))
                 .where(TASKS.ID.eq(id))
                 .returning()
@@ -144,6 +144,7 @@ public class TaskRepository {
     public Task restoreFromArchive(Long id, Instant updatedAt) {
         TasksRecord record = dsl.update(TASKS)
                 .set(TASKS.IS_ARCHIVED, false)
+                .setNull(TASKS.ARCHIVED_BY)
                 .set(TASKS.UPDATED_AT, updatedAt.atOffset(ZoneOffset.UTC))
                 .where(TASKS.ID.eq(id))
                 .returning()

@@ -22,6 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import dev.gushchin.taskmanager.IntegrationTestBase;
+import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
 import dev.gushchin.taskmanager.exception.TeamMemberNotFoundException;
 import dev.gushchin.taskmanager.model.Comment;
 import dev.gushchin.taskmanager.model.Task;
@@ -133,10 +134,26 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("Кинопоиск")))
                 .andExpect(content().string(containsString("Initial comment")))
                 .andExpect(content().string(containsString("class=\"task-detail-layout\"")))
-                .andExpect(content().string(containsString("class=\"comment-timeline\"")))
+                .andExpect(content().string(containsString("class=\"task-parameters-panel\"")))
+                .andExpect(content().string(containsString("class=\"task-conversation\"")))
                 .andExpect(content().string(containsString("class=\"comment-avatar\"")))
+                .andExpect(content().string(containsString("Добавить комментарий")))
+                .andExpect(content().string(containsString("placeholder=\"Оставьте комментарий\"")))
                 .andExpect(content().string(containsString(">O</span>")))
                 .andExpect(content().string(containsString("15 июня 2026 18:17")));
+    }
+
+    @Test
+    void assigneeShouldSeeStatusEditingAndReadOnlyTaskParameters() throws Exception {
+        mockMvc.perform(get("/tasks/" + task.getId()).with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-tooltip=\"Изменить параметры задачи\"")))
+                .andExpect(content().string(containsString("name=\"status\"")))
+                .andExpect(content().string(containsString("task-parameter-read-only")))
+                .andExpect(content().string(containsString("name=\"deadlineDate\"")))
+                .andExpect(content().string(containsString("name=\"authorId\"")))
+                .andExpect(content().string(containsString("name=\"assigneeId\"")))
+                .andExpect(content().string(containsString("name=\"tagId\"")));
     }
 
     @Test
@@ -312,6 +329,29 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void cardEditShouldUpdateFieldsWithoutChangingDescription() throws Exception {
+        mockMvc.perform(post("/tasks/" + task.getId() + "/edit")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("title", "Updated title")
+                        .param("status", TaskStatus.IN_PROGRESS.name())
+                        .param("assigneeId", owner.getId().toString())
+                        .param("deadlineDate", LocalDate.of(2035, 2, 10).toString())
+                        .param("tagId", plusTag.getId().toString())
+                        .param("returnTo", "tasks"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks"));
+
+        Task updatedTask = taskService.findById(task.getId());
+
+        assertEquals("Updated title", updatedTask.getTitle());
+        assertEquals("Task description", updatedTask.getDescription());
+        assertEquals(TaskStatus.IN_PROGRESS, updatedTask.getStatus());
+        assertEquals(owner.getId(), updatedTask.getAssigneeId());
+        assertEquals(plusTag.getId(), updatedTask.getTagId());
+    }
+
+    @Test
     void createTaskShouldRequireDeadline() throws Exception {
         mockMvc.perform(post("/tasks")
                         .with(csrf())
@@ -439,6 +479,30 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void onlyArchiverOrTeamOwnerShouldRestoreTask() {
+        Task memberTask = taskService.create(
+                team.getId(),
+                secondUser.getId(),
+                owner.getId(),
+                "Member task",
+                "Description",
+                DEADLINE_DATE,
+                kinopoiskTag.getId());
+
+        taskService.archive(memberTask.getId(), owner.getId());
+
+        assertThrows(
+                AccessDeniedForTaskException.class,
+                () -> taskService.restoreFromArchive(memberTask.getId(), secondUser.getId()));
+
+        taskService.restoreFromArchive(memberTask.getId(), owner.getId());
+        taskService.archive(memberTask.getId(), secondUser.getId());
+        taskService.restoreFromArchive(memberTask.getId(), secondUser.getId());
+
+        assertFalse(taskService.findById(memberTask.getId()).isArchived());
+    }
+
+    @Test
     void removedMemberShouldNotCreateEditOrDeleteComments() throws Exception {
         Comment comment = commentService.create(task.getId(), secondUser.getId(), "Before removal");
 
@@ -505,7 +569,7 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/tasks/" + task.getId()).with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Second")))
-                .andExpect(content().string(containsString("color: red;")))
+                .andExpect(content().string(containsString("task-card-former-member")))
                 .andExpect(content().string(containsString("Пользователь был удалён из команды")));
 
         mockMvc.perform(get("/tasks/new?teamId=" + team.getId()).with(user(new AuthUser(owner))))
