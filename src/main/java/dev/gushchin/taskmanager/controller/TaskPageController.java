@@ -443,7 +443,10 @@ public class TaskPageController {
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
         taskService.archive(id, authUser.getId());
-        redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Задача перемещена в архив.");
+        String successMessage = task.getStatus() == TaskStatus.DONE
+                ? "Задача была перенесена в архив"
+                : "Задача удалена и перенесена в архив";
+        redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, successMessage);
 
         return buildRedirectAfterInlineUpdate(task, request, returnTo);
     }
@@ -459,7 +462,7 @@ public class TaskPageController {
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
         taskService.restoreFromArchive(id, authUser.getId());
-        redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Задача возвращена из архива.");
+        redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Задача восстановлена из архива");
 
         return buildRedirectAfterInlineUpdate(task, request, returnTo);
     }

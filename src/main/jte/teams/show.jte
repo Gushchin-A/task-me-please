@@ -13,12 +13,14 @@
 @param List<Team> navigationTeams
 @param CsrfToken _csrf
 @param UserAvatarView currentUser
+@param String successMessage
 
 @template.layout.page(
     title = page.team().getName(),
     _csrf = _csrf,
     currentUser = currentUser,
     activeSection = "teams",
+    successMessage = successMessage,
     headerContext = @`
         @template.components.teamSwitcher(team = page.team(), navigationTeams = navigationTeams)
     `,

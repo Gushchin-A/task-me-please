@@ -25,16 +25,21 @@ function setupTaskDetail() {
 
     if (titleOpen !== null && titleForm !== null && titleCancel !== null) {
         const titleInput = titleForm.querySelector('input[name="title"]');
+        const titleSubmit = titleForm.querySelector('[data-task-title-edit-submit]');
+
+        setupChangedValueSubmitState(titleInput, titleSubmit);
 
         titleOpen.addEventListener('click', function () {
             titleRow.hidden = true;
             titleForm.hidden = false;
+            titleSubmit.disabled = true;
             titleInput.focus();
             titleInput.select();
         });
 
         titleCancel.addEventListener('click', function () {
             titleForm.reset();
+            titleSubmit.disabled = true;
             titleForm.hidden = true;
             titleRow.hidden = false;
             titleOpen.focus();
@@ -49,22 +54,154 @@ function setupTaskDetail() {
     if (descriptionOpen !== null && descriptionView !== null
             && descriptionForm !== null && descriptionCancel !== null) {
         const descriptionInput = descriptionForm.querySelector('textarea[name="description"]');
+        const descriptionSubmit = descriptionForm.querySelector('[data-changed-value-submit]');
+
+        function updateDescriptionSubmitState() {
+            descriptionSubmit.disabled = descriptionInput.value === descriptionInput.dataset.originalValue;
+        }
 
         descriptionOpen.addEventListener('click', function () {
             descriptionView.hidden = true;
             descriptionForm.hidden = false;
-            descriptionOpen.hidden = true;
+            descriptionOpen.closest('details')?.removeAttribute('open');
+            updateDescriptionSubmitState();
             descriptionInput.focus();
         });
 
         descriptionCancel.addEventListener('click', function () {
             descriptionForm.reset();
+            updateDescriptionSubmitState();
             descriptionForm.hidden = true;
             descriptionView.hidden = false;
-            descriptionOpen.hidden = false;
             descriptionOpen.focus();
         });
+
+        descriptionInput.addEventListener('input', updateDescriptionSubmitState);
     }
+
+    detail.querySelectorAll('[data-comment-edit-form]').forEach(function (form) {
+        const card = form.closest('.comment-card');
+        const view = card.querySelector('[data-comment-view]');
+        const open = card.querySelector('[data-comment-edit-open]');
+        const cancel = form.querySelector('[data-comment-edit-cancel]');
+        const input = form.querySelector('textarea[name="message"]');
+        const submit = form.querySelector('[data-changed-value-submit]');
+
+        function updateSubmitState() {
+            submit.disabled = input.value === input.dataset.originalValue;
+        }
+
+        open.addEventListener('click', function () {
+            view.hidden = true;
+            form.hidden = false;
+            open.closest('details')?.removeAttribute('open');
+            updateSubmitState();
+            input.focus();
+        });
+
+        cancel.addEventListener('click', function () {
+            form.reset();
+            updateSubmitState();
+            form.hidden = true;
+            view.hidden = false;
+            open.focus();
+        });
+
+        input.addEventListener('input', updateSubmitState);
+    });
+
+    detail.querySelectorAll('.task-comment-editor').forEach(function (editor) {
+        const input = editor.querySelector('textarea');
+        const preview = editor.querySelector('[data-description-preview]');
+        const tabs = editor.querySelectorAll('[data-editor-mode]');
+
+        tabs.forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                const writeMode = tab.dataset.editorMode === 'write';
+
+                tabs.forEach(function (item) {
+                    const selected = item === tab;
+
+                    item.classList.toggle('task-editor-tab-active', selected);
+                    item.setAttribute('aria-selected', String(selected));
+                    item.setAttribute('tabindex', selected ? '0' : '-1');
+                });
+
+                const editorHeight = input.offsetHeight + 16;
+
+                input.hidden = !writeMode;
+                preview.hidden = writeMode;
+                editor.classList.toggle('task-description-editor-preview', !writeMode);
+
+                if (!writeMode) {
+                    preview.textContent = input.value;
+                    preview.style.height = editorHeight + 'px';
+                }
+            });
+        });
+
+        editor.querySelectorAll('[data-format]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                const start = input.selectionStart;
+                const end = input.selectionEnd;
+                const selectedText = input.value.slice(start, end) || 'текст';
+                let formattedText = '> ' + selectedText;
+
+                if (button.dataset.format === 'bold') {
+                    formattedText = '**' + selectedText + '**';
+                }
+
+                if (button.dataset.format === 'italic') {
+                    formattedText = '_' + selectedText + '_';
+                }
+
+                input.setRangeText(formattedText, start, end, 'end');
+                input.dispatchEvent(new Event('input', {bubbles: true}));
+                input.focus();
+            });
+        });
+    });
+
+    detail.querySelectorAll('.task-file-placeholder').forEach(function (button) {
+        button.addEventListener('click', function (event) {
+            event.preventDefault();
+        });
+    });
+
+    const newCommentInput = detail.querySelector('.comment-create-form textarea[name="message"]');
+    const newCommentSubmit = detail.querySelector('[data-new-comment-submit]');
+
+    if (newCommentInput !== null && newCommentSubmit !== null) {
+        newCommentInput.addEventListener('input', function () {
+            newCommentSubmit.disabled = newCommentInput.value.trim() === '';
+        });
+    }
+
+    detail.querySelectorAll('[data-task-anchor-copy]').forEach(function (button) {
+        button.addEventListener('click', async function () {
+            const taskUrl = new URL(window.location.href);
+
+            taskUrl.search = '';
+            taskUrl.hash = button.dataset.taskAnchorCopy;
+
+            try {
+                await navigator.clipboard.writeText(taskUrl.href);
+            } catch (error) {
+                const input = document.createElement('textarea');
+
+                input.value = taskUrl.href;
+                input.style.position = 'fixed';
+                input.style.opacity = '0';
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                input.remove();
+            }
+
+            button.closest('.task-card-actions').open = false;
+            showFlashMessage('Ссылка скопирована.');
+        });
+    });
 
     const parameters = detail.querySelector('[data-task-parameters]');
 
@@ -78,10 +215,153 @@ function setupTaskDetail() {
     const actions = parameters.querySelector('[data-task-parameters-actions]');
     const cancel = parameters.querySelector('[data-task-parameters-cancel]');
     const save = parameters.querySelector('[data-task-parameters-save]');
+    const stateAction = parameters.querySelector('[data-task-parameters-state-action]');
+    const parameterSelects = [];
 
     if (editOpen === null || actions === null || cancel === null || save === null) {
         return;
     }
+
+    function closeParameterSelect(select) {
+        select.panel.hidden = true;
+        select.trigger.setAttribute('aria-expanded', 'false');
+    }
+
+    function closeParameterSelects(exceptSelect) {
+        parameterSelects.forEach(function (select) {
+            if (select !== exceptSelect) {
+                closeParameterSelect(select);
+            }
+        });
+    }
+
+    function syncParameterSelect(select) {
+        const selectedOption = Array.from(select.nativeSelect.options).find(function (option) {
+            return option.value === select.nativeSelect.value;
+        });
+
+        if (selectedOption === undefined) {
+            return;
+        }
+
+        select.value.textContent = selectedOption.textContent;
+        select.options.forEach(function (option) {
+            option.setAttribute('aria-selected', String(option.dataset.value === selectedOption.value));
+        });
+
+        if (select.avatar !== null) {
+            select.avatar.textContent = selectedOption.textContent.trim().charAt(0).toUpperCase();
+        }
+    }
+
+    forms.forEach(function (form) {
+        const nativeSelect = form.querySelector('select');
+
+        if (nativeSelect === null) {
+            return;
+        }
+
+        const row = form.closest('.task-parameter-row');
+        const heading = row.querySelector('.task-parameter-heading').textContent.trim();
+        const select = document.createElement('div');
+        const trigger = document.createElement('button');
+        const value = document.createElement('span');
+        const panel = document.createElement('div');
+        const panelHeading = document.createElement('div');
+        const options = document.createElement('div');
+        const avatar = nativeSelect.hasAttribute('data-participant-select')
+                ? document.createElement('span') : null;
+
+        select.className = 'primer-select task-parameter-select';
+        trigger.className = 'button primer-select-trigger';
+        trigger.type = 'button';
+        trigger.disabled = nativeSelect.disabled;
+        trigger.setAttribute('aria-haspopup', 'listbox');
+        trigger.setAttribute('aria-expanded', 'false');
+        value.className = 'primer-select-value';
+        panel.className = 'primer-select-panel';
+        panel.hidden = true;
+        panelHeading.className = 'primer-select-heading';
+        panelHeading.textContent = 'Выберите ' + heading.toLowerCase();
+        options.className = 'primer-select-options';
+        options.setAttribute('role', 'listbox');
+
+        if (avatar !== null) {
+            avatar.className = 'participant-avatar';
+            avatar.setAttribute('aria-hidden', 'true');
+            trigger.appendChild(avatar);
+        }
+
+        trigger.appendChild(value);
+        trigger.insertAdjacentHTML('beforeend', '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="m4.427 6.427 3.396 3.396a.25.25 0 0 0 .354 0l3.396-3.396A.25.25 0 0 0 11.396 6H4.604a.25.25 0 0 0-.177.427Z"></path></svg>');
+        panel.appendChild(panelHeading);
+        panel.appendChild(options);
+        select.appendChild(trigger);
+        select.appendChild(panel);
+        nativeSelect.hidden = true;
+        form.appendChild(select);
+
+        const parameterSelect = {
+            nativeSelect: nativeSelect,
+            trigger: trigger,
+            value: value,
+            panel: panel,
+            avatar: avatar,
+            options: []
+        };
+
+        Array.from(nativeSelect.options).forEach(function (nativeOption) {
+            const option = document.createElement('button');
+
+            option.className = 'primer-select-option';
+            option.type = 'button';
+            option.dataset.value = nativeOption.value;
+            option.setAttribute('role', 'option');
+            option.innerHTML = '<span class="primer-select-check" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 1 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path></svg></span>';
+
+            if (avatar !== null) {
+                const optionAvatar = document.createElement('span');
+
+                optionAvatar.className = 'participant-avatar';
+                optionAvatar.setAttribute('aria-hidden', 'true');
+                optionAvatar.textContent = nativeOption.textContent.trim().charAt(0).toUpperCase();
+                option.appendChild(optionAvatar);
+            }
+
+            const copy = document.createElement('span');
+
+            copy.className = 'primer-select-option-copy';
+            copy.textContent = nativeOption.textContent;
+            option.appendChild(copy);
+            options.appendChild(option);
+            parameterSelect.options.push(option);
+
+            option.addEventListener('click', function () {
+                nativeSelect.value = option.dataset.value;
+                syncParameterSelect(parameterSelect);
+                closeParameterSelect(parameterSelect);
+                nativeSelect.dispatchEvent(new Event('change', {bubbles: true}));
+                trigger.focus();
+            });
+        });
+
+        trigger.addEventListener('click', function (event) {
+            event.stopPropagation();
+
+            const shouldOpen = panel.hidden;
+
+            closeParameterSelects(parameterSelect);
+            panel.hidden = !shouldOpen;
+            trigger.setAttribute('aria-expanded', String(shouldOpen));
+
+            if (shouldOpen) {
+                panel.querySelector('[aria-selected="true"]')?.focus();
+            }
+        });
+
+        parameterSelects.push(parameterSelect);
+        syncParameterSelect(parameterSelect);
+    });
 
     function hasChanges() {
         return forms.some(function (form) {
@@ -100,10 +380,17 @@ function setupTaskDetail() {
             form.reset();
             form.hidden = true;
         });
+        parameterSelects.forEach(function (select) {
+            closeParameterSelect(select);
+            syncParameterSelect(select);
+        });
         values.forEach(function (value) {
             value.hidden = false;
         });
         actions.hidden = true;
+        if (stateAction !== null) {
+            stateAction.hidden = false;
+        }
         editOpen.hidden = false;
         updateSaveState();
         editOpen.focus();
@@ -117,10 +404,13 @@ function setupTaskDetail() {
             form.hidden = false;
         });
         actions.hidden = false;
+        if (stateAction !== null) {
+            stateAction.hidden = true;
+        }
         editOpen.hidden = true;
         updateSaveState();
 
-        const firstEnabledControl = parameters.querySelector('select:not(:disabled), input[type="date"]:not(:disabled)');
+        const firstEnabledControl = parameters.querySelector('.primer-select-trigger:not(:disabled), input[type="date"]:not(:disabled)');
 
         firstEnabledControl?.focus();
     });
@@ -131,6 +421,12 @@ function setupTaskDetail() {
     });
 
     cancel.addEventListener('click', closeEditor);
+
+    document.addEventListener('click', function (event) {
+        if (!event.target.closest('.task-parameter-select')) {
+            closeParameterSelects();
+        }
+    });
 
     save.addEventListener('click', async function () {
         const changedForms = forms.filter(function (form) {
@@ -722,6 +1018,8 @@ function showFlashMessage(message) {
     const flashMessage = document.createElement('div');
     const messageText = document.createElement('span');
     const closeButton = document.createElement('button');
+    const closeIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const closeIconPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 
     flashMessage.className = 'flash-message flash-message-info';
     flashMessage.dataset.flashMessage = '';
@@ -733,7 +1031,14 @@ function showFlashMessage(message) {
     closeButton.type = 'button';
     closeButton.dataset.flashClose = '';
     closeButton.setAttribute('aria-label', 'Закрыть сообщение');
-    closeButton.textContent = '×';
+    closeIcon.setAttribute('aria-hidden', 'true');
+    closeIcon.setAttribute('width', '16');
+    closeIcon.setAttribute('height', '16');
+    closeIcon.setAttribute('viewBox', '0 0 16 16');
+    closeIcon.setAttribute('fill', 'currentColor');
+    closeIconPath.setAttribute('d', 'M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z');
+    closeIcon.appendChild(closeIconPath);
+    closeButton.appendChild(closeIcon);
     flashMessage.append(messageText, closeButton);
     stack.appendChild(flashMessage);
 

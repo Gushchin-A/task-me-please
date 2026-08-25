@@ -282,6 +282,12 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/tasks/archive").with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Owner assignee task")))
+                .andExpect(content().string(containsString("task-card-archived")))
+                .andExpect(content().string(containsString("task-card-status-not-relevant")))
+                .andExpect(content().string(not(containsString("task-card-status-done"))))
+                .andExpect(content().string(containsString("task-card-archive-event-resolved")))
+                .andExpect(content().string(containsString("Решена и перенесена в архив")))
+                .andExpect(content().string(not(containsString("<time"))))
                 .andExpect(content().string(not(containsString("task-card-deadline-urgent"))));
     }
 

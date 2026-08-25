@@ -176,8 +176,12 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
         taskService.updateStatus(archivedTask.getId(), TaskStatus.DONE, owner.getId());
         taskService.archive(archivedTask.getId(), owner.getId());
 
-        mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(owner))))
+        mockMvc.perform(get("/teams/" + team.getId())
+                        .with(user(new AuthUser(owner)))
+                        .flashAttr("successMessage", "Задача была перенесена в архив"))
                 .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-flash-message")))
+                .andExpect(content().string(containsString("Задача была перенесена в архив")))
                 .andExpect(content().string(containsString("class=\"local-tabs team-tabs\"")))
                 .andExpect(content().string(containsString("class=\"local-tab-active\"")))
                 .andExpect(content().string(not(containsString("class=\"nav-count\""))));
@@ -198,6 +202,12 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/teams/" + team.getId() + "/archive").with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString(archivedTask.getTitle())))
+                .andExpect(content().string(containsString("task-card-archived")))
+                .andExpect(content().string(containsString("task-card-status-not-relevant")))
+                .andExpect(content().string(not(containsString("task-card-status-open"))))
+                .andExpect(content().string(containsString("task-card-archive-event-deleted")))
+                .andExpect(content().string(containsString("Была удалена")))
+                .andExpect(content().string(not(containsString("<time"))))
                 .andExpect(content().string(not(containsString("task-card-deadline-urgent"))));
     }
 

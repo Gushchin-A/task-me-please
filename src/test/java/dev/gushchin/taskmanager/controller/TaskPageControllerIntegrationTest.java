@@ -18,6 +18,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -120,15 +121,20 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
         Comment comment = new Comment(
                 null, task.getId(), owner.getId(), "Initial comment", COMMENT_CREATED_AT, COMMENT_CREATED_AT, false);
 
-        commentRepository.save(comment);
+        Comment savedComment = commentRepository.save(comment);
 
         // when
-        mockMvc.perform(get("/tasks/" + task.getId()).with(user(new AuthUser(owner))))
+        mockMvc.perform(get("/tasks/" + task.getId())
+                        .with(user(new AuthUser(owner)))
+                        .flashAttr("successMessage", "Задача восстановлена из архива"))
                 // then
                 .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-flash-message")))
+                .andExpect(content().string(containsString("Задача восстановлена из архива")))
                 .andExpect(content().string(containsString("Important task")))
                 .andExpect(content().string(containsString("Task description")))
-                .andExpect(content().string(containsString("Архив")))
+                .andExpect(content().string(containsString("task-detail-status-archive\">Архив")))
+                .andExpect(content().string(containsString("Задача была выполнена и перенесена в архив")))
                 .andExpect(content().string(containsString("Вернуть из архива")))
                 .andExpect(content().string(containsString("20 января 2035")))
                 .andExpect(content().string(containsString("Кинопоиск")))
@@ -137,10 +143,33 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("class=\"task-parameters-panel\"")))
                 .andExpect(content().string(containsString("class=\"task-conversation\"")))
                 .andExpect(content().string(containsString("class=\"comment-avatar\"")))
-                .andExpect(content().string(containsString("Добавить комментарий")))
-                .andExpect(content().string(containsString("placeholder=\"Оставьте комментарий\"")))
+                .andExpect(content().string(containsString("id=\"task-description\"")))
+                .andExpect(content().string(containsString("task-description-status-not-relevant")))
+                .andExpect(content().string(containsString("id=\"comment-" + savedComment.getId() + "\"")))
+                .andExpect(content().string(containsString("data-task-anchor-copy=\"task-description\"")))
+                .andExpect(content()
+                        .string(containsString("data-task-anchor-copy=\"comment-" + savedComment.getId() + "\"")))
+                .andExpect(content().string(not(containsString("data-task-title-edit-open"))))
+                .andExpect(content().string(containsString("data-comment-edit-form")))
+                .andExpect(content().string(containsString("disabled data-changed-value-submit")))
+                .andExpect(content().string(not(containsString("class=\"comment-create-form\""))))
+                .andExpect(content().string(not(containsString("placeholder=\"Оставьте комментарий\""))))
                 .andExpect(content().string(containsString(">O</span>")))
                 .andExpect(content().string(containsString("15 июня 2026 18:17")));
+    }
+
+    @Test
+    void archivedOpenTaskShouldShowDeletedSummaryAndHideRestoreActionFromAssignee() throws Exception {
+        taskService.archive(task.getId(), owner.getId());
+
+        mockMvc.perform(get("/tasks/" + task.getId()).with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("task-detail-status-archive\">Архив")))
+                .andExpect(content().string(containsString("task-detail-status-open\">Открыто")))
+                .andExpect(content().string(containsString("Задача была удалена")))
+                .andExpect(content().string(not(containsString("Вернуть из архива"))))
+                .andExpect(content().string(not(containsString("data-task-title-edit-open"))))
+                .andExpect(content().string(not(containsString("class=\"comment-create-form\""))));
     }
 
     @Test
@@ -153,7 +182,27 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("name=\"deadlineDate\"")))
                 .andExpect(content().string(containsString("name=\"authorId\"")))
                 .andExpect(content().string(containsString("name=\"assigneeId\"")))
-                .andExpect(content().string(containsString("name=\"tagId\"")));
+                .andExpect(content().string(containsString("name=\"tagId\"")))
+                .andExpect(content().string(not(containsString("data-task-parameters-state-action"))))
+                .andExpect(content().string(not(containsString("Удалить задачу"))))
+                .andExpect(content().string(not(containsString("Перенести в архив"))));
+    }
+
+    @Test
+    void taskPageShouldShowArchiveActionForDoneTaskAndDeleteActionForOtherStatuses() throws Exception {
+        mockMvc.perform(get("/tasks/" + task.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Удалить задачу")))
+                .andExpect(content().string(containsString("data-task-parameters-state-action")))
+                .andExpect(content().string(containsString("name=\"returnTo\" value=\"team\"")))
+                .andExpect(content().string(not(containsString("Перенести в архив"))));
+
+        taskService.updateStatus(task.getId(), TaskStatus.DONE, owner.getId());
+
+        mockMvc.perform(get("/tasks/" + task.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Перенести в архив")))
+                .andExpect(content().string(not(containsString("Удалить задачу"))));
     }
 
     @Test
@@ -279,10 +328,11 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(post("/tasks/" + taskId + "/archive")
                         .with(csrf())
                         .with(user(new AuthUser(owner)))
-                        .param("returnTo", "task"))
+                        .param("returnTo", "team"))
                 // then
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/tasks/" + taskId));
+                .andExpect(redirectedUrl("/teams/" + team.getId()))
+                .andExpect(flash().attribute("successMessage", "Задача была перенесена в архив"));
 
         // when
         mockMvc.perform(get("/tasks/" + taskId).with(user(new AuthUser(owner))))
@@ -298,13 +348,25 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                         .param("returnTo", "task"))
                 // then
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/tasks/" + taskId));
+                .andExpect(redirectedUrl("/tasks/" + taskId))
+                .andExpect(flash().attribute("successMessage", "Задача восстановлена из архива"));
 
         // when
         mockMvc.perform(get("/tasks/" + taskId).with(user(new AuthUser(owner))))
                 // then
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Перенести в архив")));
+    }
+
+    @Test
+    void archivingUnfinishedTaskShouldShowDeletedMessage() throws Exception {
+        mockMvc.perform(post("/tasks/" + task.getId() + "/archive")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("returnTo", "team"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId()))
+                .andExpect(flash().attribute("successMessage", "Задача удалена и перенесена в архив"));
     }
 
     @Test
@@ -349,6 +411,25 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
         assertEquals(TaskStatus.IN_PROGRESS, updatedTask.getStatus());
         assertEquals(owner.getId(), updatedTask.getAssigneeId());
         assertEquals(plusTag.getId(), updatedTask.getTagId());
+    }
+
+    @Test
+    void taskPageTitleEditShouldRedirectBackToTask() throws Exception {
+        mockMvc.perform(post("/tasks/" + task.getId() + "/edit")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("title", "Task page title")
+                        .param("status", TaskStatus.IN_PROGRESS.name())
+                        .param("assigneeId", owner.getId().toString())
+                        .param("deadlineDate", LocalDate.of(2035, 2, 10).toString())
+                        .param("tagId", plusTag.getId().toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks/" + task.getId()));
+
+        Task updatedTask = taskService.findById(task.getId());
+
+        assertEquals("Task page title", updatedTask.getTitle());
     }
 
     @Test

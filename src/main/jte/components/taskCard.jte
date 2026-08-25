@@ -13,7 +13,7 @@
 @param String returnTo
 @param CsrfToken _csrf
 
-<li class="task-card task-card-status-${task.statusCssClass()}">
+<li class="task-card task-card-status-${task.archived() ? "not-relevant" : task.statusCssClass()}${task.archived() ? " task-card-archived" : ""}">
     <div class="task-card-header">
         <span class="task-card-status">${task.statusText()}</span>
 
@@ -94,7 +94,13 @@
         </dl>
 
         <footer class="task-card-footer">
-            <time datetime="${task.updatedAt() == null ? "" : task.updatedAt().toString()}">${task.updatedAtText()}</time>
+            @if(task.archived())
+                <span class="task-card-archive-event task-card-archive-event-${task.status() == TaskStatus.DONE ? "resolved" : "deleted"}">
+                    ${task.status() == TaskStatus.DONE ? "Решена и перенесена в архив" : "Была удалена"}
+                </span>
+            @else
+                <time datetime="${task.updatedAt() == null ? "" : task.updatedAt().toString()}">${task.updatedAtText()}</time>
+            @endif
 
             @if(teamId != null && teamName != null)
                 <a href="/teams/${teamId}">${teamName}</a>
