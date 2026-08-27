@@ -35,7 +35,6 @@ import dev.gushchin.taskmanager.view.TeamInvitationView;
 import dev.gushchin.taskmanager.view.TeamMemberView;
 import dev.gushchin.taskmanager.view.TeamPageView;
 import dev.gushchin.taskmanager.view.TeamTasksStats;
-import jakarta.servlet.http.HttpSession;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -57,10 +56,10 @@ public class TeamPageController {
     private static final String CSRF_ATTRIBUTE = "_csrf";
     private static final String ERROR_MESSAGE_ATTRIBUTE = "errorMessage";
     private static final String INVITE_PATH_SUFFIX = "/invite";
-    private static final String DELETE_CONFIRMATION_TEAM_ID_SESSION_ATTRIBUTE = "deleteConfirmationTeamId";
-    private static final String DELETE_CONFIRMATION_STEP_SESSION_ATTRIBUTE = "deleteConfirmationStep";
-    private static final String DELETE_TEAM_VIEW = "teams/delete";
-    private static final int FINAL_DELETE_CONFIRMATION_STEP = 3;
+    private static final String DELETE_TEAM_CONFIRMATION_TEXT = "я хочу удалить команду";
+    private static final String DELETE_TEAM_ERROR_MESSAGE = "Не удалось удалить команду";
+    private static final String DELETE_TEAM_INVALID_CONFIRMATION_MESSAGE = "Проверочный текст введен неверно";
+    private static final String DELETE_TEAM_SUCCESS_MESSAGE = "Команда успешно удалена";
     private static final String MEMBERS_PATH_SUFFIX = "/members";
     private static final String NAVIGATION_TEAMS_ATTRIBUTE = "navigationTeams";
     private static final String OWNER_INVITE_REQUIRED_MESSAGE_PREFIX =
@@ -99,8 +98,8 @@ public class TeamPageController {
         List<Team> teams = teamService.findByUserId(authUser.getId());
 
         model.addAttribute("teams", teams);
-        model.addAttribute(ERROR_MESSAGE_ATTRIBUTE, null);
         model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
+        addEmptyFlashAttributes(model);
 
         return "teams/index";
     }
@@ -351,23 +350,6 @@ public class TeamPageController {
         return "teams/invite";
     }
 
-    @GetMapping("/teams/{id}/delete")
-    public String deleteTeamPage(
-            @AuthenticationPrincipal AuthUser authUser,
-            @PathVariable Long id,
-            Model model,
-            CsrfToken csrfToken,
-            HttpSession session) {
-        if (!isTeamOwner(id, authUser.getId())) {
-            return notFound();
-        }
-
-        session.setAttribute(DELETE_CONFIRMATION_TEAM_ID_SESSION_ATTRIBUTE, id);
-        session.setAttribute(DELETE_CONFIRMATION_STEP_SESSION_ATTRIBUTE, 1);
-
-        return showDeleteTeamStep(id, authUser.getId(), 1, model, csrfToken);
-    }
-
     @GetMapping("/teams/{id}/settings")
     public String teamSettings(
             @AuthenticationPrincipal AuthUser authUser,
@@ -484,20 +466,25 @@ public class TeamPageController {
     public String confirmDeleteTeam(
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long id,
-            @RequestParam String confirmation,
-            Model model,
-            CsrfToken csrfToken,
-            HttpSession session) {
-        String result;
-
+            @RequestParam(defaultValue = "") String confirmationText,
+            RedirectAttributes redirectAttributes) {
         if (!isTeamOwner(id, authUser.getId())) {
-            clearDeleteConfirmation(session);
-            result = notFound();
-        } else {
-            result = processDeleteConfirmation(id, authUser.getId(), confirmation, model, csrfToken, session);
+            return notFound();
         }
 
-        return result;
+        if (!DELETE_TEAM_CONFIRMATION_TEXT.equals(confirmationText)) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, DELETE_TEAM_INVALID_CONFIRMATION_MESSAGE);
+            return redirectToDeleteTeamSettings(id);
+        }
+
+        try {
+            teamService.delete(id, authUser.getId());
+            redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, DELETE_TEAM_SUCCESS_MESSAGE);
+            return REDIRECT_TEAMS;
+        } catch (AccessDeniedForTaskException | TeamNotFoundException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, DELETE_TEAM_ERROR_MESSAGE);
+            return redirectToDeleteTeamSettings(id);
+        }
     }
 
     @PostMapping("/teams/{teamId}/members/{userId}/visibility")
@@ -653,45 +640,8 @@ public class TeamPageController {
         throw new PageNotFoundException();
     }
 
-    private String processDeleteConfirmation(
-            Long teamId,
-            UUID currentUserId,
-            String confirmation,
-            Model model,
-            CsrfToken csrfToken,
-            HttpSession session) {
-        Long confirmationTeamId = (Long) session.getAttribute(DELETE_CONFIRMATION_TEAM_ID_SESSION_ATTRIBUTE);
-        Integer confirmationStep = (Integer) session.getAttribute(DELETE_CONFIRMATION_STEP_SESSION_ATTRIBUTE);
-        String result;
-
-        if (!teamId.equals(confirmationTeamId) || confirmationStep == null || !"yes".equals(confirmation)) {
-            clearDeleteConfirmation(session);
-            result = REDIRECT_TEAMS_PREFIX + teamId + TEAM_SETTINGS_PATH_SUFFIX;
-        } else if (confirmationStep < FINAL_DELETE_CONFIRMATION_STEP) {
-            int nextStep = confirmationStep + 1;
-            session.setAttribute(DELETE_CONFIRMATION_STEP_SESSION_ATTRIBUTE, nextStep);
-            result = showDeleteTeamStep(teamId, currentUserId, nextStep, model, csrfToken);
-        } else {
-            teamService.delete(teamId, currentUserId);
-            clearDeleteConfirmation(session);
-            result = REDIRECT_TEAMS;
-        }
-
-        return result;
-    }
-
-    private String showDeleteTeamStep(Long teamId, UUID currentUserId, int step, Model model, CsrfToken csrfToken) {
-        model.addAttribute(TEAM_ATTRIBUTE, teamService.findById(teamId));
-        model.addAttribute(NAVIGATION_TEAMS_ATTRIBUTE, teamService.findByUserId(currentUserId));
-        model.addAttribute("step", step);
-        model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
-
-        return DELETE_TEAM_VIEW;
-    }
-
-    private void clearDeleteConfirmation(HttpSession session) {
-        session.removeAttribute(DELETE_CONFIRMATION_TEAM_ID_SESSION_ATTRIBUTE);
-        session.removeAttribute(DELETE_CONFIRMATION_STEP_SESSION_ATTRIBUTE);
+    private String redirectToDeleteTeamSettings(Long teamId) {
+        return REDIRECT_TEAMS_PREFIX + teamId + TEAM_SETTINGS_PATH_SUFFIX + "?section=" + TEAM_SETTINGS_SECTION_DELETE;
     }
 
     private TaskView toTaskView(Task task, UUID userId) {

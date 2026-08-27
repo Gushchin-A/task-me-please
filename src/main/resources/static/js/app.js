@@ -660,6 +660,8 @@ function setupTeamSettings() {
         });
     }
 
+    setupTeamDeleteDialog();
+
     const dialog = document.querySelector('[data-tag-rename-dialog]');
 
     if (dialog === null) {
@@ -685,6 +687,38 @@ function setupTeamSettings() {
     setupChangedValueSubmitState(input, submit);
 
     dialog.querySelector('[data-tag-rename-close]').addEventListener('click', function () {
+        dialog.close();
+    });
+
+    dialog.addEventListener('click', function (event) {
+        if (event.target === dialog) {
+            dialog.close();
+        }
+    });
+}
+
+function setupTeamDeleteDialog() {
+    const dialog = document.querySelector('[data-team-delete-dialog]');
+
+    if (dialog === null) {
+        return;
+    }
+
+    const input = dialog.querySelector('[data-team-delete-input]');
+    const submit = dialog.querySelector('[data-team-delete-submit]');
+
+    document.querySelector('[data-team-delete-open]').addEventListener('click', function () {
+        input.value = '';
+        submit.disabled = true;
+        dialog.showModal();
+        input.focus();
+    });
+
+    input.addEventListener('input', function () {
+        submit.disabled = input.value !== input.dataset.confirmationText;
+    });
+
+    dialog.querySelector('[data-team-delete-close]').addEventListener('click', function () {
         dialog.close();
     });
 

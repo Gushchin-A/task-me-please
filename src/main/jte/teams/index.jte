@@ -6,12 +6,16 @@
 @param List<Team> teams
 @param CsrfToken _csrf
 @param UserAvatarView currentUser
+@param String successMessage
+@param String errorMessage
 
 @template.layout.page(
     title = "Команды",
     _csrf = _csrf,
     currentUser = currentUser,
     activeSection = "teams",
+    successMessage = successMessage,
+    errorMessage = errorMessage,
     headerContext = null,
     content = @`
         <section class="workspace-page teams-page">

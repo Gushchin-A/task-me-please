@@ -61,9 +61,9 @@
                             Пожалуйста, будьте внимательны.
                         </p>
 
-                        <a class="button team-settings-delete" href="/teams/${team.getId()}/delete">
+                        <button class="button team-settings-delete" type="button" data-team-delete-open>
                             Удалить команду
-                        </a>
+                        </button>
                     </section>
                 @else
                     <header class="team-create-header team-settings-header">
@@ -226,6 +226,54 @@
                         data-loading-text="Обработка..."
                     >
                         Изменить
+                    </button>
+                </footer>
+                </form>
+            </dialog>
+        @elseif("delete".equals(settingsSection))
+            <dialog class="settings-dialog" data-team-delete-dialog>
+                <form
+                    class="settings-dialog-form"
+                    method="post"
+                    action="/teams/${team.getId()}/delete"
+                    data-submit-loading
+                >
+                <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+
+                <header class="settings-dialog-header">
+                    <h2>Удаление команды</h2>
+                    <button type="button" aria-label="Закрыть" data-team-delete-close>×</button>
+                </header>
+
+                <div class="settings-dialog-body">
+                    <p>
+                        Вы уверены, что хотите удалить команду «${team.getName()}»?
+                        Если да, напишите <strong>«я хочу удалить команду»</strong> в поле ниже.
+                    </p>
+
+                    <div class="form-field">
+                        <label for="team-delete-confirmation">Введите проверочный текст</label>
+                        <input
+                            id="team-delete-confirmation"
+                            type="text"
+                            name="confirmationText"
+                            required
+                            autocomplete="off"
+                            data-team-delete-input
+                            data-confirmation-text="я хочу удалить команду"
+                        >
+                    </div>
+                </div>
+
+                <footer class="settings-dialog-footer">
+                    <button
+                        class="button button-danger"
+                        type="submit"
+                        disabled
+                        data-team-delete-submit
+                        data-loading-text="Обработка..."
+                    >
+                        Удалить
                     </button>
                 </footer>
                 </form>

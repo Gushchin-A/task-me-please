@@ -159,6 +159,16 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void teamsPageShouldShowSuccessFlash() throws Exception {
+        mockMvc.perform(get("/teams")
+                        .with(user(new AuthUser(owner)))
+                        .flashAttr("successMessage", "Команда успешно удалена"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-flash-message")))
+                .andExpect(content().string(containsString("Команда успешно удалена")));
+    }
+
+    @Test
     void membersPageShouldUseSharedTeamNavigation() throws Exception {
         mockMvc.perform(get("/teams/" + team.getId() + "/members").with(user(new AuthUser(member))))
                 .andExpect(status().isOk())
@@ -236,7 +246,16 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(view().name("teams/settings"))
                 .andExpect(content().string(containsString("<h1>Удаление команды</h1>")))
                 .andExpect(content().string(containsString("После удаления команды она и все ее задачи")))
-                .andExpect(content().string(containsString("class=\"button team-settings-delete\"")))
+                .andExpect(content().string(containsString("data-team-delete-dialog")))
+                .andExpect(content().string(containsString("data-team-delete-open")))
+                .andExpect(content()
+                        .string(containsString("Вы уверены, что хотите удалить команду «" + team.getName() + "»?")))
+                .andExpect(content()
+                        .string(containsString(
+                                "Если да, напишите <strong>«я хочу удалить команду»</strong> в поле ниже.")))
+                .andExpect(content().string(containsString("Введите проверочный текст")))
+                .andExpect(content().string(containsString("name=\"confirmationText\"")))
+                .andExpect(content().string(containsString("data-team-delete-submit")))
                 .andExpect(content().string(not(containsString("Название команды"))));
     }
 
@@ -405,7 +424,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    void ownerShouldDeleteTeamAfterThreeConfirmations() throws Exception {
+    void ownerShouldDeleteTeamAfterConfirmationText() throws Exception {
         final TeamInvitation invitation =
                 teamInvitationService.create(team.getId(), "delete-team@test.com", owner.getId());
         List<Task> tasks = taskService.findByTeamId(team.getId());
@@ -414,38 +433,13 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
         final int tasksCount = dsl.fetchCount(TASKS, TASKS.TEAM_ID.eq(team.getId()));
         final int tagsCount = dsl.fetchCount(TEAM_TAGS, TEAM_TAGS.TEAM_ID.eq(team.getId()));
         final int commentsCount = dsl.fetchCount(COMMENTS);
-        MockHttpSession session = new MockHttpSession();
-
-        mockMvc.perform(get("/teams/" + team.getId() + "/delete")
-                        .session(session)
-                        .with(user(new AuthUser(owner))))
-                .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Вы уверены, что хотите удалить команду?")));
-
         mockMvc.perform(post("/teams/" + team.getId() + "/delete")
-                        .session(session)
                         .with(csrf())
                         .with(user(new AuthUser(owner)))
-                        .param("confirmation", "yes"))
-                .andExpect(status().isOk())
-                .andExpect(content()
-                        .string(containsString("Все участники потеряют доступ к команде и её задачам. Продолжить?")));
-
-        mockMvc.perform(post("/teams/" + team.getId() + "/delete")
-                        .session(session)
-                        .with(csrf())
-                        .with(user(new AuthUser(owner)))
-                        .param("confirmation", "yes"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Это последнее подтверждение. Удалить команду?")));
-
-        mockMvc.perform(post("/teams/" + team.getId() + "/delete")
-                        .session(session)
-                        .with(csrf())
-                        .with(user(new AuthUser(owner)))
-                        .param("confirmation", "yes"))
+                        .param("confirmationText", "я хочу удалить команду"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/teams"));
+                .andExpect(redirectedUrl("/teams"))
+                .andExpect(flash().attribute("successMessage", "Команда успешно удалена"));
 
         assertThrows(TeamNotFoundException.class, () -> teamService.findById(team.getId()));
         assertEquals(membersCount, dsl.fetchCount(TEAM_MEMBERS, TEAM_MEMBERS.TEAM_ID.eq(team.getId())));
@@ -466,39 +460,17 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isNotFound());
         mockMvc.perform(get("/invitations/" + invitation.getToken()).with(user(new AuthUser(owner))))
                 .andExpect(status().isNotFound());
-        mockMvc.perform(get("/teams/" + team.getId() + "/delete").with(user(new AuthUser(owner))))
-                .andExpect(status().isNotFound())
-                .andExpect(view().name("error/404"));
     }
 
     @Test
-    void directDeleteRequestShouldNotBypassConfirmations() throws Exception {
+    void incorrectConfirmationTextShouldNotDeleteTeam() throws Exception {
         mockMvc.perform(post("/teams/" + team.getId() + "/delete")
                         .with(csrf())
                         .with(user(new AuthUser(owner)))
-                        .param("confirmation", "yes"))
+                        .param("confirmationText", "удалить команду"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/teams/" + team.getId() + "/settings"));
-
-        assertFalse(teamService.findById(team.getId()).isDeleted());
-    }
-
-    @Test
-    void noShouldCancelTeamDeletion() throws Exception {
-        MockHttpSession session = new MockHttpSession();
-
-        mockMvc.perform(get("/teams/" + team.getId() + "/delete")
-                        .session(session)
-                        .with(user(new AuthUser(owner))))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(post("/teams/" + team.getId() + "/delete")
-                        .session(session)
-                        .with(csrf())
-                        .with(user(new AuthUser(owner)))
-                        .param("confirmation", "no"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/teams/" + team.getId() + "/settings"));
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/settings?section=delete"))
+                .andExpect(flash().attribute("errorMessage", "Проверочный текст введен неверно"));
 
         assertFalse(teamService.findById(team.getId()).isDeleted());
     }
@@ -509,14 +481,10 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(content().string(not(containsString("/teams/" + team.getId() + "/delete"))));
 
-        mockMvc.perform(get("/teams/" + team.getId() + "/delete").with(user(new AuthUser(member))))
-                .andExpect(status().isNotFound())
-                .andExpect(view().name("error/404"));
-
         mockMvc.perform(post("/teams/" + team.getId() + "/delete")
                         .with(csrf())
                         .with(user(new AuthUser(member)))
-                        .param("confirmation", "yes"))
+                        .param("confirmationText", "я хочу удалить команду"))
                 .andExpect(status().isNotFound())
                 .andExpect(view().name("error/404"));
 
@@ -525,17 +493,9 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
 
     @Test
     void deleteTeamShouldRequireCsrf() throws Exception {
-        MockHttpSession session = new MockHttpSession();
-
-        mockMvc.perform(get("/teams/" + team.getId() + "/delete")
-                        .session(session)
-                        .with(user(new AuthUser(owner))))
-                .andExpect(status().isOk());
-
         mockMvc.perform(post("/teams/" + team.getId() + "/delete")
-                        .session(session)
                         .with(user(new AuthUser(owner)))
-                        .param("confirmation", "yes"))
+                        .param("confirmationText", "я хочу удалить команду"))
                 .andExpect(status().isForbidden());
 
         assertFalse(teamService.findById(team.getId()).isDeleted());

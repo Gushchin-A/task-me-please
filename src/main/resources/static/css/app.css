@@ -348,9 +348,9 @@ a {
     color: var(--fgColor-onEmphasis);
 }
 
-.button-danger:hover {
-    border-color: var(--button-danger-borderColor-hover);
-    background: var(--button-danger-bgColor-hover);
+.button-danger:hover:not(:disabled) {
+    border-color: var(--button-danger-borderColor-active);
+    background: var(--button-danger-bgColor-active);
 }
 
 .app-profile {
@@ -738,6 +738,12 @@ a {
     cursor: not-allowed;
 }
 
+.settings-dialog-footer .button-danger:disabled {
+    border-color: var(--bgColor-danger-muted);
+    background: var(--bgColor-danger-muted);
+    color: var(--button-danger-fgColor-disabled);
+}
+
 @media (max-width: 760px) {
     .team-settings-page {
         grid-template-columns: minmax(0, 1fr);
@@ -778,8 +784,7 @@ a {
     max-width: 820px;
 }
 
-.form-page,
-.destructive-page {
+.form-page {
     width: min(100%, 820px);
     margin-right: auto;
     margin-left: auto;
@@ -2293,31 +2298,6 @@ a {
     margin: 0;
 }
 
-.destructive-page {
-    display: grid;
-    min-height: calc(100vh - 150px);
-    place-items: center;
-}
-
-.destructive-card {
-    width: min(100%, 560px);
-    padding: 28px;
-    border: var(--borderWidth-default) solid var(--borderColor-danger-muted);
-    border-radius: var(--borderRadius-large);
-    background: var(--bgColor-default);
-}
-
-.destructive-card h1 {
-    margin: 8px 0 12px;
-    font-size: 24px;
-}
-
-.destructive-step {
-    color: var(--fgColor-danger);
-    font-size: 13px;
-    font-weight: 650;
-}
-
 .task-detail-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 256px;
@@ -2980,12 +2960,6 @@ a {
     gap: var(--base-size-8);
 }
 
-.destructive-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 22px;
-}
-
 .auth-page {
     display: grid;
     min-height: 100vh;
@@ -3353,6 +3327,11 @@ a {
     border-top-color: var(--fgColor-accent);
 }
 
+.button-danger .auth-spinner {
+    border-color: var(--borderColor-danger-muted);
+    border-top-color: var(--fgColor-danger);
+}
+
 @keyframes auth-spinner-rotate {
     to {
         transform: rotate(360deg);
@@ -3591,8 +3570,7 @@ a {
         padding: var(--base-size-16) 0;
     }
 
-    .form-card,
-    .destructive-card {
+    .form-card {
         padding: 20px 16px;
     }
 
@@ -3636,10 +3614,6 @@ a {
 
     .profile-action-note {
         display: block;
-    }
-
-    .destructive-actions {
-        flex-direction: column;
     }
 
     .app-logo {
