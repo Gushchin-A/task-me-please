@@ -88,9 +88,10 @@
                                     type="text"
                                     name="name"
                                     value="${team.getName()}"
-                                    maxlength="255"
+                                    maxlength="100"
                                     required
                                     autocomplete="off"
+                                    aria-describedby="team-name-count"
                                     data-settings-name
                                     data-original-value="${team.getName()}"
                                 >
@@ -107,6 +108,10 @@
                                     </button>
                                 </span>
                             </div>
+
+                            <p class="form-help task-title-count" id="team-name-count" hidden data-settings-name-count>
+                                <span data-settings-name-length>${team.getName().length()}</span> / 100 символов
+                            </p>
                         </div>
                     </form>
 

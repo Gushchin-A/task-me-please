@@ -17,8 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class PasswordResetService {
-    private static final String PASSWORD_MISMATCH_MESSAGE = "Passwords не совпадают.";
-    private static final String PASSWORD_REQUIRED_MESSAGE = "Пароль не заполнен.";
+    private static final String PASSWORD_MISMATCH_MESSAGE = "Passwords не совпадают";
+    private static final String PASSWORD_REQUIRED_MESSAGE = "Пароль не заполнен";
 
     private final AccountTokenRepository accountTokenRepository;
     private final AccountTokenService accountTokenService;

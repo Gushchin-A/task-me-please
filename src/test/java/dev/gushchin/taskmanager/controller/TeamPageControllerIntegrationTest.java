@@ -207,6 +207,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(not(containsString("task-card-status-open"))))
                 .andExpect(content().string(containsString("task-card-archive-event-deleted")))
                 .andExpect(content().string(containsString("Была удалена")))
+                .andExpect(content().string(not(containsString("task-card-footer-archive-with-team"))))
                 .andExpect(content().string(not(containsString("<time"))))
                 .andExpect(content().string(not(containsString("task-card-deadline-urgent"))));
     }
@@ -216,6 +217,8 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/teams/" + team.getId() + "/settings").with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
                 .andExpect(view().name("teams/settings"))
+                .andExpect(content().string(containsString("maxlength=\"100\"")))
+                .andExpect(content().string(containsString("/ 100 символов")))
                 .andExpect(content().string(containsString("Основные")))
                 .andExpect(content().string(containsString("Название команды")))
                 .andExpect(content().string(containsString("Длина одного тега до 30 символов.")))
@@ -240,8 +243,8 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
     @Test
     void memberShouldNotOpenTeamSettings() throws Exception {
         mockMvc.perform(get("/teams/" + team.getId() + "/settings").with(user(new AuthUser(member))))
-                .andExpect(status().isOk())
-                .andExpect(view().name("teams/not-found"));
+                .andExpect(status().isNotFound())
+                .andExpect(view().name("error/404"));
     }
 
     @Test
@@ -252,9 +255,33 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .param("name", "Renamed Team"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/teams/" + team.getId() + "/settings"))
-                .andExpect(flash().attribute("successMessage", "Название было изменено."));
+                .andExpect(flash().attribute("successMessage", "Название успешно изменено"));
 
         assertEquals("Renamed Team", teamService.findById(team.getId()).getName());
+    }
+
+    @Test
+    void ownerShouldNotRenameTeamToNameLongerThanOneHundredCharacters() throws Exception {
+        mockMvc.perform(post("/teams/" + team.getId() + "/settings/name")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("name", "a".repeat(101)))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/settings"))
+                .andExpect(flash().attribute("errorMessage", "Название команды не должно быть длиннее 100 символов"));
+
+        assertEquals("Project Team", teamService.findById(team.getId()).getName());
+    }
+
+    @Test
+    void createShouldRejectTeamNameLongerThanOneHundredCharacters() throws Exception {
+        mockMvc.perform(post("/teams")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("name", "a".repeat(101)))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/new"))
+                .andExpect(flash().attribute("errorMessage", "Название команды не должно быть длиннее 100 символов"));
     }
 
     @Test
@@ -265,7 +292,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .param("name", "Новости"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/teams/" + team.getId() + "/settings"))
-                .andExpect(flash().attribute("successMessage", "Тег был добавлен."));
+                .andExpect(flash().attribute("successMessage", "Тег успешно добавлен"));
 
         TeamTag tag = teamTagService.findByTeamId(team.getId()).stream()
                 .filter(teamTag -> "Новости".equals(teamTag.getName()))
@@ -278,7 +305,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .param("name", "События"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/teams/" + team.getId() + "/settings"))
-                .andExpect(flash().attribute("successMessage", "Тег был изменён."));
+                .andExpect(flash().attribute("successMessage", "Тег успешно изменен"));
 
         assertEquals("События", teamTagService.findById(tag.getId()).getName());
     }
@@ -440,8 +467,8 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/invitations/" + invitation.getToken()).with(user(new AuthUser(owner))))
                 .andExpect(status().isNotFound());
         mockMvc.perform(get("/teams/" + team.getId() + "/delete").with(user(new AuthUser(owner))))
-                .andExpect(status().isOk())
-                .andExpect(view().name("teams/not-found"));
+                .andExpect(status().isNotFound())
+                .andExpect(view().name("error/404"));
     }
 
     @Test
@@ -483,15 +510,15 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(not(containsString("/teams/" + team.getId() + "/delete"))));
 
         mockMvc.perform(get("/teams/" + team.getId() + "/delete").with(user(new AuthUser(member))))
-                .andExpect(status().isOk())
-                .andExpect(view().name("teams/not-found"));
+                .andExpect(status().isNotFound())
+                .andExpect(view().name("error/404"));
 
         mockMvc.perform(post("/teams/" + team.getId() + "/delete")
                         .with(csrf())
                         .with(user(new AuthUser(member)))
                         .param("confirmation", "yes"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("teams/not-found"));
+                .andExpect(status().isNotFound())
+                .andExpect(view().name("error/404"));
 
         assertFalse(teamService.findById(team.getId()).isDeleted());
     }
@@ -521,7 +548,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .with(user(new AuthUser(owner))))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/teams/" + team.getId() + "/members"))
-                .andExpect(flash().attribute("successMessage", "Участник удалён из команды."));
+                .andExpect(flash().attribute("successMessage", "Участник удалён из команды"));
 
         TeamMember removedMember = teamMemberRepository.findByTeamIdAndUserId(team.getId(), member.getId());
 
@@ -541,7 +568,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .with(user(new AuthUser(member))))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/teams/" + team.getId() + "/members"))
-                .andExpect(flash().attribute("errorMessage", "Только owner команды может удалять участников."));
+                .andExpect(flash().attribute("errorMessage", "Только owner команды может удалять участников"));
 
         TeamMember activeMember = teamMemberRepository.findByTeamIdAndUserId(team.getId(), anotherMember.getId());
 
@@ -555,7 +582,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .with(user(new AuthUser(owner))))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/teams/" + team.getId() + "/members"))
-                .andExpect(flash().attribute("errorMessage", "Только owner команды может удалять участников."));
+                .andExpect(flash().attribute("errorMessage", "Только owner команды может удалять участников"));
 
         TeamMember ownerMember = teamMemberRepository.findByTeamIdAndUserId(team.getId(), owner.getId());
 
@@ -571,7 +598,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .with(user(new AuthUser(owner))))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/teams/" + team.getId() + "/members"))
-                .andExpect(flash().attribute("errorMessage", "Участника не удалось удалить."));
+                .andExpect(flash().attribute("errorMessage", "Участника не удалось удалить"));
 
         TeamMember removedMember = teamMemberRepository.findByTeamIdAndUserId(team.getId(), member.getId());
 
@@ -623,7 +650,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
                 .andExpect(flash().attribute(
-                                "successMessage", "Приглашение создано. Ссылку-приглашение можно отправить лично."));
+                                "successMessage", "Приглашение создано. Ссылку-приглашение можно отправить лично"));
 
         List<TeamInvitation> invitations = teamInvitationRepository.findByTeamId(team.getId());
 
@@ -642,7 +669,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
                 .andExpect(flash().attribute(
-                                "successMessage", "Приглашение создано. Ссылку-приглашение можно отправить лично."));
+                                "successMessage", "Приглашение создано. Ссылку-приглашение можно отправить лично"));
 
         List<TeamInvitation> invitations = teamInvitationRepository.findByTeamId(team.getId());
         TeamInvitation invitation = invitations.getFirst();
@@ -672,7 +699,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
                 .andExpect(flash().attribute(
-                                "successMessage", "Приглашение создано. Ссылку-приглашение можно отправить лично."));
+                                "successMessage", "Приглашение создано. Ссылку-приглашение можно отправить лично"));
 
         List<TeamInvitation> invitations = teamInvitationRepository.findByTeamId(team.getId());
 
@@ -709,7 +736,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(flash().attribute(
                                 "errorMessage",
                                 "Только owner команды может приглашать новых участников. "
-                                        + "Вы можете пока только просматривать команду."));
+                                        + "Вы можете пока только просматривать команду"));
 
         verify(invitationEmailService, never()).sendInvitation(any(), any(), any());
     }
@@ -744,7 +771,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(flash().attribute(
                                 "errorMessage",
                                 "Только owner команды может приглашать новых участников. "
-                                        + "Вы можете пока только просматривать команду."));
+                                        + "Вы можете пока только просматривать команду"));
 
         assertTrue(teamInvitationRepository.findByTeamId(team.getId()).isEmpty());
     }
@@ -757,7 +784,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .param("email", member.getEmail()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
-                .andExpect(flash().attribute("errorMessage", "Пользователь уже состоит в этой команде."));
+                .andExpect(flash().attribute("errorMessage", "Пользователь уже состоит в этой команде"));
 
         assertTrue(teamInvitationRepository.findByTeamId(team.getId()).isEmpty());
     }
@@ -778,7 +805,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .param("email", invitedEmail))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
-                .andExpect(flash().attribute("errorMessage", "Приглашение на этот email уже отправлено."));
+                .andExpect(flash().attribute("errorMessage", "Приглашение на этот email уже отправлено"));
 
         assertEquals(1, teamInvitationRepository.findByTeamId(team.getId()).size());
     }
@@ -837,7 +864,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .with(user(new AuthUser(owner))))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
-                .andExpect(flash().attribute("successMessage", "Приглашение отменено."));
+                .andExpect(flash().attribute("successMessage", "Приглашение отменено"));
 
         assertEquals(
                 TeamInvitationStatus.CANCELED,
@@ -857,7 +884,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(flash().attribute(
                                 "errorMessage",
                                 "Только owner команды может приглашать новых участников. "
-                                        + "Вы можете пока только просматривать команду."));
+                                        + "Вы можете пока только просматривать команду"));
 
         assertEquals(
                 TeamInvitationStatus.PENDING,
@@ -874,7 +901,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .with(user(new AuthUser(owner))))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
-                .andExpect(flash().attribute("errorMessage", "Отменить можно только ожидающее приглашение."));
+                .andExpect(flash().attribute("errorMessage", "Отменить можно только ожидающее приглашение"));
 
         assertEquals(
                 TeamInvitationStatus.ACCEPTED,
@@ -1108,12 +1135,13 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andReturn();
 
         mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(outsider))))
-                .andExpect(status().isOk())
+                .andExpect(status().isNotFound())
+                .andExpect(content().string(not(containsString("class=\"error-page-code\""))))
                 .andExpect(content().string(containsString("Такая страница не найдена")));
 
         mockMvc.perform(get("/teams/" + team.getId()).queryParam("continue", "").session((MockHttpSession)
                         loginResult.getRequest().getSession()))
-                .andExpect(status().isOk())
+                .andExpect(status().isNotFound())
                 .andExpect(content().string(containsString("Такая страница не найдена")));
     }
 

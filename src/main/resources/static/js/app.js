@@ -26,8 +26,13 @@ function setupTaskDetail() {
     if (titleOpen !== null && titleForm !== null && titleCancel !== null) {
         const titleInput = titleForm.querySelector('input[name="title"]');
         const titleSubmit = titleForm.querySelector('[data-task-title-edit-submit]');
+        const titleLength = titleForm.querySelector('[data-task-detail-title-length]');
 
         setupChangedValueSubmitState(titleInput, titleSubmit);
+
+        titleInput.addEventListener('input', function () {
+            titleLength.textContent = titleInput.value.length;
+        });
 
         titleOpen.addEventListener('click', function () {
             titleRow.hidden = true;
@@ -40,6 +45,7 @@ function setupTaskDetail() {
         titleCancel.addEventListener('click', function () {
             titleForm.reset();
             titleSubmit.disabled = true;
+            titleLength.textContent = titleInput.value.length;
             titleForm.hidden = true;
             titleRow.hidden = false;
             titleOpen.focus();
@@ -199,7 +205,7 @@ function setupTaskDetail() {
             }
 
             button.closest('.task-card-actions').open = false;
-            showFlashMessage('Ссылка скопирована.');
+            showFlashMessage('Ссылка скопирована');
         });
     });
 
@@ -453,7 +459,7 @@ function setupTaskDetail() {
             window.location.reload();
         } catch (error) {
             save.disabled = false;
-            showFlashMessage('Не удалось изменить параметры задачи. Попробуйте ещё раз.');
+            showFlashMessage('Не удалось изменить параметры задачи. Попробуйте ещё раз');
         }
     });
 }
@@ -478,7 +484,7 @@ function setupTaskCards() {
             }
 
             button.closest('.task-card-actions').open = false;
-            showFlashMessage('Ссылка на задачу скопирована.');
+            showFlashMessage('Ссылка на задачу скопирована');
         });
     });
 
@@ -643,8 +649,15 @@ function setupTeamSettings() {
     if (renameForm !== null) {
         const input = renameForm.querySelector('[data-settings-name]');
         const submit = renameForm.querySelector('[data-settings-rename-submit]');
+        const count = renameForm.querySelector('[data-settings-name-count]');
+        const length = renameForm.querySelector('[data-settings-name-length]');
 
         setupChangedValueSubmitState(input, submit);
+
+        input.addEventListener('input', function () {
+            length.textContent = input.value.length;
+            count.hidden = input.value === input.dataset.originalValue;
+        });
     }
 
     const dialog = document.querySelector('[data-tag-rename-dialog]');
@@ -683,9 +696,23 @@ function setupTeamSettings() {
 }
 
 function setupChangedValueSubmitState(input, submit) {
+    const tooltip = submit.closest('[data-tooltip]');
+
+    function updateState() {
+        const unchanged = input.value === input.dataset.originalValue;
+
+        submit.disabled = unchanged;
+
+        if (tooltip !== null) {
+            tooltip.toggleAttribute('data-tooltip-disabled', !unchanged);
+        }
+    }
+
     input.addEventListener('input', function () {
-        submit.disabled = input.value === input.dataset.originalValue;
+        updateState();
     });
+
+    updateState();
 }
 
 function setupFilterSelects() {
@@ -957,6 +984,12 @@ function setupTooltips() {
 
         function scheduleTooltip() {
             window.clearTimeout(showTimer);
+
+            if (element.hasAttribute('data-tooltip-disabled')) {
+                hideTooltip();
+                return;
+            }
+
             showTimer = window.setTimeout(function () {
                 tooltip.textContent = element.dataset.tooltip;
                 tooltip.hidden = false;

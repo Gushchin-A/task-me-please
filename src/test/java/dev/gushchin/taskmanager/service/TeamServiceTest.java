@@ -14,6 +14,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
+import dev.gushchin.taskmanager.exception.InvalidTeamNameException;
 import dev.gushchin.taskmanager.exception.TeamNotFoundException;
 import dev.gushchin.taskmanager.model.Team;
 import dev.gushchin.taskmanager.model.TeamMember;
@@ -89,6 +90,15 @@ class TeamServiceTest {
 
         // then
         verify(teamMemberRepository).save(any(TeamMember.class));
+    }
+
+    @Test
+    void createShouldRejectNameLongerThanOneHundredCharacters() {
+        String longName = "a".repeat(101);
+
+        assertThrows(InvalidTeamNameException.class, () -> teamService.create(longName, UUID.randomUUID()));
+
+        verifyNoInteractions(userService, teamRepository, teamMemberRepository, teamTagRepository);
     }
 
     @Test

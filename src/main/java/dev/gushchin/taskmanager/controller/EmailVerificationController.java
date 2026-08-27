@@ -25,15 +25,15 @@ public class EmailVerificationController {
     private static final String INVITE_PARAMETER = "invite";
     private static final String LOGIN_PATH = "/login";
     private static final String NEUTRAL_RESEND_MESSAGE =
-            "Если аккаунт с таким email существует, мы отправили письмо для подтверждения.";
+            "Если аккаунт с таким email существует, мы отправили письмо для подтверждения";
     private static final String REDIRECT_PREFIX = "redirect:";
     private static final String SUCCESS_MESSAGE_ATTRIBUTE = "successMessage";
     private static final String VERIFICATION_EMAIL_SESSION_ATTRIBUTE = "verificationEmail";
     private static final String VERIFICATION_INVITE_SESSION_ATTRIBUTE = "verificationInvite";
-    private static final String VERIFICATION_INVALID_MESSAGE = "Ссылка подтверждения недействительна или устарела.";
+    private static final String VERIFICATION_INVALID_MESSAGE = "Ссылка подтверждения недействительна или устарела";
     private static final String VERIFICATION_PENDING_PATH = "/verification-pending";
     private static final String VERIFICATION_REDIRECT_SESSION_ATTRIBUTE = "verificationRedirect";
-    private static final String VERIFICATION_SUCCESS_MESSAGE = "Email подтверждён. Теперь вы можете войти.";
+    private static final String VERIFICATION_SUCCESS_MESSAGE = "Email подтверждён. Теперь вы можете войти";
 
     private final EmailVerificationService emailVerificationService;
     private final TeamInvitationService teamInvitationService;

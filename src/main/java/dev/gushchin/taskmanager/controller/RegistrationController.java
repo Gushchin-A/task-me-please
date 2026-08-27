@@ -31,18 +31,18 @@ import org.springframework.web.util.UriComponentsBuilder;
 @RequiredArgsConstructor
 public class RegistrationController {
     private static final String CSRF_ATTRIBUTE = "_csrf";
-    private static final String EMAIL_FORMAT_ERROR_MESSAGE = "Email имеет неправильный формат.";
+    private static final String EMAIL_FORMAT_ERROR_MESSAGE = "Email имеет неправильный формат";
     private static final String ERROR_MESSAGE_ATTRIBUTE = "errorMessage";
     private static final String INVITE_PARAMETER = "invite";
     private static final String LOGIN_PATH = "/login";
-    private static final String PASSWORD_REQUIRED_ERROR_MESSAGE = "Пароль не заполнен.";
+    private static final String PASSWORD_REQUIRED_ERROR_MESSAGE = "Пароль не заполнен";
     private static final String REGISTRATION_PATH = "/registration";
     private static final String REDIRECT_PREFIX = "redirect:";
     private static final String REDIRECT_TASKS = "redirect:/tasks";
-    private static final String REQUIRED_FIELDS_ERROR_MESSAGE = "Заполните обязательные поля.";
+    private static final String REQUIRED_FIELDS_ERROR_MESSAGE = "Заполните обязательные поля";
     private static final String SUCCESS_MESSAGE_ATTRIBUTE = "successMessage";
     private static final String UNVERIFIED_EMAIL_ATTRIBUTE = "unverifiedEmail";
-    private static final String USER_ALREADY_EXISTS_ERROR_MESSAGE = "Пользователь с таким email уже зарегистрирован.";
+    private static final String USER_ALREADY_EXISTS_ERROR_MESSAGE = "Пользователь с таким email уже зарегистрирован";
     private static final String VERIFICATION_EMAIL_SESSION_ATTRIBUTE = "verificationEmail";
     private static final String VERIFICATION_INVITE_SESSION_ATTRIBUTE = "verificationInvite";
     private static final String VERIFICATION_PENDING_REDIRECT = "redirect:/verification-pending";

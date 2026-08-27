@@ -1,6 +1,10 @@
 package dev.gushchin.taskmanager.exception;
 
+import dev.gushchin.taskmanager.controller.TeamController;
+import dev.gushchin.taskmanager.controller.UserController;
 import dev.gushchin.taskmanager.dto.ErrorResponse;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -8,7 +12,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@RestControllerAdvice
+@RestControllerAdvice(assignableTypes = {TeamController.class, UserController.class})
+@Order(Ordered.HIGHEST_PRECEDENCE)
 public class GlobalExceptionHandler {
     private static final String USER_NOT_FOUND = "USER_NOT_FOUND";
     private static final String USER_ALREADY_EXISTS = "USER_ALREADY_EXISTS";

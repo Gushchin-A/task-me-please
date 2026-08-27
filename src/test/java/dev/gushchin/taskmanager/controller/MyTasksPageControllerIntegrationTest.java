@@ -130,6 +130,7 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("class=\"task-card-header\"")))
                 .andExpect(content().string(containsString("<details class=\"task-card-actions\">")))
                 .andExpect(content().string(containsString("class=\"task-card-footer\"")))
+                .andExpect(content().string(not(containsString("<time datetime="))))
                 .andExpect(content().string(containsString("Открыть задачу")))
                 .andExpect(content().string(containsString("Скопировать ссылку")))
                 .andExpect(content().string(containsString("class=\"task-card-actions-divider\"")))
@@ -286,7 +287,8 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("task-card-status-not-relevant")))
                 .andExpect(content().string(not(containsString("task-card-status-done"))))
                 .andExpect(content().string(containsString("task-card-archive-event-resolved")))
-                .andExpect(content().string(containsString("Решена и перенесена в архив")))
+                .andExpect(content().string(containsString("task-card-footer-archive-with-team")))
+                .andExpect(content().string(containsString("Решена")))
                 .andExpect(content().string(not(containsString("<time"))))
                 .andExpect(content().string(not(containsString("task-card-deadline-urgent"))));
     }

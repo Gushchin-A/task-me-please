@@ -603,6 +603,14 @@ a {
     display: inline-flex;
 }
 
+.team-settings-action-tooltip[data-tooltip-disabled] {
+    pointer-events: none;
+}
+
+.team-settings-action-tooltip[data-tooltip-disabled] .button {
+    pointer-events: auto;
+}
+
 .team-settings-action-tooltip .button:disabled {
     border-color: var(--borderColor-disabled);
     background: var(--control-bgColor-disabled);
@@ -882,10 +890,6 @@ a {
     border-radius: 2px 2px 0 0;
     background: var(--underlineNav-borderColor-active);
     content: "";
-}
-
-.tasks-page > .local-tabs {
-    margin-bottom: 0;
 }
 
 .tasks-page > .local-tabs a:first-child {
@@ -1338,6 +1342,7 @@ a {
 
 .task-card-header {
     display: flex;
+    min-width: 0;
     min-height: 36px;
     align-items: center;
     justify-content: space-between;
@@ -1545,13 +1550,16 @@ a {
 
 .task-card-body {
     display: grid;
+    min-width: 0;
     min-height: 153px;
     align-content: start;
+    overflow: hidden;
     gap: 9px;
     padding: 10px 12px 11px;
 }
 
 .task-card h3 {
+    min-width: 0;
     height: 38px;
     margin: 0;
     font-size: 14px;
@@ -1560,8 +1568,11 @@ a {
 
 .task-card h3 a {
     display: -webkit-box;
+    width: 100%;
+    max-width: 100%;
     overflow: hidden;
     color: var(--fgColor-link);
+    overflow-wrap: anywhere;
     text-decoration: none;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
@@ -1589,6 +1600,7 @@ a {
 
 .task-card-labels {
     display: flex;
+    min-width: 0;
     flex-wrap: wrap;
     align-items: center;
     gap: 6px;
@@ -1605,6 +1617,7 @@ a {
 }
 
 .task-card-tag {
+    min-width: 0;
     max-width: calc(100% - 92px);
     overflow: hidden;
     margin-left: -7px;
@@ -1623,6 +1636,7 @@ a {
 
 .task-card-people {
     display: grid;
+    min-width: 0;
     gap: 2px;
     margin: 0;
     padding-top: 7px;
@@ -1647,12 +1661,16 @@ a {
 }
 
 .task-card-people dt {
+    flex: 0 0 auto;
     color: var(--fgColor-muted);
 }
 
 .task-card-people dd {
+    min-width: 0;
+    flex: 1;
     color: var(--fgColor-default);
     font-weight: var(--base-text-weight-medium);
+    text-align: right;
 }
 
 .task-card-people .task-card-former-member {
@@ -1661,6 +1679,7 @@ a {
 
 .task-card-footer {
     display: flex;
+    min-width: 0;
     align-self: end;
     justify-content: space-between;
     gap: 8px;
@@ -1670,10 +1689,22 @@ a {
     line-height: 17px;
 }
 
+.task-card-footer time {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.task-card-footer-archive-with-team {
+    align-items: baseline;
+}
+
 .task-card-footer a {
+    min-width: 0;
+    flex: 1;
     overflow: hidden;
     color: var(--fgColor-muted);
     text-overflow: ellipsis;
+    text-align: left;
     text-decoration: none;
     white-space: nowrap;
 }
@@ -2353,6 +2384,7 @@ a {
 .task-title-edit-form {
     display: flex;
     width: min(100%, 600px);
+    flex-wrap: wrap;
     gap: var(--base-size-8);
     margin-bottom: var(--base-size-12);
 }
@@ -2376,6 +2408,11 @@ a {
     border-color: var(--borderColor-accent-emphasis);
     outline: none;
     box-shadow: inset 0 0 0 1px var(--borderColor-accent-emphasis);
+}
+
+.task-title-edit-form .task-title-count {
+    width: 100%;
+    margin-top: calc(var(--base-size-4) * -1);
 }
 
 .task-title-edit-form .button {
@@ -2470,6 +2507,18 @@ a {
 
 .task-parameter-value[hidden] {
     display: none;
+}
+
+.task-parameter-team {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    text-decoration: none;
+}
+
+.task-parameter-team:hover {
+    color: var(--fgColor-link);
+    text-decoration: underline;
 }
 
 .task-detail-status,
@@ -2944,6 +2993,62 @@ a {
     justify-items: center;
     padding: max(var(--base-size-32), calc(50vh - 240px)) var(--base-size-16) var(--base-size-32);
     background: var(--bgColor-default);
+}
+
+.error-page {
+    display: grid;
+    min-height: 100vh;
+    grid-template-rows: auto 1fr;
+    justify-items: center;
+    padding: var(--base-size-32) var(--base-size-16);
+    background: var(--bgColor-default);
+}
+
+.error-page-logo {
+    color: var(--fgColor-default);
+    font-family: var(--fontStack-sansSerifDisplay);
+    font-size: 20px;
+    font-weight: var(--base-text-weight-semibold);
+    letter-spacing: -0.04em;
+    line-height: 28px;
+    text-decoration: none;
+}
+
+.error-page-logo:focus-visible,
+.error-page-action:focus-visible {
+    outline: var(--focus-outline);
+    outline-offset: var(--base-size-2);
+}
+
+.error-page-content {
+    display: flex;
+    width: min(100%, 520px);
+    align-self: center;
+    align-items: center;
+    flex-direction: column;
+    padding-bottom: 60px;
+    text-align: center;
+}
+
+.error-page-content h1 {
+    margin: 0;
+    color: var(--fgColor-default);
+    font-size: clamp(21px, 4vw, 29px);
+    font-weight: var(--base-text-weight-semibold);
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+}
+
+.error-page-content p {
+    max-width: 44ch;
+    margin: var(--base-size-12) 0 0;
+    color: var(--fgColor-muted);
+    font-size: 14px;
+    line-height: 21px;
+}
+
+.error-page-action {
+    margin-top: var(--base-size-24);
 }
 
 .invitation-page {

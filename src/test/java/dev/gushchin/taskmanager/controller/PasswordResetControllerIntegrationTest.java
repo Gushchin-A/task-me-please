@@ -104,7 +104,7 @@ class PasswordResetControllerIntegrationTest extends IntegrationTestBase {
                         .param("passwordConfirmation", "another-password"))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/reset-password/" + token))
-                .andExpect(flash().attribute("errorMessage", "Passwords не совпадают."));
+                .andExpect(flash().attribute("errorMessage", "Passwords не совпадают"));
 
         AccountTokensRecord accountToken = dsl.selectFrom(ACCOUNT_TOKENS)
                 .where(ACCOUNT_TOKENS.USER_ID.eq(user.getId()))
@@ -124,7 +124,7 @@ class PasswordResetControllerIntegrationTest extends IntegrationTestBase {
                         .param("passwordConfirmation", " "))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/reset-password/" + token))
-                .andExpect(flash().attribute("errorMessage", "Пароль не заполнен."));
+                .andExpect(flash().attribute("errorMessage", "Пароль не заполнен"));
 
         assertNotNull(accountTokenService.findValid(token, AccountTokenType.PASSWORD_RESET));
     }
@@ -145,7 +145,7 @@ class PasswordResetControllerIntegrationTest extends IntegrationTestBase {
                         .param("passwordConfirmation", NEW_PASSWORD))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/login"))
-                .andExpect(flash().attribute("successMessage", "Password изменён. Войдите с новым password."));
+                .andExpect(flash().attribute("successMessage", "Password изменён. Войдите с новым password"));
 
         User updatedUser = userRepository.findById(user.getId());
         AccountTokensRecord usedToken = dsl.selectFrom(ACCOUNT_TOKENS)

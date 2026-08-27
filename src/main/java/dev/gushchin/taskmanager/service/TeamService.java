@@ -26,7 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class TeamService {
-    private static final int MAX_TEAM_NAME_LENGTH = 255;
+    private static final int MAX_TEAM_NAME_LENGTH = 100;
     private static final int MAX_TAGS_PER_TEAM = 20;
     private static final int MAX_TAG_NAME_LENGTH = 30;
 
@@ -65,10 +65,11 @@ public class TeamService {
 
     @Transactional
     public Team create(String name, UUID createdBy, List<String> tagNames) {
+        String preparedName = prepareName(name);
         User creator = userService.findById(createdBy);
         Instant now = Instant.now();
 
-        Team team = new Team(null, name, creator.getId(), now, now, false);
+        Team team = new Team(null, preparedName, creator.getId(), now, now, false);
 
         Team savedTeam = teamRepository.save(team);
 
@@ -140,6 +141,19 @@ public class TeamService {
             throw new AccessDeniedForTaskException();
         }
 
+        String preparedName = prepareName(name);
+
+        if (preparedName.equals(team.getName())) {
+            throw new InvalidTeamNameException(Reason.UNCHANGED);
+        }
+
+        team.setName(preparedName);
+        team.setUpdatedAt(Instant.now());
+
+        return teamRepository.update(team);
+    }
+
+    private String prepareName(String name) {
         if (name == null || name.isBlank()) {
             throw new InvalidTeamNameException(Reason.BLANK);
         }
@@ -150,14 +164,7 @@ public class TeamService {
             throw new InvalidTeamNameException(Reason.TOO_LONG);
         }
 
-        if (preparedName.equals(team.getName())) {
-            throw new InvalidTeamNameException(Reason.UNCHANGED);
-        }
-
-        team.setName(preparedName);
-        team.setUpdatedAt(Instant.now());
-
-        return teamRepository.update(team);
+        return preparedName;
     }
 
     private TeamTag createTeamTag(Long teamId, String tagName, Instant now) {

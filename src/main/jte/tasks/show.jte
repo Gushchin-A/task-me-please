@@ -108,6 +108,7 @@
                         value="${task.title()}"
                         maxlength="100"
                         aria-label="Название задачи"
+                        aria-describedby="task-detail-title-count"
                         data-original-value="${task.title()}"
                         required
                     >
@@ -115,6 +116,9 @@
                     <span class="team-settings-action-tooltip" data-tooltip="Начните редактировать название">
                         <button class="button button-primary" type="submit" disabled data-task-title-edit-submit>Сохранить</button>
                     </span>
+                    <p class="form-help task-title-count" id="task-detail-title-count">
+                        <span data-task-detail-title-length>${task.title().length()}</span> / 100 символов
+                    </p>
                 </form>
             @endif
 
@@ -171,6 +175,13 @@
                     <input type="hidden" name="returnTo" value="task">
                     <input type="date" name="deadlineDate" value="${task.deadlineAt() == null ? "" : task.deadlineAt().toString().substring(0, 10)}" data-original-value="${task.deadlineAt() == null ? "" : task.deadlineAt().toString().substring(0, 10)}" disabled="${!task.canUpdateTask()}">
                 </form>
+            </div>
+
+            <div class="task-parameter-row">
+                <span class="task-parameter-heading">Команда</span>
+                <a class="task-parameter-value task-parameter-team" href="/teams/${team.getId()}">
+                    ${team.getName()}
+                </a>
             </div>
 
             <div class="task-parameter-row ${!task.canUpdateTask() ? "task-parameter-read-only" : ""}">

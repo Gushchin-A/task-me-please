@@ -93,17 +93,25 @@
             </div>
         </dl>
 
-        <footer class="task-card-footer">
+        <footer class="task-card-footer${task.archived() && teamId != null && teamName != null
+                ? " task-card-footer-archive-with-team"
+                : ""}">
             @if(task.archived())
                 <span class="task-card-archive-event task-card-archive-event-${task.status() == TaskStatus.DONE ? "resolved" : "deleted"}">
-                    ${task.status() == TaskStatus.DONE ? "Решена и перенесена в архив" : "Была удалена"}
+                    @if(teamId != null && teamName != null)
+                        ${task.status() == TaskStatus.DONE ? "Решена" : "Удалена"}
+                    @else
+                        ${task.status() == TaskStatus.DONE ? "Решена и перенесена в архив" : "Была удалена"}
+                    @endif
                 </span>
+
+                @if(teamId != null && teamName != null)
+                    <a href="/teams/${teamId}">${teamName}</a>
+                @endif
+            @elseif(teamId != null && teamName != null)
+                <a href="/teams/${teamId}">${teamName}</a>
             @else
                 <time datetime="${task.updatedAt() == null ? "" : task.updatedAt().toString()}">${task.updatedAtText()}</time>
-            @endif
-
-            @if(teamId != null && teamName != null)
-                <a href="/teams/${teamId}">${teamName}</a>
             @endif
         </footer>
     </div>

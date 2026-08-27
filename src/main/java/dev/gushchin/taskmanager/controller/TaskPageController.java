@@ -293,7 +293,7 @@ public class TaskPageController {
         teamMemberService.findById(task.getTeamId(), authUser.getId());
         teamMemberService.findById(task.getTeamId(), request.getAssigneeId());
         taskService.updateDetails(id, update, authUser.getId());
-        redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Задача изменена.");
+        redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Задача успешно изменена");
 
         return buildRedirectAfterInlineUpdate(task, request, returnTo);
     }

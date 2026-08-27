@@ -195,6 +195,10 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("Удалить задачу")))
                 .andExpect(content().string(containsString("data-task-parameters-state-action")))
                 .andExpect(content().string(containsString("name=\"returnTo\" value=\"team\"")))
+                .andExpect(content().string(containsString(">Команда</span>")))
+                .andExpect(content()
+                        .string(containsString(
+                                "class=\"task-parameter-value task-parameter-team\" href=\"/teams/" + team.getId())))
                 .andExpect(content().string(not(containsString("Перенести в архив"))));
 
         taskService.updateStatus(task.getId(), TaskStatus.DONE, owner.getId());
@@ -452,12 +456,17 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
         teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
 
         mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(secondUser))))
-                .andExpect(status().isOk())
+                .andExpect(status().isNotFound())
+                .andExpect(content().string(not(containsString("class=\"error-page-code\""))))
                 .andExpect(content().string(containsString("Такая страница не найдена")))
                 .andExpect(content().string(not(containsString("Important task"))));
 
         mockMvc.perform(get("/tasks/" + task.getId()).with(user(new AuthUser(secondUser))))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(content().string(containsString("class=\"error-page\"")))
+                .andExpect(content().string(not(containsString("class=\"error-page-code\""))))
+                .andExpect(content().string(containsString("Такая страница не найдена")))
+                .andExpect(content().string(not(containsString("Important task"))));
     }
 
     @Test

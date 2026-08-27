@@ -365,7 +365,7 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(post("/registration").with(csrf()).param("email", EMAIL).param("password", PASSWORD))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/registration"))
-                .andExpect(flash().attribute("errorMessage", "Пользователь с таким email уже зарегистрирован."));
+                .andExpect(flash().attribute("errorMessage", "Пользователь с таким email уже зарегистрирован"));
     }
 
     @Test
@@ -373,7 +373,7 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(post("/registration").with(csrf()).param("email", EMAIL).param("password", " "))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/registration"))
-                .andExpect(flash().attribute("errorMessage", "Пароль не заполнен."));
+                .andExpect(flash().attribute("errorMessage", "Пароль не заполнен"));
     }
 
     @Test
@@ -384,7 +384,7 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                         .param("password", PASSWORD))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/registration"))
-                .andExpect(flash().attribute("errorMessage", "Email имеет неправильный формат."));
+                .andExpect(flash().attribute("errorMessage", "Email имеет неправильный формат"));
     }
 
     @Test
@@ -493,13 +493,13 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                         .param("invite", invitation.getToken()))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl(registrationRedirect))
-                .andExpect(flash().attribute("errorMessage", "Email имеет неправильный формат."))
+                .andExpect(flash().attribute("errorMessage", "Email имеет неправильный формат"))
                 .andReturn();
 
         mockMvc.perform(get(registrationRedirect)
                         .session((MockHttpSession) result.getRequest().getSession()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Email имеет неправильный формат.")))
+                .andExpect(content().string(containsString("Email имеет неправильный формат")))
                 .andExpect(content().string(not(containsString("Owner"))))
                 .andExpect(content().string(containsString("invite-owner@test.com")))
                 .andExpect(content().string(containsString("Вас пригласил invite-owner@test.com")))
@@ -535,7 +535,7 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/verify-email/" + verificationToken).param("invite", invitation.getToken()))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl(loginUrl))
-                .andExpect(flash().attribute("successMessage", "Email подтверждён. Теперь вы можете войти."));
+                .andExpect(flash().attribute("successMessage", "Email подтверждён. Теперь вы можете войти"));
 
         mockMvc.perform(post("/login")
                         .with(csrf())
@@ -560,7 +560,7 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/verify-email/" + verificationToken))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/login"))
-                .andExpect(flash().attribute("successMessage", "Email подтверждён. Теперь вы можете войти."));
+                .andExpect(flash().attribute("successMessage", "Email подтверждён. Теперь вы можете войти"));
 
         User verifiedUser = userRepository.findByEmail(EMAIL);
 
@@ -570,7 +570,7 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/verify-email/" + verificationToken))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/login"))
-                .andExpect(flash().attribute("errorMessage", "Ссылка подтверждения недействительна или устарела."));
+                .andExpect(flash().attribute("errorMessage", "Ссылка подтверждения недействительна или устарела"));
     }
 
     @Test
@@ -584,12 +584,12 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/verify-email/" + verificationToken))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/login"))
-                .andExpect(flash().attribute("errorMessage", "Ссылка подтверждения недействительна или устарела."));
+                .andExpect(flash().attribute("errorMessage", "Ссылка подтверждения недействительна или устарела"));
 
         mockMvc.perform(get("/verify-email/unknown-token"))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/login"))
-                .andExpect(flash().attribute("errorMessage", "Ссылка подтверждения недействительна или устарела."));
+                .andExpect(flash().attribute("errorMessage", "Ссылка подтверждения недействительна или устарела"));
     }
 
     @Test
@@ -605,7 +605,7 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(redirectedUrl("/verification-pending"))
                 .andExpect(flash().attribute(
                                 "successMessage",
-                                "Если аккаунт с таким email существует, мы отправили письмо для подтверждения."));
+                                "Если аккаунт с таким email существует, мы отправили письмо для подтверждения"));
 
         List<AccountTokensRecord> tokens =
                 dsl.selectFrom(ACCOUNT_TOKENS).orderBy(ACCOUNT_TOKENS.ID.asc()).fetch();
@@ -630,7 +630,7 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(redirectedUrl("/verification-pending"))
                 .andExpect(flash().attribute(
                                 "successMessage",
-                                "Если аккаунт с таким email существует, мы отправили письмо для подтверждения."));
+                                "Если аккаунт с таким email существует, мы отправили письмо для подтверждения"));
 
         assertEquals(1, dsl.fetchCount(ACCOUNT_TOKENS));
         verify(emailSender, org.mockito.Mockito.never()).send(anyString(), anyString(), anyString());
@@ -689,14 +689,14 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(redirectedUrl("/verification-pending"))
                 .andExpect(flash().attribute(
                                 "successMessage",
-                                "Если аккаунт с таким email существует, мы отправили письмо для подтверждения."));
+                                "Если аккаунт с таким email существует, мы отправили письмо для подтверждения"));
 
         mockMvc.perform(post("/resend-verification").with(csrf()).param("email", EMAIL))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/verification-pending"))
                 .andExpect(flash().attribute(
                                 "successMessage",
-                                "Если аккаунт с таким email существует, мы отправили письмо для подтверждения."));
+                                "Если аккаунт с таким email существует, мы отправили письмо для подтверждения"));
 
         verify(emailSender, org.mockito.Mockito.never()).send(anyString(), anyString(), anyString());
     }
