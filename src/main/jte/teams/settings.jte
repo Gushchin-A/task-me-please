@@ -29,25 +29,11 @@
         @template.components.teamNavigation(team = team, activeTab = "settings")
 
         <section class="workspace-page team-settings-page">
-            <aside class="team-settings-sidebar">
-                <nav aria-label="Настройки команды">
-                    <a
-                        class="${"general".equals(settingsSection) ? "team-settings-nav-active" : ""}"
-                        href="/teams/${team.getId()}/settings"
-                        aria-current="${"general".equals(settingsSection) ? "page" : null}"
-                    >
-                        Основные настройки
-                    </a>
-                    <a href="/teams/${team.getId()}/members">Участники</a>
-                    <a
-                        class="${"delete".equals(settingsSection) ? "team-settings-nav-active" : ""}"
-                        href="/teams/${team.getId()}/settings?section=delete"
-                        aria-current="${"delete".equals(settingsSection) ? "page" : null}"
-                    >
-                        Удаление команды
-                    </a>
-                </nav>
-            </aside>
+            @template.components.teamSettingsSidebar(
+                team = team,
+                activeSection = settingsSection,
+                owner = true
+            )
 
             <div class="team-settings-content">
                 @if("delete".equals(settingsSection))

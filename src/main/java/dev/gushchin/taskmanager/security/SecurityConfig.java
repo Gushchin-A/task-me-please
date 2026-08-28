@@ -24,6 +24,7 @@ import org.springframework.security.web.authentication.rememberme.PersistentToke
 public class SecurityConfig {
     private static final int REMEMBER_ME_VALIDITY_SECONDS = 30 * 24 * 60 * 60;
     private static final String FORGOT_PASSWORD_PATH = "/forgot-password";
+    private static final String ERROR_PATH = "/error";
     private static final String LOGIN_PATH = "/login";
     private static final String REGISTRATION_PATH = "/registration";
     private static final String RESEND_VERIFICATION_PATH = "/resend-verification";
@@ -49,7 +50,7 @@ public class SecurityConfig {
                                 "/images/**",
                                 "/js/**",
                                 "/reset-password/*",
-                                "/error")
+                                ERROR_PATH)
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/invitations/*", "/verify-email/*")
                         .permitAll()
@@ -61,6 +62,7 @@ public class SecurityConfig {
                         .successHandler(authenticationSuccessHandler)
                         .failureHandler(authenticationFailureHandler)
                         .permitAll())
+                .exceptionHandling(exception -> exception.accessDeniedPage(ERROR_PATH))
                 .rememberMe(rememberMe -> rememberMe.rememberMeServices(rememberMeServices))
                 .logout(logout -> logout.logoutSuccessUrl(LOGIN_PATH).permitAll())
                 .build();

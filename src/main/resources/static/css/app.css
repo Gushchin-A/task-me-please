@@ -565,8 +565,20 @@ a {
     min-width: 0;
 }
 
+.team-members-settings-page {
+    grid-template-columns: 220px minmax(0, 932px);
+}
+
 .team-settings-header {
     margin: 0 0 var(--base-size-12);
+}
+
+.team-settings-header p {
+    max-width: 56ch;
+    margin: 0;
+    color: var(--fgColor-default);
+    font-size: 14px;
+    line-height: 21px;
 }
 
 .team-settings-form {
@@ -597,6 +609,278 @@ a {
 .team-settings-form .form-help,
 .team-create-form .form-help {
     padding-left: var(--base-size-4);
+}
+
+.team-member-list,
+.team-invitation-list {
+    width: 100%;
+    overflow: visible;
+    border: var(--borderWidth-default) solid var(--borderColor-default);
+    border-radius: var(--borderRadius-medium);
+    background: var(--bgColor-default);
+}
+
+.team-member-list {
+    width: min(100%, 760px);
+}
+
+.team-member-row,
+.team-invitation-row {
+    min-width: 0;
+    border-bottom: var(--borderWidth-default) solid var(--borderColor-default);
+}
+
+.team-member-row:last-child,
+.team-invitation-row:last-child {
+    border-bottom: 0;
+}
+
+.team-member-row {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) 76px 204px 28px;
+    align-items: center;
+    gap: var(--base-size-16);
+    padding: var(--base-size-16);
+}
+
+.team-member-profile {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    min-width: 0;
+    align-items: center;
+    gap: var(--base-size-12);
+}
+
+.team-member-avatar {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--tooltip-bgColor);
+    color: var(--fgColor-onEmphasis);
+    font-size: 14px;
+    font-weight: var(--base-text-weight-semibold);
+}
+
+.team-member-identity {
+    display: grid;
+    min-width: 0;
+    gap: var(--base-size-2);
+}
+
+.team-member-identity strong,
+.team-member-identity span,
+.team-invitation-email {
+    overflow: hidden;
+    font-size: 14px;
+    line-height: 20px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.team-member-identity strong {
+    color: var(--fgColor-default);
+    font-weight: var(--base-text-weight-semibold);
+}
+
+.team-member-identity span {
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.team-member-identity span,
+.team-member-role,
+.team-invitation-row time,
+.team-invitation-empty,
+.team-settings-access-note {
+    color: var(--fgColor-muted);
+}
+
+.team-member-role {
+    display: inline-flex;
+    height: 22px;
+    align-items: center;
+    padding-top: 0;
+    padding-bottom: 0;
+    justify-self: start;
+}
+
+.team-member-role-cell {
+    display: flex;
+    height: 22px;
+    min-width: 0;
+    align-items: center;
+    align-self: center;
+}
+
+.team-member-visibility {
+    display: flex;
+    height: 22px;
+    min-width: 0;
+    align-items: center;
+    align-self: center;
+    justify-content: flex-start;
+    gap: var(--base-size-8);
+    color: var(--fgColor-default);
+    font-size: 13px;
+    line-height: 20px;
+    white-space: nowrap;
+}
+
+.team-member-visibility-control {
+    display: flex;
+    height: 22px;
+    align-items: center;
+}
+
+.team-member-visibility > span:last-child {
+    color: var(--fgColor-muted);
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.team-member-remove-cell {
+    display: flex;
+    width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-content: center;
+}
+
+.team-member-remove-profile {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    align-items: center;
+    gap: var(--base-size-12);
+    margin-bottom: var(--base-size-16);
+}
+
+.team-member-remove-dialog .settings-dialog-body p {
+    margin-bottom: 0;
+}
+
+.team-visibility-switch {
+    position: relative;
+    display: inline-flex;
+    width: 40px;
+    height: 22px;
+    flex: 0 0 auto;
+    align-items: center;
+    padding: 0;
+    border: var(--borderWidth-default) solid var(--borderColor-default);
+    border-radius: var(--borderRadius-medium);
+    background: var(--controlTrack-bgColor-rest);
+    cursor: pointer;
+    transition: background-color 160ms var(--motion-easing-move), border-color 160ms var(--motion-easing-move);
+}
+
+.team-visibility-switch:hover {
+    background: var(--controlTrack-bgColor-hover);
+}
+
+.team-visibility-switch > span {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border: var(--borderWidth-default) solid var(--controlKnob-borderColor-rest);
+    border-radius: var(--borderRadius-small);
+    background: var(--controlKnob-bgColor-rest);
+    transition: transform 160ms var(--motion-easing-move);
+}
+
+.team-visibility-switch[aria-checked="true"] {
+    border-color: var(--bgColor-accent-emphasis);
+    background: var(--bgColor-accent-emphasis);
+}
+
+.team-visibility-switch[aria-checked="true"]:hover {
+    background: var(--control-checked-bgColor-hover);
+}
+
+.team-visibility-switch[aria-checked="true"] > span {
+    border-color: var(--bgColor-accent-emphasis);
+    transform: translateX(18px);
+}
+
+.team-visibility-switch[aria-disabled="true"],
+.team-visibility-switch:disabled {
+    cursor: default;
+    opacity: .55;
+}
+
+.team-invitation-actions {
+    justify-self: end;
+}
+
+.team-invitation-form {
+    margin-bottom: var(--base-size-32);
+}
+
+.team-invitation-history h2 {
+    margin: 0 0 var(--base-size-12);
+    color: var(--fgColor-default);
+    font-size: 16px;
+    font-weight: var(--base-text-weight-semibold);
+    line-height: 24px;
+}
+
+.team-invitation-row {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) 104px 110px 24px;
+    align-items: center;
+    gap: var(--base-size-12);
+    min-height: 48px;
+    padding: var(--base-size-8) var(--base-size-16);
+}
+
+.team-invitation-email {
+    color: var(--fgColor-default);
+    font-weight: var(--base-text-weight-normal);
+}
+
+.invitation-status {
+    display: inline-flex;
+    width: fit-content;
+    min-height: 24px;
+    align-items: center;
+    padding: 2px var(--base-size-8);
+    border-radius: var(--borderRadius-full);
+    font-size: 12px;
+    font-weight: var(--base-text-weight-semibold);
+    line-height: 20px;
+}
+
+.invitation-status-pending {
+    background: var(--bgColor-attention-muted);
+    color: var(--fgColor-attention);
+}
+
+.invitation-status-accepted {
+    background: var(--bgColor-success-muted);
+    color: var(--fgColor-success);
+}
+
+.invitation-status-declined,
+.invitation-status-canceled {
+    background: var(--control-bgColor-rest);
+    color: var(--fgColor-muted);
+}
+
+.team-invitation-row time {
+    font-size: 13px;
+    line-height: 20px;
+    white-space: nowrap;
+}
+
+.team-invitation-empty,
+.team-settings-access-note {
+    margin: 0;
+    font-size: 14px;
+    line-height: 21px;
 }
 
 .team-settings-action-tooltip {
@@ -761,6 +1045,32 @@ a {
         flex: 0 0 auto;
     }
 
+    .team-invitation-row {
+        grid-template-columns: minmax(0, 1fr) auto 24px;
+    }
+
+    .team-invitation-row time {
+        grid-column: 1 / 3;
+        grid-row: 2;
+    }
+
+    .team-invitation-actions {
+        grid-column: 3;
+        grid-row: 1;
+    }
+
+}
+
+@media (max-width: 700px) {
+    .team-member-row {
+        grid-template-columns: minmax(0, 1fr) 188px 28px;
+        gap: var(--base-size-12);
+        padding: var(--base-size-12);
+    }
+
+    .team-member-role-cell {
+        display: none;
+    }
 }
 
 .workspace-page {
@@ -1325,7 +1635,7 @@ a {
     outline-offset: 1px;
 }
 
-.workspace-page button:not(.button):not(.task-card-menu):not(.task-card-action-option):not(.task-edit-dialog-close) {
+.workspace-page button:not(.button):not(.task-card-menu):not(.task-card-action-option):not(.task-edit-dialog-close):not(.team-visibility-switch):not(.task-detail-icon-button) {
     min-height: 34px;
     padding: 6px 9px;
     border: var(--borderWidth-default) solid var(--borderColor-default);
@@ -1335,7 +1645,7 @@ a {
     cursor: pointer;
 }
 
-.workspace-page button:not(.button):not(.task-card-menu):not(.task-card-action-option):not(.task-edit-dialog-close):hover {
+.workspace-page button:not(.button):not(.task-card-menu):not(.task-card-action-option):not(.task-edit-dialog-close):not(.team-visibility-switch):not(.task-detail-icon-button):hover {
     background: var(--control-bgColor-hover);
 }
 

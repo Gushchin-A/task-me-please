@@ -48,7 +48,7 @@ class InvitationEmailServiceTest {
         assertTrue(text.contains("Вас пригласили в команду «Invite Team»."));
         assertTrue(text.contains("Пригласил: owner@test.com"));
         assertFalse(text.contains("Owner"));
-        assertTrue(text.contains("Ссылка действует 30 дней."));
+        assertTrue(text.contains("Ссылка действует 7 дней."));
         assertTrue(text.contains("https://task-me-please.test/invitations/token-123"));
     }
 

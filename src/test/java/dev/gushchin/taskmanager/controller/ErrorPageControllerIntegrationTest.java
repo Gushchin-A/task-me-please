@@ -5,7 +5,9 @@ import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -56,6 +58,22 @@ class ErrorPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("Не удалось загрузить страницу")))
                 .andExpect(content().string(containsString("Попробуйте обновить страницу немного позже.")))
                 .andExpect(content().string(not(containsString("class=\"error-page-code\""))))
+                .andReturn();
+
+        assertTrue(result.getResponse().getContentAsString().contains("Вернуться на главную"));
+    }
+
+    @Test
+    void forbiddenRequestShouldShowStandaloneErrorPage() throws Exception {
+        mockMvc.perform(post("/teams").with(user("user")))
+                .andExpect(status().isForbidden())
+                .andExpect(forwardedUrl("/error"));
+
+        MvcResult result = mockMvc.perform(
+                        get("/error").accept(MediaType.TEXT_HTML).requestAttr(RequestDispatcher.ERROR_STATUS_CODE, 403))
+                .andExpect(status().isForbidden())
+                .andExpect(content().string(containsString("class=\"error-page\"")))
+                .andExpect(content().string(containsString("Не удалось обработать запрос")))
                 .andReturn();
 
         assertTrue(result.getResponse().getContentAsString().contains("Вернуться на главную"));

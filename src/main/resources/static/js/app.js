@@ -7,9 +7,55 @@ document.addEventListener('DOMContentLoaded', function () {
     setupToolbarSelects();
     setupFilterSelects();
     setupTeamSettings();
+    setupTeamVisibilitySwitches();
     setupTaskCards();
+    setupInvitationActions();
     setupTaskDetail();
 });
+
+function setupTeamVisibilitySwitches() {
+    document.querySelectorAll('[data-team-visibility-form]').forEach(function (form) {
+        const button = form.querySelector('.team-visibility-switch');
+        const input = form.querySelector('input[name="taskVisibility"]');
+        const status = form.closest('.team-member-visibility').querySelector('[data-team-visibility-status]');
+
+        form.addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            if (button.disabled) {
+                return;
+            }
+
+            button.disabled = true;
+            button.setAttribute('aria-disabled', 'true');
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    credentials: 'same-origin',
+                    headers: {'X-Requested-With': 'XMLHttpRequest'}
+                });
+
+                if (!response.ok) {
+                    window.location.reload();
+                    return;
+                }
+
+                const seesAllTasks = button.getAttribute('aria-checked') !== 'true';
+
+                button.setAttribute('aria-checked', String(seesAllTasks));
+                input.value = seesAllTasks ? 'OWN_TASKS' : 'ALL_TASKS';
+                status.textContent = seesAllTasks ? 'Видит все задачи' : 'Видит только свои задачи';
+            } catch (error) {
+                window.location.reload();
+            } finally {
+                button.disabled = false;
+                button.removeAttribute('aria-disabled');
+            }
+        });
+    });
+}
 
 function setupTaskDetail() {
     const detail = document.querySelector('[data-task-detail]');
@@ -643,6 +689,35 @@ function setupTaskCards() {
     });
 }
 
+function setupInvitationActions() {
+    document.querySelectorAll('[data-invitation-copy]').forEach(function (button) {
+        button.addEventListener('click', async function () {
+            const invitationValue = button.dataset.invitationUrl === undefined
+                    ? button.dataset.invitationEmail
+                    : new URL(button.dataset.invitationUrl, window.location.origin).href;
+
+            try {
+                await navigator.clipboard.writeText(invitationValue);
+            } catch (error) {
+                const input = document.createElement('textarea');
+
+                input.value = invitationValue;
+                input.style.position = 'fixed';
+                input.style.opacity = '0';
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                input.remove();
+            }
+
+            button.closest('.task-card-actions').open = false;
+            showFlashMessage(button.dataset.invitationUrl === undefined
+                    ? 'Email скопирован'
+                    : 'Ссылка на приглашение скопирована');
+        });
+    });
+}
+
 function setupTeamSettings() {
     const renameForm = document.querySelector('[data-settings-rename-form]');
 
@@ -661,6 +736,7 @@ function setupTeamSettings() {
     }
 
     setupTeamDeleteDialog();
+    setupTeamMemberRemoveDialog();
 
     const dialog = document.querySelector('[data-tag-rename-dialog]');
 
@@ -690,6 +766,43 @@ function setupTeamSettings() {
         dialog.close();
     });
 
+    dialog.addEventListener('click', function (event) {
+        if (event.target === dialog) {
+            dialog.close();
+        }
+    });
+}
+
+function setupTeamMemberRemoveDialog() {
+    const dialog = document.querySelector('[data-team-member-remove-dialog]');
+
+    if (dialog === null) {
+        return;
+    }
+
+    const form = dialog.querySelector('[data-team-member-remove-form]');
+    const avatar = dialog.querySelector('[data-team-member-remove-avatar]');
+    const name = dialog.querySelector('[data-team-member-remove-name]');
+    const email = dialog.querySelector('[data-team-member-remove-email]');
+    const cancel = dialog.querySelector('[data-team-member-remove-cancel]');
+
+    document.querySelectorAll('[data-team-member-remove-open]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            form.action = window.location.pathname + '/' + button.dataset.memberId + '/remove';
+            avatar.textContent = button.dataset.memberInitials;
+            name.textContent = button.dataset.memberName;
+            email.textContent = button.dataset.memberEmail;
+            dialog.showModal();
+            cancel.focus();
+        });
+    });
+
+    dialog.querySelector('[data-team-member-remove-close]').addEventListener('click', function () {
+        dialog.close();
+    });
+    cancel.addEventListener('click', function () {
+        dialog.close();
+    });
     dialog.addEventListener('click', function (event) {
         if (event.target === dialog) {
             dialog.close();

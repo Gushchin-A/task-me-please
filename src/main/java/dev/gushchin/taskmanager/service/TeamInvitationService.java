@@ -30,7 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Slf4j
 public class TeamInvitationService {
-    public static final int EXPIRATION_DAYS = 30;
+    public static final int EXPIRATION_DAYS = 7;
 
     private static final int TOKEN_BYTES = 32;
 

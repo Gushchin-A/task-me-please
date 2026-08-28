@@ -36,9 +36,13 @@ import dev.gushchin.taskmanager.view.TeamMemberView;
 import dev.gushchin.taskmanager.view.TeamPageView;
 import dev.gushchin.taskmanager.view.TeamTasksStats;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.stereotype.Controller;
@@ -46,6 +50,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -55,6 +60,8 @@ public class TeamPageController {
     private static final String CAN_INVITE_ATTRIBUTE = "canInvite";
     private static final String CSRF_ATTRIBUTE = "_csrf";
     private static final String ERROR_MESSAGE_ATTRIBUTE = "errorMessage";
+    private static final int INVITATION_EMAIL_MAX_LENGTH = 255;
+    private static final Pattern INVITATION_EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
     private static final String INVITE_PATH_SUFFIX = "/invite";
     private static final String DELETE_TEAM_CONFIRMATION_TEXT = "я хочу удалить команду";
     private static final String DELETE_TEAM_ERROR_MESSAGE = "Не удалось удалить команду";
@@ -68,9 +75,10 @@ public class TeamPageController {
     private static final String OWNER_INVITE_REQUIRED_MESSAGE =
             OWNER_INVITE_REQUIRED_MESSAGE_PREFIX + OWNER_INVITE_REQUIRED_MESSAGE_SUFFIX;
     private static final String OWNER_REMOVE_REQUIRED_MESSAGE = "Только owner команды может удалять участников";
-    private static final String PENDING_INVITATION_CANCEL_SUCCESS_MESSAGE = "Приглашение отменено";
+    private static final String PENDING_INVITATION_CANCEL_SUCCESS_MESSAGE = "Приглашение успешно отменено";
     private static final String PENDING_INVITATION_EXISTS_MESSAGE = "Приглашение на этот email уже отправлено";
     private static final String PENDING_INVITATION_REQUIRED_MESSAGE = "Отменить можно только ожидающее приглашение";
+    private static final String RESEND_INVITATION_SUCCESS_MESSAGE = "Приглашение отправлено повторно";
     private static final String REDIRECT_TEAMS_PREFIX = "redirect:/teams/";
     private static final String REDIRECT_TEAMS = "redirect:/teams";
     private static final String REMOVE_MEMBER_ERROR_MESSAGE = "Участника не удалось удалить";
@@ -85,6 +93,7 @@ public class TeamPageController {
     private static final String TEAM_SETTINGS_SECTION_GENERAL = "general";
     private static final String TEAM_SETTINGS_VIEW = "teams/settings";
     private static final String TEAM_TAG_EXISTS_MESSAGE = "Такой тег уже существует";
+    private static final String XML_HTTP_REQUEST = "XMLHttpRequest";
 
     private final TeamService teamService;
     private final TaskService taskService;
@@ -259,6 +268,7 @@ public class TeamPageController {
         boolean canSeeMemberPrivateData = currentMember.getRole() == TeamMemberRole.OWNER;
 
         List<TeamMemberView> memberViews = members.stream()
+                .sorted(Comparator.comparing((TeamMember member) -> member.getRole() != TeamMemberRole.OWNER))
                 .map(member -> {
                     User user = userService.findById(member.getUserId());
 
@@ -488,12 +498,32 @@ public class TeamPageController {
     }
 
     @PostMapping("/teams/{teamId}/members/{userId}/visibility")
-    public String updateMemberTaskVisibility(
+    public Object updateMemberTaskVisibility(
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long teamId,
             @PathVariable UUID userId,
-            @RequestParam TeamTaskVisibility taskVisibility) {
-        teamMemberService.updateTaskVisibility(teamId, userId, taskVisibility, authUser.getId());
+            @RequestParam TeamTaskVisibility taskVisibility,
+            @RequestHeader(value = "X-Requested-With", required = false) String requestedWith,
+            RedirectAttributes redirectAttributes) {
+        boolean asynchronousRequest = XML_HTTP_REQUEST.equals(requestedWith);
+
+        try {
+            teamMemberService.updateTaskVisibility(teamId, userId, taskVisibility, authUser.getId());
+            if (asynchronousRequest) {
+                return ResponseEntity.noContent().build();
+            }
+        } catch (AccessDeniedForTaskException ex) {
+            redirectAttributes.addFlashAttribute(
+                    ERROR_MESSAGE_ATTRIBUTE, "Только owner команды может изменять видимость задач");
+            if (asynchronousRequest) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        } catch (TeamMemberNotFoundException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, "Не удалось изменить видимость задач");
+            if (asynchronousRequest) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+        }
 
         return REDIRECT_TEAMS_PREFIX + teamId + MEMBERS_PATH_SUFFIX;
     }
@@ -544,6 +574,7 @@ public class TeamPageController {
             RedirectAttributes redirectAttributes) {
         try {
             teamInvitationService.resend(invitationId, teamId, authUser.getId());
+            redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, RESEND_INVITATION_SUCCESS_MESSAGE);
         } catch (AccessDeniedForTaskException ex) {
             redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, OWNER_INVITE_REQUIRED_MESSAGE);
         } catch (TeamInvitationNotFoundException ex) {
@@ -599,10 +630,16 @@ public class TeamPageController {
 
     private void createInvitation(
             Long teamId, String email, UUID currentUserId, RedirectAttributes redirectAttributes) {
+        if (email.isBlank()
+                || email.length() > INVITATION_EMAIL_MAX_LENGTH
+                || !INVITATION_EMAIL_PATTERN.matcher(email).matches()) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, "Введите корректный email");
+            return;
+        }
+
         try {
             teamInvitationService.createAndSend(teamId, email, currentUserId);
-            redirectAttributes.addFlashAttribute(
-                    SUCCESS_MESSAGE_ATTRIBUTE, "Приглашение создано. Ссылку-приглашение можно отправить лично");
+            redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Приглашение успешно создано");
         } catch (TeamMemberAlreadyExistsException ex) {
             redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, "Пользователь уже состоит в этой команде");
         } catch (TeamInvitationAlreadyPendingException ex) {
