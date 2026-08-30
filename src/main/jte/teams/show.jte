@@ -33,6 +33,8 @@
         <section class="workspace-page team-details-page">
             @if(!page.hasNoTasks())
                 <div class="task-toolbar">
+                <span class="task-count">Задачи (${page.totalTasksCount()})</span>
+
                 <div class="toolbar-popover task-filter-popover" data-toolbar-select>
                     <button
                         class="primer-select-trigger task-toolbar-trigger"

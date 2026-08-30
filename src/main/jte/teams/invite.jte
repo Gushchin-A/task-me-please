@@ -72,27 +72,24 @@
                                 @for(TeamInvitationView invitation : invitations)
                                     <div class="team-invitation-row">
                                         <span class="team-invitation-email" title="${invitation.invitedEmail()}">${invitation.invitedEmail()}</span>
-                                        <span class="invitation-status invitation-status-${invitation.statusCssClass()}">${invitation.statusText()}</span>
+                                        <span
+                                            class="invitation-status invitation-status-${invitation.statusCssClass()}"
+                                            tabindex="0"
+                                            data-tooltip="${invitation.statusTooltip()}"
+                                        >${invitation.statusText()}</span>
                                         <time>${invitation.createdAtText()}</time>
 
-                                        <details class="task-card-actions team-invitation-actions">
-                                            <summary class="task-card-menu" aria-label="Действия с приглашением ${invitation.invitedEmail()}">
-                                                <svg aria-hidden="true" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
-                                                    <path d="M2 7a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm6 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm6 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z"></path>
-                                                </svg>
-                                            </summary>
-                                            <div class="task-card-actions-panel">
-                                                @if(invitation.invitationUrl() != null)
+                                        @if(invitation.canCancel())
+                                            <details class="task-card-actions team-invitation-actions">
+                                                <summary class="task-card-menu" aria-label="Действия с приглашением ${invitation.invitedEmail()}">
+                                                    <svg aria-hidden="true" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
+                                                        <path d="M2 7a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm6 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm6 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z"></path>
+                                                    </svg>
+                                                </summary>
+                                                <div class="task-card-actions-panel">
                                                     <button class="task-card-action-option" type="button" data-invitation-copy data-invitation-url="${invitation.invitationUrl()}">
                                                         Скопировать ссылку
                                                     </button>
-                                                @else
-                                                    <button class="task-card-action-option" type="button" data-invitation-copy data-invitation-email="${invitation.invitedEmail()}">
-                                                        Скопировать email
-                                                    </button>
-                                                @endif
-
-                                                @if(invitation.canCancel())
                                                     <form method="post" action="/teams/${team.getId()}/invitations/${invitation.id()}/resend" data-submit-loading>
                                                         <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
                                                         <button class="task-card-action-option" type="submit" data-loading-text="Отправляем...">Отправить повторно</button>
@@ -102,9 +99,9 @@
                                                         <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
                                                         <button class="task-card-action-option task-card-delete-action" type="submit">Отменить приглашение</button>
                                                     </form>
-                                                @endif
-                                            </div>
-                                        </details>
+                                                </div>
+                                            </details>
+                                        @endif
                                     </div>
                                 @endfor
                             </div>

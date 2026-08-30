@@ -9,39 +9,39 @@ import dev.gushchin.taskmanager.security.SafeRedirectAuthenticationSuccessHandle
 import dev.gushchin.taskmanager.service.TeamInvitationService;
 import dev.gushchin.taskmanager.service.TeamMemberService;
 import dev.gushchin.taskmanager.service.TeamService;
-import dev.gushchin.taskmanager.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Controller
 @RequiredArgsConstructor
 public class InvitationPageController {
-    private static final String CSRF_ATTRIBUTE = "_csrf";
     private static final String INVITATIONS_PATH_PREFIX = "/invitations/";
     private static final String INVITATION_INVALID_VIEW = "invitations/invalid";
-    private static final String INVITATION_SHOW_VIEW = "invitations/show";
     private static final String REDIRECT_PREFIX = "redirect:";
-    private static final String REDIRECT_TEAMS = "redirect:/teams";
+    private static final String REDIRECT_TASKS = "redirect:/tasks";
     private static final String REDIRECT_TEAMS_PREFIX = "redirect:/teams/";
+    private static final String SUCCESS_MESSAGE_ATTRIBUTE = "successMessage";
 
     private final TeamInvitationService teamInvitationService;
     private final TeamMemberService teamMemberService;
     private final TeamService teamService;
-    private final UserService userService;
 
     @GetMapping("/invitations/{token}")
     public String showInvitation(
-            @AuthenticationPrincipal AuthUser authUser, @PathVariable String token, Model model, CsrfToken csrfToken) {
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable String token,
+            Model model,
+            RedirectAttributes redirectAttributes) {
         TeamInvitation invitation = findPendingInvitation(token);
         if (invitation == null) {
-            return showInvalidInvitation(authUser, model);
+            return INVITATION_INVALID_VIEW;
         }
 
         if (authUser == null) {
@@ -52,19 +52,24 @@ public class InvitationPageController {
             return REDIRECT_TEAMS_PREFIX + invitation.getTeamId();
         }
 
-        Team team = teamService.findById(invitation.getTeamId());
-        String invitedByEmail = userService.findById(invitation.getInvitedBy()).getEmail();
+        Object successMessage = model.asMap().get(SUCCESS_MESSAGE_ATTRIBUTE);
+        if (successMessage instanceof String message) {
+            redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, message);
+        }
 
-        model.addAttribute("invitation", invitation);
-        model.addAttribute("team", team);
-        model.addAttribute("invitedByEmail", invitedByEmail);
-        model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
-
-        return INVITATION_SHOW_VIEW;
+        return REDIRECT_PREFIX
+                + UriComponentsBuilder.fromPath("/tasks")
+                        .queryParam("invitation", token)
+                        .build()
+                        .encode()
+                        .toUriString();
     }
 
     @PostMapping("/invitations/{token}/accept")
-    public String acceptInvitation(@AuthenticationPrincipal AuthUser authUser, @PathVariable String token) {
+    public String acceptInvitation(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable String token,
+            RedirectAttributes redirectAttributes) {
         TeamInvitation invitation = findPendingInvitation(token);
         if (invitation == null) {
             return REDIRECT_PREFIX + INVITATIONS_PATH_PREFIX + token;
@@ -75,8 +80,12 @@ public class InvitationPageController {
         }
 
         teamInvitationService.accept(token, authUser.getId());
+        Team team = teamService.findById(invitation.getTeamId());
+        redirectAttributes.addFlashAttribute(
+                SUCCESS_MESSAGE_ATTRIBUTE,
+                "Приглашение принято. Теперь вы состоите в команде «" + team.getName() + "»");
 
-        return REDIRECT_TEAMS;
+        return REDIRECT_TEAMS_PREFIX + invitation.getTeamId();
     }
 
     @PostMapping("/invitations/{token}/decline")
@@ -92,7 +101,7 @@ public class InvitationPageController {
 
         teamInvitationService.decline(token, authUser.getId());
 
-        return REDIRECT_TEAMS;
+        return REDIRECT_TASKS;
     }
 
     private TeamInvitation findPendingInvitation(String token) {
@@ -103,12 +112,6 @@ public class InvitationPageController {
         } catch (TeamInvitationNotPendingException ex) {
             return null;
         }
-    }
-
-    private String showInvalidInvitation(AuthUser authUser, Model model) {
-        model.addAttribute("authenticated", authUser != null);
-
-        return INVITATION_INVALID_VIEW;
     }
 
     private String buildLoginUrl(String token) {

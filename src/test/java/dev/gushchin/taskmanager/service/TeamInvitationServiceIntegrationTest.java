@@ -92,9 +92,9 @@ class TeamInvitationServiceIntegrationTest extends IntegrationTestBase {
 
         TeamInvitation invitation = teamInvitationService.findByToken(expiredInvitation.getToken());
 
-        assertEquals(TeamInvitationStatus.CANCELED, invitation.getStatus());
+        assertEquals(TeamInvitationStatus.EXPIRED, invitation.getStatus());
         assertEquals(
-                TeamInvitationStatus.CANCELED,
+                TeamInvitationStatus.EXPIRED,
                 teamInvitationRepository
                         .findByToken(expiredInvitation.getToken())
                         .getStatus());
@@ -143,7 +143,7 @@ class TeamInvitationServiceIntegrationTest extends IntegrationTestBase {
         List<TeamInvitation> invitations = teamInvitationRepository.findByTeamId(team.getId());
 
         assertEquals(2, invitations.size());
-        assertEquals(TeamInvitationStatus.CANCELED, invitations.getFirst().getStatus());
+        assertEquals(TeamInvitationStatus.EXPIRED, invitations.getFirst().getStatus());
         assertEquals(TeamInvitationStatus.PENDING, newInvitation.getStatus());
     }
 

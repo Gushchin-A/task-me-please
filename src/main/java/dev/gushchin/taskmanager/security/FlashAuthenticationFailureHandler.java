@@ -20,11 +20,11 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class FlashAuthenticationFailureHandler implements AuthenticationFailureHandler {
     private static final String ERROR_MESSAGE_ATTRIBUTE = "errorMessage";
     private static final String INVITE_PARAMETER = "invite";
-    private static final String LOGIN_ERROR_MESSAGE = "Неверный email или пароль.";
+    private static final String LOGIN_ERROR_MESSAGE = "Неверный email или пароль";
     private static final String LOGIN_PATH = "/login";
     private static final String UNVERIFIED_EMAIL_ATTRIBUTE = "unverifiedEmail";
     private static final String UNVERIFIED_EMAIL_ERROR_MESSAGE =
-            "Email не подтверждён. Проверьте почту или отправьте письмо повторно.";
+            "Email не подтвержден. Проверьте почту или отправьте письмо повторно";
     private static final String USERNAME_PARAMETER = "username";
     private static final String VERIFICATION_EMAIL_SESSION_ATTRIBUTE = "verificationEmail";
     private static final String VERIFICATION_INVITE_SESSION_ATTRIBUTE = "verificationInvite";

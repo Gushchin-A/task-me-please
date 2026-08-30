@@ -18,6 +18,12 @@ import org.springframework.security.web.authentication.RememberMeServices;
 import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenBasedRememberMeServices;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
+import org.springframework.security.web.authentication.session.ChangeSessionIdAuthenticationStrategy;
+import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
+import org.springframework.security.web.context.DelegatingSecurityContextRepository;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
 
 @Configuration
 @RequiredArgsConstructor
@@ -37,7 +43,11 @@ public class SecurityConfig {
     private final SafeRedirectAuthenticationSuccessHandler authenticationSuccessHandler;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, RememberMeServices rememberMeServices)
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            RememberMeServices rememberMeServices,
+            SecurityContextRepository securityContextRepository,
+            SessionAuthenticationStrategy sessionAuthenticationStrategy)
             throws Exception {
         return http.authorizeHttpRequests(auth -> auth.requestMatchers(
                                 "/",
@@ -63,9 +73,22 @@ public class SecurityConfig {
                         .failureHandler(authenticationFailureHandler)
                         .permitAll())
                 .exceptionHandling(exception -> exception.accessDeniedPage(ERROR_PATH))
+                .securityContext(context -> context.securityContextRepository(securityContextRepository))
+                .sessionManagement(session -> session.sessionAuthenticationStrategy(sessionAuthenticationStrategy))
                 .rememberMe(rememberMe -> rememberMe.rememberMeServices(rememberMeServices))
                 .logout(logout -> logout.logoutSuccessUrl(LOGIN_PATH).permitAll())
                 .build();
+    }
+
+    @Bean
+    public SecurityContextRepository securityContextRepository() {
+        return new DelegatingSecurityContextRepository(
+                new RequestAttributeSecurityContextRepository(), new HttpSessionSecurityContextRepository());
+    }
+
+    @Bean
+    public SessionAuthenticationStrategy sessionAuthenticationStrategy() {
+        return new ChangeSessionIdAuthenticationStrategy();
     }
 
     @Bean

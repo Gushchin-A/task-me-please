@@ -11,6 +11,8 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -196,12 +198,14 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("Задача была перенесена в архив")))
                 .andExpect(content().string(containsString("class=\"local-tabs team-tabs\"")))
                 .andExpect(content().string(containsString("class=\"local-tab-active\"")))
+                .andExpect(content().string(containsString("class=\"task-count\">Задачи (1)")))
                 .andExpect(content().string(not(containsString("class=\"nav-count\""))));
 
         mockMvc.perform(get("/teams/" + team.getId() + "/archive").with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("class=\"local-tabs team-tabs\"")))
                 .andExpect(content().string(containsString("class=\"local-tab-active\"")))
+                .andExpect(content().string(containsString("class=\"task-count\">Задачи (1)")))
                 .andExpect(content().string(not(containsString("class=\"nav-count\""))));
     }
 
@@ -536,6 +540,40 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void teamTaskCountsShouldRespectMemberTaskVisibility() throws Exception {
+        mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(member))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("class=\"task-count\">Задачи (1)")));
+
+        teamMemberService.updateTaskVisibility(
+                team.getId(), member.getId(), TeamTaskVisibility.ALL_TASKS, owner.getId());
+
+        mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(member))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("class=\"task-count\">Задачи (2)")));
+
+        List<Task> tasks = taskService.findByTeamId(team.getId());
+
+        for (Task task : tasks) {
+            taskService.archive(task.getId(), owner.getId());
+        }
+
+        teamMemberService.updateTaskVisibility(
+                team.getId(), member.getId(), TeamTaskVisibility.OWN_TASKS, owner.getId());
+
+        mockMvc.perform(get("/teams/" + team.getId() + "/archive").with(user(new AuthUser(member))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("class=\"task-count\">Задачи (1)")));
+
+        teamMemberService.updateTaskVisibility(
+                team.getId(), member.getId(), TeamTaskVisibility.ALL_TASKS, owner.getId());
+
+        mockMvc.perform(get("/teams/" + team.getId() + "/archive").with(user(new AuthUser(member))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("class=\"task-count\">Задачи (2)")));
+    }
+
+    @Test
     void ownerShouldChangeMemberTaskVisibilityWithoutRedirectForAsynchronousRequest() throws Exception {
         mockMvc.perform(post("/teams/" + team.getId() + "/members/" + member.getId() + "/visibility")
                         .with(csrf())
@@ -728,9 +766,19 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .with(user(new AuthUser(owner))))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
-                .andExpect(flash().attribute("successMessage", "Приглашение отправлено повторно"));
+                .andExpect(flash().attribute(
+                                "successMessage",
+                                "Приглашение отправлено повторно. Прошлая ссылка больше недействительна"));
 
         verify(invitationEmailService).sendInvitation(any(TeamInvitation.class), any(Team.class), any(User.class));
+        TeamInvitation resentInvitation =
+                teamInvitationRepository.findByTeamId(team.getId()).getFirst();
+        assertNull(teamInvitationRepository.findByToken(invitation.getToken()));
+        assertNotEquals(invitation.getToken(), resentInvitation.getToken());
+        assertEquals(
+                TeamInvitationService.EXPIRATION_DAYS,
+                Duration.between(resentInvitation.getUpdatedAt(), resentInvitation.getExpiresAt())
+                        .toDays());
     }
 
     @Test
@@ -766,9 +814,10 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"));
 
-        assertEquals(
-                TeamInvitationStatus.PENDING,
-                teamInvitationRepository.findByToken(invitation.getToken()).getStatus());
+        TeamInvitation resentInvitation =
+                teamInvitationRepository.findByTeamId(team.getId()).getFirst();
+        assertEquals(TeamInvitationStatus.PENDING, resentInvitation.getStatus());
+        assertNotEquals(invitation.getToken(), resentInvitation.getToken());
     }
 
     @Test
@@ -795,7 +844,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .param("email", member.getEmail()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
-                .andExpect(flash().attribute("errorMessage", "Пользователь уже состоит в этой команде"));
+                .andExpect(flash().attribute("errorMessage", "Пользователь уже состоит в команде"));
 
         assertTrue(teamInvitationRepository.findByTeamId(team.getId()).isEmpty());
     }
@@ -967,18 +1016,29 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    void authenticatedUserShouldSeeInvitationDecisionPage() throws Exception {
+    void authenticatedUserShouldOpenInvitationOverTasksPage() throws Exception {
         User invitedUser = userService.create("invited-member@test.com", "Invited member", "qwerty");
         TeamInvitation invitation = teamInvitationService.create(team.getId(), invitedUser.getEmail(), owner.getId());
 
         mockMvc.perform(get("/invitations/" + invitation.getToken()).with(user(new AuthUser(invitedUser))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks?invitation=" + invitation.getToken()));
+
+        mockMvc.perform(get("/tasks?invitation=" + invitation.getToken()).with(user(new AuthUser(invitedUser))))
                 .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Мои задачи")))
                 .andExpect(content().string(containsString("Приглашение в команду")))
-                .andExpect(content().string(containsString("Вас пригласил team-owner@test.com")))
+                .andExpect(content().string(containsString("team-owner@test.com пригласил вас")))
                 .andExpect(content().string(not(containsString("Owner"))))
                 .andExpect(content().string(containsString("Project Team")))
-                .andExpect(content().string(containsString("Принять приглашение")))
-                .andExpect(content().string(containsString("Отклонить приглашение")));
+                .andExpect(content().string(containsString("Принять")))
+                .andExpect(content().string(containsString("Отклонить")))
+                .andExpect(content().string(containsString("data-invitation-decision-dialog")))
+                .andExpect(content().string(containsString("data-invitation-decision-close")));
+
+        assertEquals(
+                TeamInvitationStatus.PENDING,
+                teamInvitationRepository.findByToken(invitation.getToken()).getStatus());
     }
 
     @Test
@@ -1001,7 +1061,9 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .with(csrf())
                         .with(user(new AuthUser(invitedUser))))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/teams"));
+                .andExpect(redirectedUrl("/teams/" + team.getId()))
+                .andExpect(flash().attribute(
+                                "successMessage", "Приглашение принято. Теперь вы состоите в команде «Project Team»"));
 
         assertEquals(
                 TeamInvitationStatus.ACCEPTED,
@@ -1018,7 +1080,8 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .with(csrf())
                         .with(user(new AuthUser(invitedUser))))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/teams"));
+                .andExpect(redirectedUrl("/tasks"))
+                .andExpect(flash().attributeCount(0));
 
         assertEquals(
                 TeamInvitationStatus.DECLINED,
@@ -1066,7 +1129,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .with(csrf())
                         .with(user(new AuthUser(invitedUser))))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/teams"));
+                .andExpect(redirectedUrl("/teams/" + team.getId()));
 
         assertEquals(
                 TeamInvitationStatus.ACCEPTED,
@@ -1081,23 +1144,21 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
 
         mockMvc.perform(get("/invitations/" + invitation.getToken()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Ссылка приглашения недействительна.")))
-                .andExpect(content().string(containsString("Войти")))
-                .andExpect(content().string(containsString("Зарегистрироваться")))
-                .andExpect(content().string(not(containsString("К моим задачам"))));
+                .andExpect(content().string(containsString("Ссылка приглашения недействительна")))
+                .andExpect(content().string(not(containsString("Приглашение было принято"))))
+                .andExpect(content().string(containsString("Вернуться на главную")));
     }
 
     @Test
     void invalidInvitationShouldShowTasksLinkForAuthenticatedUser() throws Exception {
         mockMvc.perform(get("/invitations/unknown-token").with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Ссылка приглашения недействительна.")))
-                .andExpect(content().string(containsString("К моим задачам")))
-                .andExpect(content().string(not(containsString("Зарегистрироваться"))));
+                .andExpect(content().string(containsString("Ссылка приглашения недействительна")))
+                .andExpect(content().string(containsString("Вернуться на главную")));
     }
 
     @Test
-    void expiredInvitationShouldShowInvalidPageAndBeCanceled() throws Exception {
+    void expiredInvitationShouldShowInvalidPageAndBeExpired() throws Exception {
         TeamInvitation invitation = teamInvitationRepository.save(createInvitation(
                 "expired-invite@test.com",
                 TeamInvitationStatus.PENDING,
@@ -1105,10 +1166,10 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
 
         mockMvc.perform(get("/invitations/" + invitation.getToken()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Ссылка приглашения недействительна.")));
+                .andExpect(content().string(containsString("Ссылка приглашения недействительна")));
 
         assertEquals(
-                TeamInvitationStatus.CANCELED,
+                TeamInvitationStatus.EXPIRED,
                 teamInvitationRepository.findByToken(invitation.getToken()).getStatus());
     }
 
@@ -1119,7 +1180,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
 
         mockMvc.perform(get("/invitations/" + invitation.getToken()).with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Ссылка приглашения недействительна.")));
+                .andExpect(content().string(containsString("Ссылка приглашения недействительна")));
     }
 
     @Test

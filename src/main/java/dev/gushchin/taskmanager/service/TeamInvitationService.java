@@ -95,10 +95,14 @@ public class TeamInvitationService {
         return invitation;
     }
 
+    @Transactional
     public void resend(Long id, Long teamId, UUID currentUserId) {
         TeamInvitation invitation = findPendingById(id, teamId, currentUserId);
+        Instant now = Instant.now();
+        TeamInvitation updatedInvitation = teamInvitationRepository.updateDelivery(
+                invitation.getId(), generateToken(), now.plus(Duration.ofDays(EXPIRATION_DAYS)), now);
 
-        sendInvitation(invitation);
+        sendInvitation(updatedInvitation);
     }
 
     public TeamInvitation findByToken(String token) {
@@ -198,7 +202,7 @@ public class TeamInvitationService {
         if (invitation.getStatus() == TeamInvitationStatus.PENDING
                 && invitation.getExpiresAt().isBefore(Instant.now())) {
             return teamInvitationRepository.updateStatus(
-                    invitation.getId(), TeamInvitationStatus.CANCELED, Instant.now());
+                    invitation.getId(), TeamInvitationStatus.EXPIRED, Instant.now());
         }
 
         return invitation;

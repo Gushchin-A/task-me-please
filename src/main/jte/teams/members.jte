@@ -133,7 +133,14 @@
 
                             <header class="settings-dialog-header">
                                 <h2>Удаление участника</h2>
-                                <button type="button" aria-label="Закрыть" data-team-member-remove-close>×</button>
+                                <button
+                                    class="settings-dialog-close"
+                                    type="button"
+                                    aria-label="Закрыть"
+                                    data-team-member-remove-close
+                                >
+                                    ×
+                                </button>
                             </header>
 
                             <div class="settings-dialog-body">

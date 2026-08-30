@@ -10,8 +10,36 @@ document.addEventListener('DOMContentLoaded', function () {
     setupTeamVisibilitySwitches();
     setupTaskCards();
     setupInvitationActions();
+    setupInvitationDecisionDialog();
     setupTaskDetail();
 });
+
+function setupInvitationDecisionDialog() {
+    const dialog = document.querySelector('[data-invitation-decision-dialog]');
+
+    if (dialog === null) {
+        return;
+    }
+
+    function clearInvitationFromUrl() {
+        const url = new URL(window.location.href);
+
+        url.searchParams.delete('invitation');
+        window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+    }
+
+    dialog.querySelector('[data-invitation-decision-close]').addEventListener('click', function () {
+        dialog.close();
+    });
+    dialog.addEventListener('click', function (event) {
+        if (event.target === dialog) {
+            dialog.close();
+        }
+    });
+    dialog.addEventListener('close', clearInvitationFromUrl);
+    dialog.showModal();
+    dialog.querySelector('[data-invitation-decision-title]').focus();
+}
 
 function setupTeamVisibilitySwitches() {
     document.querySelectorAll('[data-team-visibility-form]').forEach(function (form) {
@@ -1174,13 +1202,17 @@ function setupSubmitLoading() {
             }
 
             const loadingText = submitButton.dataset.loadingText;
-            const spinner = document.createElement('span');
 
-            spinner.className = 'auth-spinner';
-            spinner.setAttribute('aria-hidden', 'true');
             form.setAttribute('aria-busy', 'true');
             submitButton.disabled = true;
-            submitButton.replaceChildren(spinner, document.createTextNode(loadingText));
+
+            window.setTimeout(function () {
+                const spinner = document.createElement('span');
+
+                spinner.className = 'auth-spinner';
+                spinner.setAttribute('aria-hidden', 'true');
+                submitButton.replaceChildren(spinner, document.createTextNode(loadingText));
+            }, 250);
         });
     });
 }

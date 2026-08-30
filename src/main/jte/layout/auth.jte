@@ -26,12 +26,19 @@
     <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
+    <div class="flash-stack app-flash-stack" aria-live="polite" aria-atomic="false">
+        @if(successMessage != null)
+            @template.components.flash(message = successMessage, type = "success")
+        @endif
+
+        @if(errorMessage != null)
+            @template.components.flash(message = errorMessage, type = "error")
+        @endif
+    </div>
+
     <main class="auth-page">
         <div class="auth-shell">
-            <a class="auth-logo" href="/" aria-label="Task Me Please">
-                <span class="auth-logo-mark" aria-hidden="true"></span>
-                <span class="auth-logo-name">TaskMePlease</span>
-            </a>
+            <a class="auth-logo app-logo" href="/" aria-label="Task Me Please">TASKMEPLEASE</a>
 
             @if(!activeTab.isBlank()
                     && !activeTab.equals("forgot-password-limited")
@@ -42,12 +49,8 @@
             <section class="auth-panel" aria-labelledby="${activeTab.isBlank() ? "auth-heading" : null}">
                 @if(inviteContext != null)
                     <div class="auth-invite">
-                        <strong>Приглашение в команду</strong>
-                        <p>
-                            Вас пригласил ${inviteContext.invitedByEmail()}
-                            в команду «${inviteContext.teamName()}».
-                        </p>
-                        <p>После входа или регистрации вы вернётесь к приглашению.</p>
+                        <p>Вас пригласили в команду «${inviteContext.teamName()}».</p>
+                        <p>После входа в аккаунт или регистрации вы вернетесь к приглашению.</p>
                     </div>
                 @endif
 
@@ -70,29 +73,18 @@
                     <a href="${loginUrl}">Войти</a>
                 </p>
             @elseif(activeTab.equals("forgot-password-sent")
-                    || activeTab.equals("forgot-password-limited")
-                    || activeTab.equals("verification-pending")
-                    || activeTab.equals("verification-limited"))
+                    || activeTab.equals("forgot-password-limited"))
                 <p class="auth-switch">
                     <a href="${loginUrl}">Назад на страницу входа</a>
                 </p>
-            @else
+            @elseif(!activeTab.equals("verification-pending")
+                    && !activeTab.equals("verification-limited"))
                 <a class="auth-back-link" href="${loginUrl}">
                     ← Вернуться назад
                 </a>
             @endif
         </div>
     </main>
-
-    <div class="flash-stack" aria-live="polite" aria-atomic="false">
-        @if(successMessage != null)
-            @template.components.flash(message = successMessage, type = "success")
-        @endif
-
-        @if(errorMessage != null)
-            @template.components.flash(message = errorMessage, type = "error")
-        @endif
-    </div>
 
     <script src="/js/app.js"></script>
 </body>

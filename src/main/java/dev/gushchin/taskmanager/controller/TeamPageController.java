@@ -78,7 +78,8 @@ public class TeamPageController {
     private static final String PENDING_INVITATION_CANCEL_SUCCESS_MESSAGE = "Приглашение успешно отменено";
     private static final String PENDING_INVITATION_EXISTS_MESSAGE = "Приглашение на этот email уже отправлено";
     private static final String PENDING_INVITATION_REQUIRED_MESSAGE = "Отменить можно только ожидающее приглашение";
-    private static final String RESEND_INVITATION_SUCCESS_MESSAGE = "Приглашение отправлено повторно";
+    private static final String RESEND_INVITATION_SUCCESS_MESSAGE =
+            "Приглашение отправлено повторно. Прошлая ссылка больше недействительна";
     private static final String REDIRECT_TEAMS_PREFIX = "redirect:/teams/";
     private static final String REDIRECT_TEAMS = "redirect:/teams";
     private static final String REMOVE_MEMBER_ERROR_MESSAGE = "Участника не удалось удалить";
@@ -641,7 +642,7 @@ public class TeamPageController {
             teamInvitationService.createAndSend(teamId, email, currentUserId);
             redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Приглашение успешно создано");
         } catch (TeamMemberAlreadyExistsException ex) {
-            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, "Пользователь уже состоит в этой команде");
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, "Пользователь уже состоит в команде");
         } catch (TeamInvitationAlreadyPendingException ex) {
             redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, PENDING_INVITATION_EXISTS_MESSAGE);
         }

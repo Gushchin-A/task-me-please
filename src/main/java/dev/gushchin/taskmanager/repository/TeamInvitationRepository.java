@@ -79,6 +79,18 @@ public class TeamInvitationRepository {
         return TeamInvitationMapper.toModel(record);
     }
 
+    public TeamInvitation updateDelivery(Long id, String token, Instant expiresAt, Instant updatedAt) {
+        TeamInvitationsRecord record = dsl.update(TEAM_INVITATIONS)
+                .set(TEAM_INVITATIONS.TOKEN, token)
+                .set(TEAM_INVITATIONS.EXPIRES_AT, expiresAt.atOffset(ZoneOffset.UTC))
+                .set(TEAM_INVITATIONS.UPDATED_AT, updatedAt.atOffset(ZoneOffset.UTC))
+                .where(TEAM_INVITATIONS.ID.eq(id))
+                .returning()
+                .fetchOne();
+
+        return TeamInvitationMapper.toModel(record);
+    }
+
     public void deleteAll() {
         dsl.deleteFrom(TEAM_INVITATIONS).execute();
     }

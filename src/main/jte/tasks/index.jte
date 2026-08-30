@@ -2,16 +2,20 @@
 @import dev.gushchin.taskmanager.view.MyTasksPageView
 @import dev.gushchin.taskmanager.view.UserAvatarView
 @import dev.gushchin.taskmanager.view.TaskWithTeamView
+@import dev.gushchin.taskmanager.view.InvitationDecisionView
 @import org.springframework.security.web.csrf.CsrfToken
 
 @param MyTasksPageView page
 @param CsrfToken _csrf
 @param UserAvatarView currentUser
+@param String successMessage = null
+@param InvitationDecisionView invitationDecision = null
 
 @template.layout.page(
     title = "Мои задачи",
     _csrf = _csrf,
     currentUser = currentUser,
+    successMessage = successMessage,
     activeSection = "tasks",
     headerContext = null,
     content = @`
@@ -140,5 +144,9 @@
                 </ul>
             @endif
         </section>
+
+        @if(invitationDecision != null)
+            @template.invitations.show(invitation = invitationDecision, _csrf = _csrf)
+        @endif
     `
 )

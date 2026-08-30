@@ -40,10 +40,21 @@ public record TeamInvitationView(
 
     public String statusText() {
         return switch (status) {
-            case PENDING -> "Ожидает";
+            case PENDING -> "Ожидание";
             case ACCEPTED -> "Принято";
             case DECLINED -> "Отклонено";
             case CANCELED -> "Отменено";
+            case EXPIRED -> "Истекло";
+        };
+    }
+
+    public String statusTooltip() {
+        return switch (status) {
+            case PENDING -> "Ссылку на приглашение можно скопировать и отправить лично";
+            case ACCEPTED -> "Пользователь принял приглашение";
+            case DECLINED -> "Пользователь отклонил приглашение";
+            case CANCELED -> "Вы отменили приглашение";
+            case EXPIRED -> "Срок действия ссылки истек";
         };
     }
 
@@ -53,6 +64,7 @@ public record TeamInvitationView(
             case ACCEPTED -> "accepted";
             case DECLINED -> "declined";
             case CANCELED -> "canceled";
+            case EXPIRED -> "expired";
         };
     }
 

@@ -4,11 +4,19 @@ import dev.gushchin.taskmanager.exception.InvalidAccountTokenException;
 import dev.gushchin.taskmanager.exception.TeamInvitationNotFoundException;
 import dev.gushchin.taskmanager.exception.TeamInvitationNotPendingException;
 import dev.gushchin.taskmanager.model.EmailVerificationResendState;
+import dev.gushchin.taskmanager.model.EmailVerificationResult;
+import dev.gushchin.taskmanager.model.User;
+import dev.gushchin.taskmanager.security.AuthUser;
+import dev.gushchin.taskmanager.security.EmailVerificationAuthenticationService;
 import dev.gushchin.taskmanager.security.SafeRedirectAuthenticationSuccessHandler;
 import dev.gushchin.taskmanager.service.EmailVerificationService;
 import dev.gushchin.taskmanager.service.TeamInvitationService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,20 +30,30 @@ import org.springframework.web.util.UriComponentsBuilder;
 @RequiredArgsConstructor
 public class EmailVerificationController {
     private static final String ERROR_MESSAGE_ATTRIBUTE = "errorMessage";
+    private static final String INVITATIONS_PATH_PREFIX = "/invitations/";
     private static final String INVITE_PARAMETER = "invite";
     private static final String LOGIN_PATH = "/login";
-    private static final String NEUTRAL_RESEND_MESSAGE =
-            "Если аккаунт с таким email существует, мы отправили письмо для подтверждения";
+    private static final String NEUTRAL_RESEND_MESSAGE = "Отправили вам новое письмо с подтверждением почты";
     private static final String REDIRECT_PREFIX = "redirect:";
     private static final String SUCCESS_MESSAGE_ATTRIBUTE = "successMessage";
+    private static final String TASKS_PATH = "/tasks";
+    private static final String VERIFICATION_AUTO_LOGIN_EMAIL_SESSION_ATTRIBUTE = "verificationAutoLoginEmail";
     private static final String VERIFICATION_EMAIL_SESSION_ATTRIBUTE = "verificationEmail";
     private static final String VERIFICATION_INVITE_SESSION_ATTRIBUTE = "verificationInvite";
-    private static final String VERIFICATION_INVALID_MESSAGE = "Ссылка подтверждения недействительна или устарела";
+    private static final String VERIFICATION_INVALID_MESSAGE =
+            "Ссылка подтверждения почты недействительна или устарела";
+    private static final String VERIFICATION_LOGIN_PARAMETER = "verification";
     private static final String VERIFICATION_PENDING_PATH = "/verification-pending";
     private static final String VERIFICATION_REDIRECT_SESSION_ATTRIBUTE = "verificationRedirect";
-    private static final String VERIFICATION_SUCCESS_MESSAGE = "Email подтверждён. Теперь вы можете войти";
+    private static final String VERIFICATION_SUCCESS_MESSAGE = "Email подтвержден";
+    private static final String VERIFICATION_SUCCESS_LOGIN_MESSAGE = "Email подтвержден. Выполните вход";
+    private static final String VERIFICATION_ALREADY_CONFIRMED_MESSAGE =
+            "Ваш email уже подтвержден. Эта ссылка больше недействительна";
+    private static final String VERIFICATION_ALREADY_CONFIRMED_LOGIN_MESSAGE =
+            "Ваш email уже подтвержден. Выполните вход. Эта ссылка больше недействительна";
 
     private final EmailVerificationService emailVerificationService;
+    private final EmailVerificationAuthenticationService emailVerificationAuthenticationService;
     private final TeamInvitationService teamInvitationService;
 
     @GetMapping(VERIFICATION_PENDING_PATH)
@@ -80,20 +98,143 @@ public class EmailVerificationController {
     public String verify(
             @PathVariable String token,
             @RequestParam(required = false) String invite,
+            Authentication authentication,
+            HttpServletRequest request,
+            HttpServletResponse response,
             RedirectAttributes redirectAttributes) {
         try {
-            emailVerificationService.verify(token);
-            redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, VERIFICATION_SUCCESS_MESSAGE);
-
+            EmailVerificationResult result = emailVerificationService.verify(token);
             String validInvite = getValidInvite(invite);
+            if (result.alreadyVerified()) {
+                return handleAlreadyVerified(result.user(), authentication, request, validInvite, redirectAttributes);
+            }
 
-            return REDIRECT_PREFIX
-                    + buildLoginUrl(validInvite == null ? null : "/invitations/" + validInvite, validInvite);
+            return handleVerified(result.user(), authentication, request, response, validInvite, redirectAttributes);
         } catch (InvalidAccountTokenException ex) {
             redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, VERIFICATION_INVALID_MESSAGE);
 
-            return REDIRECT_PREFIX + LOGIN_PATH;
+            return REDIRECT_PREFIX + buildLoginUrl(null, null);
         }
+    }
+
+    private String handleVerified(
+            User user,
+            Authentication authentication,
+            HttpServletRequest request,
+            HttpServletResponse response,
+            String invite,
+            RedirectAttributes redirectAttributes) {
+        HttpSession session = request.getSession(false);
+        if (isAuthenticatedAs(authentication, user)) {
+            String target = getVerificationTarget(session, invite);
+            clearVerificationContext(session);
+            redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, VERIFICATION_SUCCESS_MESSAGE);
+
+            return REDIRECT_PREFIX + target;
+        }
+
+        if (canAuthenticate(session, authentication, user)) {
+            final String target = getVerificationTarget(session, invite);
+            emailVerificationAuthenticationService.authenticate(user, request, response);
+            clearVerificationContext(request.getSession(false));
+            saveSuccessMessage(request, VERIFICATION_SUCCESS_MESSAGE);
+
+            return REDIRECT_PREFIX + target;
+        }
+
+        String loginUrl = getVerificationLoginUrl(session, invite);
+        clearVerificationContext(session);
+        redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, VERIFICATION_SUCCESS_LOGIN_MESSAGE);
+
+        return REDIRECT_PREFIX + loginUrl;
+    }
+
+    private String handleAlreadyVerified(
+            User user,
+            Authentication authentication,
+            HttpServletRequest request,
+            String invite,
+            RedirectAttributes redirectAttributes) {
+        if (isAuthenticatedAs(authentication, user)) {
+            redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, VERIFICATION_ALREADY_CONFIRMED_MESSAGE);
+
+            return REDIRECT_PREFIX + TASKS_PATH;
+        }
+
+        HttpSession session = request.getSession(false);
+        String loginUrl = getVerificationLoginUrl(session, invite);
+        clearVerificationContext(session);
+        redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, VERIFICATION_ALREADY_CONFIRMED_LOGIN_MESSAGE);
+
+        return REDIRECT_PREFIX + loginUrl;
+    }
+
+    private boolean canAuthenticate(HttpSession session, Authentication authentication, User user) {
+        if (isAuthenticated(authentication) || session == null) {
+            return false;
+        }
+
+        String verificationEmail = (String) session.getAttribute(VERIFICATION_AUTO_LOGIN_EMAIL_SESSION_ATTRIBUTE);
+
+        return verificationEmail != null && verificationEmail.equalsIgnoreCase(user.getEmail());
+    }
+
+    private boolean isAuthenticatedAs(Authentication authentication, User user) {
+        return isAuthenticated(authentication)
+                && authentication.getPrincipal() instanceof AuthUser authUser
+                && authUser.getId().equals(user.getId());
+    }
+
+    private boolean isAuthenticated(Authentication authentication) {
+        return authentication != null
+                && authentication.isAuthenticated()
+                && !(authentication instanceof AnonymousAuthenticationToken);
+    }
+
+    private String getVerificationTarget(HttpSession session, String invite) {
+        if (session == null) {
+            return invite == null ? TASKS_PATH : INVITATIONS_PATH_PREFIX + invite;
+        }
+
+        String redirect = getSafeRedirect((String) session.getAttribute(VERIFICATION_REDIRECT_SESSION_ATTRIBUTE));
+        if (redirect != null) {
+            return redirect;
+        }
+
+        String sessionInvite = getValidInvite((String) session.getAttribute(VERIFICATION_INVITE_SESSION_ATTRIBUTE));
+
+        String targetInvite = sessionInvite == null ? invite : sessionInvite;
+
+        return targetInvite == null ? TASKS_PATH : INVITATIONS_PATH_PREFIX + targetInvite;
+    }
+
+    private String getVerificationLoginUrl(HttpSession session, String invite) {
+        if (session == null) {
+            return buildLoginUrl(invite == null ? null : INVITATIONS_PATH_PREFIX + invite, invite);
+        }
+
+        String redirect = getSafeRedirect((String) session.getAttribute(VERIFICATION_REDIRECT_SESSION_ATTRIBUTE));
+        String sessionInvite = getValidInvite((String) session.getAttribute(VERIFICATION_INVITE_SESSION_ATTRIBUTE));
+        String targetInvite = sessionInvite == null ? invite : sessionInvite;
+        String targetRedirect =
+                redirect == null && targetInvite != null ? INVITATIONS_PATH_PREFIX + targetInvite : redirect;
+
+        return buildLoginUrl(targetRedirect, targetInvite);
+    }
+
+    private void clearVerificationContext(HttpSession session) {
+        if (session == null) {
+            return;
+        }
+
+        session.removeAttribute(VERIFICATION_EMAIL_SESSION_ATTRIBUTE);
+        session.removeAttribute(VERIFICATION_AUTO_LOGIN_EMAIL_SESSION_ATTRIBUTE);
+        session.removeAttribute(VERIFICATION_REDIRECT_SESSION_ATTRIBUTE);
+        session.removeAttribute(VERIFICATION_INVITE_SESSION_ATTRIBUTE);
+    }
+
+    private void saveSuccessMessage(HttpServletRequest request, String message) {
+        request.getSession().setAttribute(VerificationMessageViewAdvice.SESSION_ATTRIBUTE, message);
     }
 
     private Object getModelAttribute(Model model, String attribute) {
@@ -128,7 +269,8 @@ public class EmailVerificationController {
     }
 
     private String buildLoginUrl(String redirect, String invite) {
-        UriComponentsBuilder builder = UriComponentsBuilder.fromPath(LOGIN_PATH);
+        UriComponentsBuilder builder =
+                UriComponentsBuilder.fromPath(LOGIN_PATH).queryParam(VERIFICATION_LOGIN_PARAMETER, true);
         if (redirect != null) {
             builder.queryParam(SafeRedirectAuthenticationSuccessHandler.REDIRECT_PARAMETER, redirect);
         }

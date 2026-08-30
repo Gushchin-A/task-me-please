@@ -20,6 +20,9 @@ public final class AccountTokenMapper {
                 record.getTokenHash(),
                 record.getExpiresAt().toInstant(),
                 record.getUsedAt() == null ? null : record.getUsedAt().toInstant(),
+                record.getInvalidatedAt() == null
+                        ? null
+                        : record.getInvalidatedAt().toInstant(),
                 record.getCreatedAt().toInstant());
     }
 }

@@ -43,6 +43,7 @@ public class RegistrationController {
     private static final String SUCCESS_MESSAGE_ATTRIBUTE = "successMessage";
     private static final String UNVERIFIED_EMAIL_ATTRIBUTE = "unverifiedEmail";
     private static final String USER_ALREADY_EXISTS_ERROR_MESSAGE = "Пользователь с таким email уже зарегистрирован";
+    private static final String VERIFICATION_AUTO_LOGIN_EMAIL_SESSION_ATTRIBUTE = "verificationAutoLoginEmail";
     private static final String VERIFICATION_EMAIL_SESSION_ATTRIBUTE = "verificationEmail";
     private static final String VERIFICATION_INVITE_SESSION_ATTRIBUTE = "verificationInvite";
     private static final String VERIFICATION_PENDING_REDIRECT = "redirect:/verification-pending";
@@ -58,10 +59,11 @@ public class RegistrationController {
     public String loginPage(
             @RequestParam(required = false) String redirect,
             @RequestParam(required = false) String invite,
+            @RequestParam(defaultValue = "false") boolean verification,
             Authentication authentication,
             Model model,
             CsrfToken csrfToken) {
-        if (isAuthenticated(authentication)) {
+        if (isAuthenticated(authentication) && !verification) {
             return REDIRECT_TASKS;
         }
 
@@ -200,6 +202,7 @@ public class RegistrationController {
     }
 
     private void saveVerificationContext(HttpSession session, String email, String redirect, String invite) {
+        session.setAttribute(VERIFICATION_AUTO_LOGIN_EMAIL_SESSION_ATTRIBUTE, email);
         session.setAttribute(VERIFICATION_EMAIL_SESSION_ATTRIBUTE, email);
         session.setAttribute(VERIFICATION_REDIRECT_SESSION_ATTRIBUTE, getSafeRedirect(redirect));
         session.setAttribute(VERIFICATION_INVITE_SESSION_ATTRIBUTE, getInvite(invite));

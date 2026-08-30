@@ -85,11 +85,17 @@
         <dl class="task-card-people">
             <div>
                 <dt>Автор</dt>
-                <dd class="${task.authorRemovedFromTeam() ? "task-card-former-member" : ""}">${task.authorName()}</dd>
+                <dd
+                    class="${task.authorRemovedFromTeam() ? "task-card-former-member" : ""}"
+                    title="${task.participants().author().removedFromTeamTitle()}"
+                >${task.authorName()}</dd>
             </div>
             <div>
                 <dt>Исполнитель</dt>
-                <dd class="${task.assigneeRemovedFromTeam() ? "task-card-former-member" : ""}">${task.assigneeName()}</dd>
+                <dd
+                    class="${task.assigneeRemovedFromTeam() ? "task-card-former-member" : ""}"
+                    title="${task.participants().assignee().removedFromTeamTitle()}"
+                >${task.assigneeName()}</dd>
             </div>
         </dl>
 
