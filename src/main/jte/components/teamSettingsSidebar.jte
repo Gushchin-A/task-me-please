@@ -23,21 +23,28 @@
         >
             Участники
         </a>
-        <a
-            class="${"invitations".equals(activeSection) ? "team-settings-nav-active" : ""}"
-            href="/teams/${team.getId()}/invite"
-            aria-current="${"invitations".equals(activeSection) ? "page" : null}"
-        >
-            Приглашения
-        </a>
-
         @if(owner)
+            <a
+                class="${"invitations".equals(activeSection) ? "team-settings-nav-active" : ""}"
+                href="/teams/${team.getId()}/invite"
+                aria-current="${"invitations".equals(activeSection) ? "page" : null}"
+            >
+                Приглашения
+            </a>
             <a
                 class="${"delete".equals(activeSection) ? "team-settings-nav-active" : ""}"
                 href="/teams/${team.getId()}/settings?section=delete"
                 aria-current="${"delete".equals(activeSection) ? "page" : null}"
             >
                 Удаление команды
+            </a>
+        @else
+            <a
+                class="${"leave".equals(activeSection) ? "team-settings-nav-active" : ""}"
+                href="/teams/${team.getId()}/settings?section=leave"
+                aria-current="${"leave".equals(activeSection) ? "page" : null}"
+            >
+                Покинуть команду
             </a>
         @endif
     </nav>

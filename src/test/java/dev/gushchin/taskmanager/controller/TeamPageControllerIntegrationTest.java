@@ -180,7 +180,8 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("href=\"/teams/" + team.getId() + "/archive\"")))
                 .andExpect(content().string(not(containsString("href=\"#\""))))
                 .andExpect(content().string(containsString("Участники")))
-                .andExpect(content().string(containsString("Приглашения")))
+                .andExpect(content().string(containsString("Покинуть команду")))
+                .andExpect(content().string(not(containsString("Приглашения"))))
                 .andExpect(content().string(not(containsString("class=\"nav-count\""))));
     }
 
@@ -266,10 +267,28 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    void memberShouldNotOpenTeamSettings() throws Exception {
+    void memberShouldOpenMembersAsDefaultTeamSettings() throws Exception {
         mockMvc.perform(get("/teams/" + team.getId() + "/settings").with(user(new AuthUser(member))))
-                .andExpect(status().isNotFound())
-                .andExpect(view().name("error/404"));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/members"));
+    }
+
+    @Test
+    void memberShouldOpenLeaveTeamSettings() throws Exception {
+        mockMvc.perform(get("/teams/" + team.getId() + "/settings")
+                        .param("section", "leave")
+                        .with(user(new AuthUser(member))))
+                .andExpect(status().isOk())
+                .andExpect(view().name("teams/settings"))
+                .andExpect(content().string(containsString("<h1>Покинуть команду</h1>")))
+                .andExpect(content().string(containsString("все ее задачи, включая ваши, будут недоступны")))
+                .andExpect(content().string(containsString("data-team-leave-dialog")))
+                .andExpect(content().string(containsString("data-team-leave-open")))
+                .andExpect(content()
+                        .string(containsString("Вы уверены, что хотите покинуть команду «" + team.getName() + "»?")))
+                .andExpect(content().string(containsString("«да хочу выйти из команды»")))
+                .andExpect(content().string(not(containsString("Основные настройки"))))
+                .andExpect(content().string(not(containsString("Приглашения"))));
     }
 
     @Test
@@ -397,6 +416,23 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("class=\"page-actions tasks-onboarding-actions\"")))
                 .andExpect(content().string(containsString("class=\"button button-primary task-create-action\"")))
                 .andExpect(content().string(containsString("href=\"/tasks/new?teamId=" + emptyTeam.getId() + "\"")));
+    }
+
+    @Test
+    void memberWithoutVisibleTasksShouldSeePersonalTeamBlankSlate() throws Exception {
+        Task visibleTask = taskService.findByTeamId(team.getId()).stream()
+                .filter(task -> "Visible task".equals(task.getTitle()))
+                .findFirst()
+                .orElseThrow();
+        taskService.updateAssignee(visibleTask.getId(), owner.getId(), owner.getId());
+
+        mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(member))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("В этой команде у вас пока нет задач")))
+                .andExpect(content()
+                        .string(containsString(
+                                "Дождитесь, пока вам поставят задачу, или создайте свою и назначьте ответственного.")))
+                .andExpect(content().string(not(containsString("В команде пока нет задач"))));
     }
 
     @Test
@@ -675,8 +711,70 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
     void memberShouldNotSeeRemoveActions() throws Exception {
         mockMvc.perform(get("/teams/" + team.getId() + "/members").with(user(new AuthUser(member))))
                 .andExpect(status().isOk())
+                .andExpect(content()
+                        .string(containsString("Актуальный список участников команды «" + team.getName() + "»")))
+                .andExpect(content().string(containsString("team-member-list-read-only")))
+                .andExpect(content().string(containsString(owner.getEmail())))
+                .andExpect(content().string(containsString("Владелец")))
+                .andExpect(content().string(containsString("Покинуть команду")))
+                .andExpect(content().string(not(containsString("data-team-visibility-form"))))
                 .andExpect(content().string(not(containsString("data-team-member-remove-open"))))
                 .andExpect(content().string(not(containsString("data-team-member-remove-dialog"))));
+    }
+
+    @Test
+    void memberShouldLeaveTeamAfterConfirmation() throws Exception {
+        mockMvc.perform(post("/teams/" + team.getId() + "/leave")
+                        .with(csrf())
+                        .with(user(new AuthUser(member)))
+                        .param("confirmationText", "да хочу выйти из команды"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams"))
+                .andExpect(flash().attribute("successMessage", "Вы покинули команду «" + team.getName() + "»"));
+
+        TeamMember formerMember = teamMemberRepository.findByTeamIdAndUserId(team.getId(), member.getId());
+
+        assertTrue(formerMember.isDeleted());
+    }
+
+    @Test
+    void memberShouldRemainInTeamWhenLeaveConfirmationIsInvalid() throws Exception {
+        mockMvc.perform(post("/teams/" + team.getId() + "/leave")
+                        .with(csrf())
+                        .with(user(new AuthUser(member)))
+                        .param("confirmationText", "да"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId() + "/settings?section=leave"))
+                .andExpect(flash().attribute("errorMessage", "Проверочный текст введен неверно"));
+
+        TeamMember activeMember = teamMemberRepository.findByTeamIdAndUserId(team.getId(), member.getId());
+
+        assertFalse(activeMember.isDeleted());
+    }
+
+    @Test
+    void ownerShouldNotLeaveTeam() throws Exception {
+        mockMvc.perform(post("/teams/" + team.getId() + "/leave")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("confirmationText", "да хочу выйти из команды"))
+                .andExpect(status().isNotFound());
+
+        TeamMember ownerMember = teamMemberRepository.findByTeamIdAndUserId(team.getId(), owner.getId());
+
+        assertFalse(ownerMember.isDeleted());
+    }
+
+    @Test
+    void leaveTeamShouldRequireCsrf() throws Exception {
+        mockMvc.perform(post("/teams/" + team.getId() + "/leave")
+                        .with(user(new AuthUser(member)))
+                        .param("confirmationText", "да хочу выйти из команды"))
+                .andExpect(status().isForbidden());
+
+        TeamMember activeMember = teamMemberRepository.findByTeamIdAndUserId(team.getId(), member.getId());
+
+        assertFalse(activeMember.isDeleted());
     }
 
     @Test

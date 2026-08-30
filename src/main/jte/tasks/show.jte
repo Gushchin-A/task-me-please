@@ -167,7 +167,12 @@
                 </form>
             </div>
 
-            <div class="task-parameter-row ${!task.canUpdateTask() ? "task-parameter-read-only" : ""}">
+            <div
+                class="task-parameter-row ${!task.canUpdateTask() ? "task-parameter-read-only" : ""}"
+                data-tooltip="${!task.canUpdateTask() ? "Редактирование доступно только автору задачи" : null}"
+                data-tooltip-disabled="${!task.canUpdateTask() ? true : null}"
+                data-task-read-only-tooltip="${!task.canUpdateTask() ? true : null}"
+            >
                 <span class="task-parameter-heading">Дедлайн</span>
                 <span class="task-parameter-value" data-task-parameter-value>${task.deadlineText()}</span>
                 <form method="post" action="/tasks/${task.id()}/deadline" hidden data-task-parameter-form>
@@ -177,14 +182,19 @@
                 </form>
             </div>
 
-            <div class="task-parameter-row">
+            <div class="task-parameter-row task-parameter-team-row">
                 <span class="task-parameter-heading">Команда</span>
                 <a class="task-parameter-value task-parameter-team" href="/teams/${team.getId()}">
                     ${team.getName()}
                 </a>
             </div>
 
-            <div class="task-parameter-row ${!task.canUpdateTask() ? "task-parameter-read-only" : ""}">
+            <div
+                class="task-parameter-row ${!task.canUpdateTask() ? "task-parameter-read-only" : ""}"
+                data-tooltip="${!task.canUpdateTask() ? "Редактирование доступно только автору задачи" : null}"
+                data-tooltip-disabled="${!task.canUpdateTask() ? true : null}"
+                data-task-read-only-tooltip="${!task.canUpdateTask() ? true : null}"
+            >
                 <span class="task-parameter-heading">Автор</span>
                 <span class="task-parameter-value task-parameter-person ${task.authorRemovedFromTeam() ? "task-card-former-member" : ""}" title="${task.participants().author().removedFromTeamTitle()}" data-task-parameter-value>
                     <span class="task-parameter-avatar" aria-hidden="true">${task.participants().author().initial()}</span>
@@ -193,7 +203,21 @@
                 <form method="post" action="/tasks/${task.id()}/author" hidden data-task-parameter-form>
                     <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
                     <input type="hidden" name="returnTo" value="task">
-                    <select name="authorId" data-original-value="${task.authorId().toString()}" data-participant-select disabled="${!task.canUpdateTask()}">
+                    <select
+                        name="authorId"
+                        data-original-value="${task.authorId().toString()}"
+                        data-participant-select
+                        data-tooltip="${task.authorChangeWarningText()}"
+                        data-author-change-warning="${task.showAuthorChangeWarning() ? true : null}"
+                        data-current-author-id="${task.showAuthorChangeWarning() ? task.authorId().toString() : null}"
+                        data-access-warning="${task.showAuthorChangeWarning()
+                            ? "После смены автора вы потеряете доступ к этой задаче"
+                            : null}"
+                        data-edit-warning="${task.showAuthorChangeWarning()
+                            ? "После смены автора вы не сможете редактировать задачу"
+                            : null}"
+                        disabled="${!task.canUpdateTask()}"
+                    >
                         <option value="${task.authorId().toString()}" selected>${task.authorName()}</option>
                         @for(TaskParticipantView member : members)
                             @if(!member.id().equals(task.authorId()))
@@ -204,7 +228,12 @@
                 </form>
             </div>
 
-            <div class="task-parameter-row ${!task.canUpdateTask() ? "task-parameter-read-only" : ""}">
+            <div
+                class="task-parameter-row ${!task.canUpdateTask() ? "task-parameter-read-only" : ""}"
+                data-tooltip="${!task.canUpdateTask() ? "Редактирование доступно только автору задачи" : null}"
+                data-tooltip-disabled="${!task.canUpdateTask() ? true : null}"
+                data-task-read-only-tooltip="${!task.canUpdateTask() ? true : null}"
+            >
                 <span class="task-parameter-heading">Исполнитель</span>
                 <span class="task-parameter-value task-parameter-person ${task.assigneeRemovedFromTeam() ? "task-card-former-member" : ""}" title="${task.participants().assignee().removedFromTeamTitle()}" data-task-parameter-value>
                     <span class="task-parameter-avatar" aria-hidden="true">${task.participants().assignee().initial()}</span>
@@ -224,7 +253,12 @@
                 </form>
             </div>
 
-            <div class="task-parameter-row ${!task.canUpdateTask() ? "task-parameter-read-only" : ""}">
+            <div
+                class="task-parameter-row ${!task.canUpdateTask() ? "task-parameter-read-only" : ""}"
+                data-tooltip="${!task.canUpdateTask() ? "Редактирование доступно только автору задачи" : null}"
+                data-tooltip-disabled="${!task.canUpdateTask() ? true : null}"
+                data-task-read-only-tooltip="${!task.canUpdateTask() ? true : null}"
+            >
                 <span class="task-parameter-heading">Тег</span>
                 <span class="task-parameter-value task-detail-tag" data-task-parameter-value>${task.tagName()}</span>
                 <form method="post" action="/tasks/${task.id()}/tag" hidden data-task-parameter-form>

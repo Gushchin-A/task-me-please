@@ -107,4 +107,14 @@ public class TeamMemberService {
 
         return teamMemberRepository.softDelete(teamId, userId);
     }
+
+    public TeamMember leaveTeam(Long teamId, UUID currentUserId) {
+        TeamMember currentMember = findById(teamId, currentUserId);
+
+        if (currentMember.getRole() == TeamMemberRole.OWNER) {
+            throw new AccessDeniedForTaskException();
+        }
+
+        return teamMemberRepository.softDelete(teamId, currentUserId);
+    }
 }

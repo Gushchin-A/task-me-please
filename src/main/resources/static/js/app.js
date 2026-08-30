@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
     setupProfileMenu();
     setupFlashMessages();
-    setupTooltips();
     setupSubmitLoading();
     setupToolbarPopovers();
     setupToolbarSelects();
@@ -12,6 +11,7 @@ document.addEventListener('DOMContentLoaded', function () {
     setupInvitationActions();
     setupInvitationDecisionDialog();
     setupTaskDetail();
+    setupTooltips();
 });
 
 function setupInvitationDecisionDialog() {
@@ -296,6 +296,7 @@ function setupTaskDetail() {
     const cancel = parameters.querySelector('[data-task-parameters-cancel]');
     const save = parameters.querySelector('[data-task-parameters-save]');
     const stateAction = parameters.querySelector('[data-task-parameters-state-action]');
+    const readOnlyTooltips = parameters.querySelectorAll('[data-task-read-only-tooltip]');
     const parameterSelects = [];
 
     if (editOpen === null || actions === null || cancel === null || save === null) {
@@ -358,6 +359,9 @@ function setupTaskDetail() {
         trigger.disabled = nativeSelect.disabled;
         trigger.setAttribute('aria-haspopup', 'listbox');
         trigger.setAttribute('aria-expanded', 'false');
+        if (nativeSelect.dataset.tooltip) {
+            trigger.dataset.tooltip = nativeSelect.dataset.tooltip;
+        }
         value.className = 'primer-select-value';
         panel.className = 'primer-select-panel';
         panel.hidden = true;
@@ -455,7 +459,30 @@ function setupTaskDetail() {
         save.disabled = !hasChanges();
     }
 
+    function updateAuthorChangeWarning() {
+        const authorSelect = parameterSelects.find(function (select) {
+            return select.nativeSelect.hasAttribute('data-author-change-warning');
+        });
+        const assigneeForm = forms.find(function (form) {
+            return form.querySelector('select[name="assigneeId"]') !== null;
+        });
+
+        if (authorSelect === undefined || assigneeForm === undefined) {
+            return;
+        }
+
+        const assigneeSelect = assigneeForm.querySelector('select[name="assigneeId"]');
+
+        authorSelect.trigger.dataset.tooltip = assigneeSelect.value === authorSelect.nativeSelect.dataset.currentAuthorId
+                ? authorSelect.nativeSelect.dataset.editWarning
+                : authorSelect.nativeSelect.dataset.accessWarning;
+    }
+
     function closeEditor() {
+        parameters.classList.remove('task-parameters-editing');
+        readOnlyTooltips.forEach(function (element) {
+            element.setAttribute('data-tooltip-disabled', 'true');
+        });
         forms.forEach(function (form) {
             form.reset();
             form.hidden = true;
@@ -464,6 +491,7 @@ function setupTaskDetail() {
             closeParameterSelect(select);
             syncParameterSelect(select);
         });
+        updateAuthorChangeWarning();
         values.forEach(function (value) {
             value.hidden = false;
         });
@@ -477,6 +505,10 @@ function setupTaskDetail() {
     }
 
     editOpen.addEventListener('click', function () {
+        parameters.classList.add('task-parameters-editing');
+        readOnlyTooltips.forEach(function (element) {
+            element.removeAttribute('data-tooltip-disabled');
+        });
         values.forEach(function (value) {
             value.hidden = true;
         });
@@ -496,7 +528,10 @@ function setupTaskDetail() {
     });
 
     forms.forEach(function (form) {
-        form.addEventListener('change', updateSaveState);
+        form.addEventListener('change', function () {
+            updateSaveState();
+            updateAuthorChangeWarning();
+        });
         form.addEventListener('input', updateSaveState);
     });
 
@@ -509,11 +544,18 @@ function setupTaskDetail() {
     });
 
     save.addEventListener('click', async function () {
-        const changedForms = forms.filter(function (form) {
-            const control = form.querySelector('select, input[type="date"]');
+        const changedForms = forms
+                .filter(function (form) {
+                    const control = form.querySelector('select, input[type="date"]');
 
-            return !control.disabled && control.value !== control.dataset.originalValue;
-        });
+                    return !control.disabled && control.value !== control.dataset.originalValue;
+                })
+                .sort(function (firstForm, secondForm) {
+                    const firstIsAssignee = firstForm.querySelector('select[name="assigneeId"]') !== null;
+                    const secondIsAssignee = secondForm.querySelector('select[name="assigneeId"]') !== null;
+
+                    return Number(secondIsAssignee) - Number(firstIsAssignee);
+                });
 
         save.disabled = true;
 
@@ -572,6 +614,19 @@ function setupTaskCards() {
         const selects = dialog.querySelectorAll('[data-task-edit-select]');
         const closeButtons = dialog.querySelectorAll('[data-task-edit-close], [data-task-edit-cancel]');
         const originalValues = new URLSearchParams(new FormData(form)).toString();
+        const authorWarningTrigger = dialog.querySelector('[data-author-change-warning]');
+
+        function updateAuthorChangeWarning() {
+            const assigneeInput = form.querySelector('input[name="assigneeId"]');
+
+            if (authorWarningTrigger === null || assigneeInput === null) {
+                return;
+            }
+
+            authorWarningTrigger.dataset.tooltip = assigneeInput.value === authorWarningTrigger.dataset.currentAuthorId
+                    ? authorWarningTrigger.dataset.editWarning
+                    : authorWarningTrigger.dataset.accessWarning;
+        }
 
         function closeSelect(select) {
             const trigger = select.querySelector(':scope > .primer-select-trigger');
@@ -586,11 +641,14 @@ function setupTaskCards() {
                     closeSelect(select);
                 }
             });
+            updateAuthorChangeWarning();
         }
 
         function resetTaskForm() {
             form.reset();
-            titleLength.textContent = titleInput.value.length;
+            if (titleInput !== null && titleLength !== null) {
+                titleLength.textContent = titleInput.value.length;
+            }
 
             selects.forEach(function (select) {
                 const hiddenInput = select.parentElement.querySelector('input[type="hidden"]');
@@ -607,7 +665,6 @@ function setupTaskCards() {
 
                 if (selectedOption) {
                     value.textContent = selectedOption.dataset.label;
-                    value.title = selectedOption.dataset.fullLabel || selectedOption.dataset.label;
 
                     if (selectedAvatar && selectedOption.dataset.avatar) {
                         selectedAvatar.textContent = selectedOption.dataset.avatar;
@@ -656,7 +713,6 @@ function setupTaskCards() {
 
                     hiddenInput.value = option.dataset.value;
                     value.textContent = option.dataset.label;
-                    value.title = option.dataset.fullLabel || option.dataset.label;
 
                     if (selectedAvatar && option.dataset.avatar) {
                         selectedAvatar.textContent = option.dataset.avatar;
@@ -678,14 +734,23 @@ function setupTaskCards() {
             resetTaskForm();
             updateSubmitState();
             dialog.showModal();
-            titleInput.focus();
+            const firstControl = titleInput === null
+                    ? dialog.querySelector('.primer-select-trigger')
+                    : titleInput;
+
+            firstControl.focus();
         });
 
         form.addEventListener('input', updateSubmitState);
-        form.addEventListener('change', updateSubmitState);
-        titleInput.addEventListener('input', function () {
-            titleLength.textContent = titleInput.value.length;
+        form.addEventListener('change', function () {
+            updateSubmitState();
+            updateAuthorChangeWarning();
         });
+        if (titleInput !== null && titleLength !== null) {
+            titleInput.addEventListener('input', function () {
+                titleLength.textContent = titleInput.value.length;
+            });
+        }
 
         closeButtons.forEach(function (button) {
             button.addEventListener('click', closeDialog);
@@ -764,6 +829,7 @@ function setupTeamSettings() {
     }
 
     setupTeamDeleteDialog();
+    setupTeamLeaveDialog();
     setupTeamMemberRemoveDialog();
 
     const dialog = document.querySelector('[data-tag-rename-dialog]');
@@ -860,6 +926,38 @@ function setupTeamDeleteDialog() {
     });
 
     dialog.querySelector('[data-team-delete-close]').addEventListener('click', function () {
+        dialog.close();
+    });
+
+    dialog.addEventListener('click', function (event) {
+        if (event.target === dialog) {
+            dialog.close();
+        }
+    });
+}
+
+function setupTeamLeaveDialog() {
+    const dialog = document.querySelector('[data-team-leave-dialog]');
+
+    if (dialog === null) {
+        return;
+    }
+
+    const input = dialog.querySelector('[data-team-leave-input]');
+    const submit = dialog.querySelector('[data-team-leave-submit]');
+
+    document.querySelector('[data-team-leave-open]').addEventListener('click', function () {
+        input.value = '';
+        submit.disabled = true;
+        dialog.showModal();
+        input.focus();
+    });
+
+    input.addEventListener('input', function () {
+        submit.disabled = input.value !== input.dataset.confirmationText;
+    });
+
+    dialog.querySelector('[data-team-leave-close]').addEventListener('click', function () {
         dialog.close();
     });
 
@@ -1166,6 +1264,14 @@ function setupTooltips() {
             }
 
             showTimer = window.setTimeout(function () {
+                const openDialog = element.closest('dialog[open]');
+
+                if (openDialog === null) {
+                    document.body.appendChild(tooltip);
+                } else {
+                    openDialog.appendChild(tooltip);
+                }
+
                 tooltip.textContent = element.dataset.tooltip;
                 tooltip.hidden = false;
 

@@ -134,6 +134,18 @@ public record TaskView(
         return state.showAuthorChangeWarning();
     }
 
+    public String authorChangeWarningText() {
+        if (!showAuthorChangeWarning()) {
+            return null;
+        }
+
+        if (authorId().equals(assigneeId())) {
+            return "После смены автора вы не сможете редактировать задачу";
+        }
+
+        return "После смены автора вы потеряете доступ к этой задаче";
+    }
+
     public String deadlineText() {
         String deadlineText;
 

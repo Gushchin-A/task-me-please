@@ -11,7 +11,6 @@
 @param List<TeamMemberView> members
 @param boolean canInvite
 @param boolean canManageVisibility
-@param boolean canSeeMemberPrivateData
 @param CsrfToken _csrf
 @param String successMessage
 @param String errorMessage
@@ -36,12 +35,14 @@
             <div class="team-settings-content">
                 <header class="team-create-header team-settings-header">
                     <h1>Участники</h1>
-                    <p>Настройте, видит ли участник все задачи команды или только задачи, где он автор или исполнитель</p>
+                    <p>${canManageVisibility
+                        ? "Настройте, видит ли участник все задачи команды или только задачи, где он автор или исполнитель"
+                        : "Актуальный список участников команды «" + team.getName() + "»"}</p>
                 </header>
 
-                <div class="team-member-list">
+                <div class="${canManageVisibility ? "team-member-list" : "team-member-list team-member-list-read-only"}">
                     @for(TeamMemberView member : members)
-                        <div class="team-member-row">
+                        <div class="${canManageVisibility ? "team-member-row" : "team-member-row team-member-row-read-only"}">
                             <div class="team-member-profile">
                                 <span
                                     class="team-member-avatar"
@@ -51,20 +52,19 @@
                                 </span>
                                 <div class="team-member-identity">
                                     <strong title="${member.name()}">${member.displayName()}</strong>
-                                    @if(canSeeMemberPrivateData)
-                                        <span>${member.email()}</span>
-                                    @endif
+                                    <span>${member.email()}</span>
                                 </div>
                             </div>
 
                             <div class="team-member-role-cell">
-                                @if(canSeeMemberPrivateData && member.role() == TeamMemberRole.OWNER)
+                                @if(member.role() == TeamMemberRole.OWNER)
                                     <span class="team-member-role task-card-deadline">Владелец</span>
                                 @endif
                             </div>
 
-                            <div class="team-member-visibility">
-                                @if(canManageVisibility && member.role() != TeamMemberRole.OWNER)
+                            @if(canManageVisibility)
+                                <div class="team-member-visibility">
+                                @if(member.role() != TeamMemberRole.OWNER)
                                     <form
                                         class="team-member-visibility-control"
                                         method="post"
@@ -101,10 +101,10 @@
                                 @endif
                                 <span data-team-visibility-status>${member.taskVisibility() == TeamTaskVisibility.ALL_TASKS
                                     ? "Видит все задачи" : "Видит только свои задачи"}</span>
-                            </div>
+                                </div>
 
-                            <div class="team-member-remove-cell">
-                                @if(canManageVisibility && member.role() != TeamMemberRole.OWNER)
+                                <div class="team-member-remove-cell">
+                                @if(member.role() != TeamMemberRole.OWNER)
                                     <button
                                         class="task-detail-icon-button"
                                         type="button"
@@ -121,7 +121,8 @@
                                         </svg>
                                     </button>
                                 @endif
-                            </div>
+                                </div>
+                            @endif
                         </div>
                     @endfor
                 </div>

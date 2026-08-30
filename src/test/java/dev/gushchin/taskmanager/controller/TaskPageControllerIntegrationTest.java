@@ -401,6 +401,7 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                         .with(user(new AuthUser(owner)))
                         .param("title", "Updated title")
                         .param("status", TaskStatus.IN_PROGRESS.name())
+                        .param("authorId", secondUser.getId().toString())
                         .param("assigneeId", owner.getId().toString())
                         .param("deadlineDate", LocalDate.of(2035, 2, 10).toString())
                         .param("tagId", plusTag.getId().toString())
@@ -413,8 +414,133 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
         assertEquals("Updated title", updatedTask.getTitle());
         assertEquals("Task description", updatedTask.getDescription());
         assertEquals(TaskStatus.IN_PROGRESS, updatedTask.getStatus());
+        assertEquals(secondUser.getId(), updatedTask.getAuthorId());
         assertEquals(owner.getId(), updatedTask.getAssigneeId());
         assertEquals(plusTag.getId(), updatedTask.getTagId());
+    }
+
+    @Test
+    void taskAuthorShouldAtomicallyChangeAuthorAndAssigneeFromCardEndpoints() throws Exception {
+        Task myTasksTask = taskService.create(
+                team.getId(),
+                secondUser.getId(),
+                owner.getId(),
+                "My tasks card",
+                "Task description",
+                DEADLINE_DATE,
+                kinopoiskTag.getId());
+
+        mockMvc.perform(post("/tasks/" + myTasksTask.getId() + "/edit")
+                        .with(csrf())
+                        .with(user(new AuthUser(secondUser)))
+                        .param("title", myTasksTask.getTitle())
+                        .param("status", TaskStatus.IN_PROGRESS.name())
+                        .param("authorId", owner.getId().toString())
+                        .param("assigneeId", secondUser.getId().toString())
+                        .param("deadlineDate", DEADLINE_DATE.toString())
+                        .param("tagId", kinopoiskTag.getId().toString())
+                        .param("returnTo", "tasks"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks"));
+
+        Task updatedMyTasksTask = taskService.findById(myTasksTask.getId());
+
+        assertEquals(owner.getId(), updatedMyTasksTask.getAuthorId());
+        assertEquals(secondUser.getId(), updatedMyTasksTask.getAssigneeId());
+
+        Task teamTask = taskService.create(
+                team.getId(),
+                secondUser.getId(),
+                secondUser.getId(),
+                "Team card",
+                "Task description",
+                DEADLINE_DATE,
+                kinopoiskTag.getId());
+
+        mockMvc.perform(post("/tasks/" + teamTask.getId() + "/edit")
+                        .with(csrf())
+                        .with(user(new AuthUser(secondUser)))
+                        .param("title", teamTask.getTitle())
+                        .param("status", TaskStatus.DONE.name())
+                        .param("authorId", owner.getId().toString())
+                        .param("assigneeId", owner.getId().toString())
+                        .param("deadlineDate", DEADLINE_DATE.toString())
+                        .param("tagId", kinopoiskTag.getId().toString())
+                        .param("returnTo", "team"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId()));
+
+        Task updatedTeamTask = taskService.findById(teamTask.getId());
+
+        assertEquals(owner.getId(), updatedTeamTask.getAuthorId());
+        assertEquals(owner.getId(), updatedTeamTask.getAssigneeId());
+        assertEquals(TaskStatus.DONE, updatedTeamTask.getStatus());
+    }
+
+    @Test
+    void taskAuthorShouldSeeAuthorFieldAndAccessWarningInCardEditForm() throws Exception {
+        Task authoredTask = taskService.create(
+                team.getId(),
+                secondUser.getId(),
+                owner.getId(),
+                "Authored task",
+                "Task description",
+                DEADLINE_DATE,
+                kinopoiskTag.getId());
+
+        mockMvc.perform(get("/tasks").with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("id=\"task-author-" + authoredTask.getId() + "\"")))
+                .andExpect(content().string(containsString("name=\"authorId\"")))
+                .andExpect(content().string(containsString("Выберите автора")))
+                .andExpect(content().string(containsString("После смены автора вы потеряете доступ к этой задаче")));
+
+        mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("После смены автора вы потеряете доступ к этой задаче")));
+
+        mockMvc.perform(get("/tasks/" + authoredTask.getId()).with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("name=\"authorId\"")))
+                .andExpect(content().string(containsString("После смены автора вы потеряете доступ к этой задаче")));
+    }
+
+    @Test
+    void taskAuthorShouldSeeEditWarningWhenAlsoAssignedToTask() throws Exception {
+        Task authoredTask = taskService.create(
+                team.getId(),
+                secondUser.getId(),
+                secondUser.getId(),
+                "Self-assigned task",
+                "Task description",
+                DEADLINE_DATE,
+                kinopoiskTag.getId());
+
+        mockMvc.perform(get("/tasks/" + authoredTask.getId()).with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content()
+                        .string(containsString(
+                                "data-tooltip=\"После смены автора вы не сможете редактировать задачу\"")));
+    }
+
+    @Test
+    void taskAssigneeShouldSeeStatusOnlyCardEditorAndReadOnlyParameterTooltips() throws Exception {
+        mockMvc.perform(get("/tasks").with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-task-edit-open")))
+                .andExpect(content().string(containsString("action=\"/tasks/" + task.getId() + "/status\"")))
+                .andExpect(content().string(containsString("name=\"status\"")))
+                .andExpect(content().string(not(containsString("name=\"authorId\""))))
+                .andExpect(content().string(not(containsString("name=\"assigneeId\""))));
+
+        mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-task-edit-open")))
+                .andExpect(content().string(containsString("action=\"/tasks/" + task.getId() + "/status\"")));
+
+        mockMvc.perform(get("/tasks/" + task.getId()).with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Редактирование доступно только автору задачи")));
     }
 
     @Test

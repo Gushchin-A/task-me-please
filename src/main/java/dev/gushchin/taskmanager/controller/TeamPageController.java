@@ -67,7 +67,11 @@ public class TeamPageController {
     private static final String DELETE_TEAM_ERROR_MESSAGE = "Не удалось удалить команду";
     private static final String DELETE_TEAM_INVALID_CONFIRMATION_MESSAGE = "Проверочный текст введен неверно";
     private static final String DELETE_TEAM_SUCCESS_MESSAGE = "Команда успешно удалена";
+    private static final String LEAVE_TEAM_CONFIRMATION_TEXT = "да хочу выйти из команды";
+    private static final String LEAVE_TEAM_ERROR_MESSAGE = "Не удалось покинуть команду";
+    private static final String LEAVE_TEAM_INVALID_CONFIRMATION_MESSAGE = DELETE_TEAM_INVALID_CONFIRMATION_MESSAGE;
     private static final String MEMBERS_PATH_SUFFIX = "/members";
+    private static final String SETTINGS_SECTION_QUERY = "?section=";
     private static final String NAVIGATION_TEAMS_ATTRIBUTE = "navigationTeams";
     private static final String OWNER_INVITE_REQUIRED_MESSAGE_PREFIX =
             "Только owner команды может приглашать новых участников. ";
@@ -90,6 +94,7 @@ public class TeamPageController {
     private static final String TEAMS_SHOW_VIEW = "teams/show";
     private static final String TEAM_SETTINGS_PATH_SUFFIX = "/settings";
     private static final String TEAM_SETTINGS_SECTION_DELETE = "delete";
+    private static final String TEAM_SETTINGS_SECTION_LEAVE = "leave";
     private static final String TEAM_SETTINGS_SECTION_ATTRIBUTE = "settingsSection";
     private static final String TEAM_SETTINGS_SECTION_GENERAL = "general";
     private static final String TEAM_SETTINGS_VIEW = "teams/settings";
@@ -129,13 +134,7 @@ public class TeamPageController {
             TeamTaskFilterRequest request,
             Model model,
             CsrfToken csrfToken) {
-        TeamMember currentMember;
-
-        try {
-            currentMember = teamMemberService.findById(id, authUser.getId());
-        } catch (TeamMemberNotFoundException ex) {
-            return notFound();
-        }
+        TeamMember currentMember = findTeamMemberOrNotFound(id, authUser.getId());
 
         TaskStatus status = request.getStatus();
         TaskSort sort = request.getSort();
@@ -175,7 +174,8 @@ public class TeamPageController {
                         activeTasks.size(), archivedTasks.size(), sortedTasks.size(), teamMembers.size()),
                 stats,
                 new TeamPageView.TeamPageFilters(status, sort, authorId, assigneeId, tagId),
-                canInvite,
+                new TeamPageView.TeamPageAccess(
+                        canInvite, currentMember.getTaskVisibility() == TeamTaskVisibility.OWN_TASKS),
                 TaskListMode.ACTIVE);
 
         model.addAttribute(PAGE_ATTRIBUTE, page);
@@ -238,7 +238,8 @@ public class TeamPageController {
                         activeTasks.size(), archivedTasks.size(), sortedTasks.size(), teamMembers.size()),
                 stats,
                 new TeamPageView.TeamPageFilters(status, sort, authorId, assigneeId, tagId),
-                canInvite,
+                new TeamPageView.TeamPageAccess(
+                        canInvite, currentMember.getTaskVisibility() == TeamTaskVisibility.OWN_TASKS),
                 TaskListMode.ARCHIVE);
 
         model.addAttribute(PAGE_ATTRIBUTE, page);
@@ -251,23 +252,13 @@ public class TeamPageController {
     @GetMapping("/teams/{id}/members")
     public String showTeamMembers(
             @AuthenticationPrincipal AuthUser authUser, @PathVariable Long id, Model model, CsrfToken csrfToken) {
-        TeamMember currentMember;
-
-        try {
-            currentMember = teamMemberService.findById(id, authUser.getId());
-        } catch (TeamMemberNotFoundException ex) {
-            return notFound();
-        }
+        TeamMember currentMember = findTeamMemberOrNotFound(id, authUser.getId());
 
         Team team = teamService.findById(id);
         List<Task> tasks = taskService.findVisibleByTeamId(id, authUser.getId());
         List<TeamMember> members = teamMemberService.findByTeamId(id);
 
         boolean canManageVisibility = currentMember.getRole() == TeamMemberRole.OWNER;
-        boolean canSeeMemberDetails = currentMember.getRole() == TeamMemberRole.OWNER
-                || currentMember.getTaskVisibility() == TeamTaskVisibility.ALL_TASKS;
-        boolean canSeeMemberPrivateData = currentMember.getRole() == TeamMemberRole.OWNER;
-
         List<TeamMemberView> memberViews = members.stream()
                 .sorted(Comparator.comparing((TeamMember member) -> member.getRole() != TeamMemberRole.OWNER))
                 .map(member -> {
@@ -310,8 +301,6 @@ public class TeamPageController {
         model.addAttribute(CAN_INVITE_ATTRIBUTE, canInvite);
         model.addAttribute("currentUserId", authUser.getId());
         model.addAttribute("canManageVisibility", canManageVisibility);
-        model.addAttribute("canSeeMemberDetails", canSeeMemberDetails);
-        model.addAttribute("canSeeMemberPrivateData", canSeeMemberPrivateData);
         model.addAttribute("taskVisibilities", TeamTaskVisibility.values());
         model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
         addEmptyFlashAttributes(model);
@@ -368,19 +357,36 @@ public class TeamPageController {
             @RequestParam(defaultValue = TEAM_SETTINGS_SECTION_GENERAL) String section,
             Model model,
             CsrfToken csrfToken) {
-        if (!isTeamOwner(id, authUser.getId())) {
+        TeamMember currentMember;
+
+        try {
+            currentMember = teamMemberService.findById(id, authUser.getId());
+        } catch (TeamMemberNotFoundException ex) {
             return notFound();
         }
 
-        String settingsSection = TEAM_SETTINGS_SECTION_DELETE.equals(section)
-                ? TEAM_SETTINGS_SECTION_DELETE
-                : TEAM_SETTINGS_SECTION_GENERAL;
+        boolean owner = currentMember.getRole() == TeamMemberRole.OWNER;
+
+        if (!owner && !TEAM_SETTINGS_SECTION_LEAVE.equals(section)) {
+            return REDIRECT_TEAMS_PREFIX + id + MEMBERS_PATH_SUFFIX;
+        }
+
+        String settingsSection;
+
+        if (owner) {
+            settingsSection = TEAM_SETTINGS_SECTION_DELETE.equals(section)
+                    ? TEAM_SETTINGS_SECTION_DELETE
+                    : TEAM_SETTINGS_SECTION_GENERAL;
+        } else {
+            settingsSection = TEAM_SETTINGS_SECTION_LEAVE;
+        }
 
         model.addAttribute(TEAM_ATTRIBUTE, teamService.findById(id));
         model.addAttribute(NAVIGATION_TEAMS_ATTRIBUTE, teamService.findByUserId(authUser.getId()));
         model.addAttribute("tags", teamTagService.findByTeamId(id));
         model.addAttribute("usedTagIds", teamTagService.findUsedIdsByTeamId(id));
         model.addAttribute(TEAM_SETTINGS_SECTION_ATTRIBUTE, settingsSection);
+        model.addAttribute("owner", owner);
         model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
         addEmptyFlashAttributes(model);
 
@@ -495,6 +501,35 @@ public class TeamPageController {
         } catch (AccessDeniedForTaskException | TeamNotFoundException ex) {
             redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, DELETE_TEAM_ERROR_MESSAGE);
             return redirectToDeleteTeamSettings(id);
+        }
+    }
+
+    @PostMapping("/teams/{id}/leave")
+    public String leaveTeam(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "") String confirmationText,
+            RedirectAttributes redirectAttributes) {
+        TeamMember currentMember = findTeamMemberOrNotFound(id, authUser.getId());
+
+        if (currentMember.getRole() == TeamMemberRole.OWNER) {
+            return notFound();
+        }
+
+        if (!LEAVE_TEAM_CONFIRMATION_TEXT.equals(confirmationText)) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, LEAVE_TEAM_INVALID_CONFIRMATION_MESSAGE);
+            return redirectToLeaveTeamSettings(id);
+        }
+
+        try {
+            Team team = teamService.findById(id);
+            teamMemberService.leaveTeam(id, authUser.getId());
+            redirectAttributes.addFlashAttribute(
+                    SUCCESS_MESSAGE_ATTRIBUTE, "Вы покинули команду «" + team.getName() + "»");
+            return REDIRECT_TEAMS;
+        } catch (AccessDeniedForTaskException | TeamMemberNotFoundException | TeamNotFoundException ex) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, LEAVE_TEAM_ERROR_MESSAGE);
+            return redirectToLeaveTeamSettings(id);
         }
     }
 
@@ -674,12 +709,32 @@ public class TeamPageController {
         }
     }
 
+    private TeamMember findTeamMemberOrNotFound(Long teamId, UUID userId) {
+        try {
+            return teamMemberService.findById(teamId, userId);
+        } catch (TeamMemberNotFoundException ex) {
+            throw new PageNotFoundException(ex);
+        }
+    }
+
     private String notFound() {
         throw new PageNotFoundException();
     }
 
     private String redirectToDeleteTeamSettings(Long teamId) {
-        return REDIRECT_TEAMS_PREFIX + teamId + TEAM_SETTINGS_PATH_SUFFIX + "?section=" + TEAM_SETTINGS_SECTION_DELETE;
+        return REDIRECT_TEAMS_PREFIX
+                + teamId
+                + TEAM_SETTINGS_PATH_SUFFIX
+                + SETTINGS_SECTION_QUERY
+                + TEAM_SETTINGS_SECTION_DELETE;
+    }
+
+    private String redirectToLeaveTeamSettings(Long teamId) {
+        return REDIRECT_TEAMS_PREFIX
+                + teamId
+                + TEAM_SETTINGS_PATH_SUFFIX
+                + SETTINGS_SECTION_QUERY
+                + TEAM_SETTINGS_SECTION_LEAVE;
     }
 
     private TaskView toTaskView(Task task, UUID userId) {

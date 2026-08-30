@@ -294,15 +294,18 @@ public class TaskPageController {
         Task task = taskService.findById(id);
         String updatedDescription = request.getDescription() == null ? task.getDescription() : request.getDescription();
         TaskStatus updatedStatus = request.getStatus() == null ? task.getStatus() : request.getStatus();
-        TaskDetailsUpdate update = new TaskDetailsUpdate(
+        UUID updatedAuthorId = request.getAuthorId() == null ? task.getAuthorId() : request.getAuthorId();
+        final TaskDetailsUpdate update = new TaskDetailsUpdate(
                 request.getTitle(),
                 updatedDescription,
                 request.getDeadlineDate(),
                 updatedStatus,
                 request.getTagId(),
+                updatedAuthorId,
                 request.getAssigneeId());
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
+        teamMemberService.findById(task.getTeamId(), updatedAuthorId);
         teamMemberService.findById(task.getTeamId(), request.getAssigneeId());
         taskService.updateDetails(id, update, authUser.getId());
         redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Задача успешно изменена");

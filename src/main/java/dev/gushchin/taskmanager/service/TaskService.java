@@ -308,6 +308,7 @@ public class TaskService {
         Task task = findByIdForUser(id, userId);
 
         checkCanUpdateTask(task, userId);
+        teamMemberService.findById(task.getTeamId(), update.authorId());
         teamMemberService.findById(task.getTeamId(), update.assigneeId());
         teamTagService.findByIdForTeam(update.tagId(), task.getTeamId());
 
@@ -320,6 +321,7 @@ public class TaskService {
         task.setDeadlineAt(deadlineAt);
         task.setStatus(update.status());
         task.setTagId(update.tagId());
+        task.setAuthorId(update.authorId());
         task.setAssigneeId(update.assigneeId());
 
         return taskRepository.updateDetails(task, Instant.now());

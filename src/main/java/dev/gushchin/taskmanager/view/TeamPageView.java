@@ -16,7 +16,7 @@ public record TeamPageView(
         TeamPageCounts counts,
         TeamTasksStats stats,
         TeamPageFilters filters,
-        boolean canInvite,
+        TeamPageAccess access,
         TaskListMode mode) {
     private static final String TEAMS_PATH_PREFIX = "/teams/";
     private static final String TEAM_COUNT_TEXT_PREFIX = "Всего задач в команде ";
@@ -53,6 +53,14 @@ public record TeamPageView(
 
     public int membersCount() {
         return counts.membersCount();
+    }
+
+    public boolean canInvite() {
+        return access.canInvite();
+    }
+
+    public boolean limitedTaskVisibility() {
+        return access.limitedTaskVisibility();
     }
 
     public TaskStatus selectedStatus() {
@@ -204,4 +212,6 @@ public record TeamPageView(
             UUID selectedAuthorId,
             UUID selectedAssigneeId,
             Long selectedTagId) {}
+
+    public record TeamPageAccess(boolean canInvite, boolean limitedTaskVisibility) {}
 }

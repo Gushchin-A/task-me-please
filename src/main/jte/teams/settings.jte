@@ -10,6 +10,7 @@
 @param List<TeamTag> tags
 @param Set<Long> usedTagIds
 @param String settingsSection
+@param boolean owner
 @param String successMessage
 @param String errorMessage
 @param CsrfToken _csrf
@@ -32,21 +33,34 @@
             @template.components.teamSettingsSidebar(
                 team = team,
                 activeSection = settingsSection,
-                owner = true
+                owner = owner
             )
 
             <div class="team-settings-content">
-                @if("delete".equals(settingsSection))
+                @if("leave".equals(settingsSection))
                     <header class="team-create-header team-settings-header">
-                        <h1>Удаление команды</h1>
+                        <h1>Покинуть команду</h1>
+                        <p>
+                            После выхода из команды все ее задачи, включая ваши, будут недоступны.
+                            Пожалуйста, будьте внимательны.
+                        </p>
                     </header>
 
                     <section class="team-settings-delete-section">
+                        <button class="button team-settings-delete" type="button" data-team-leave-open>
+                            Покинуть команду
+                        </button>
+                    </section>
+                @elseif("delete".equals(settingsSection))
+                    <header class="team-create-header team-settings-header">
+                        <h1>Удаление команды</h1>
                         <p>
                             После удаления команды она и все ее задачи исчезнут навсегда.
                             Пожалуйста, будьте внимательны.
                         </p>
+                    </header>
 
+                    <section class="team-settings-delete-section">
                         <button class="button team-settings-delete" type="button" data-team-delete-open>
                             Удалить команду
                         </button>
@@ -260,6 +274,54 @@
                         data-loading-text="Обработка..."
                     >
                         Удалить
+                    </button>
+                </footer>
+                </form>
+            </dialog>
+        @elseif("leave".equals(settingsSection))
+            <dialog class="settings-dialog" data-team-leave-dialog>
+                <form
+                    class="settings-dialog-form"
+                    method="post"
+                    action="/teams/${team.getId()}/leave"
+                    data-submit-loading
+                >
+                <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+
+                <header class="settings-dialog-header">
+                    <h2>Покинуть команду</h2>
+                    <button type="button" aria-label="Закрыть" data-team-leave-close>×</button>
+                </header>
+
+                <div class="settings-dialog-body">
+                    <p>
+                        Вы уверены, что хотите покинуть команду «${team.getName()}»?
+                        Если да, напишите <strong>«да хочу выйти из команды»</strong> в поле ниже.
+                    </p>
+
+                    <div class="form-field">
+                        <label for="team-leave-confirmation">Введите проверочный текст</label>
+                        <input
+                            id="team-leave-confirmation"
+                            type="text"
+                            name="confirmationText"
+                            required
+                            autocomplete="off"
+                            data-team-leave-input
+                            data-confirmation-text="да хочу выйти из команды"
+                        >
+                    </div>
+                </div>
+
+                <footer class="settings-dialog-footer">
+                    <button
+                        class="button button-danger"
+                        type="submit"
+                        disabled
+                        data-team-leave-submit
+                        data-loading-text="Обработка..."
+                    >
+                        Покинуть команду
                     </button>
                 </footer>
                 </form>
