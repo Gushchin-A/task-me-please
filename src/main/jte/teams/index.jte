@@ -1,9 +1,9 @@
-@import dev.gushchin.taskmanager.model.Team
+@import dev.gushchin.taskmanager.view.TeamListItemView
 @import java.util.List
 @import dev.gushchin.taskmanager.view.UserAvatarView
 @import org.springframework.security.web.csrf.CsrfToken
 
-@param List<Team> teams
+@param List<TeamListItemView> teams
 @param CsrfToken _csrf
 @param UserAvatarView currentUser
 @param String successMessage
@@ -57,34 +57,12 @@
                 </div>
             @else
                 <ul class="team-list">
-                    @for(Team team : teams)
+                    @for(TeamListItemView item : teams)
                         <li class="team-list-item">
-                            <a
-                                class="team-list-link"
-                                href="/teams/${team.getId()}"
-                                data-tooltip="Открыть команду"
-                                aria-label="Открыть команду ${team.getName()}"
-                            >
-                                <span class="team-list-mark" aria-hidden="true">
-                                    ${team.getName().substring(0, 1).toUpperCase()}
-                                </span>
-
-                                <span class="team-list-copy">
-                                    <strong>${team.getName()}</strong>
-                                    <small>Команда</small>
-                                </span>
-
-                                <svg
-                                    class="team-list-arrow"
-                                    aria-hidden="true"
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 16 16"
-                                    fill="currentColor"
-                                >
-                                    <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"></path>
-                                </svg>
-                            </a>
+                            <a class="team-list-name" href="/teams/${item.team().getId()}">${item.team().getName()}</a>
+                            <span class="team-list-meta">
+                                ${item.owner() ? "Всего задач: " : "Актуальные задачи: "}${item.taskCount()}
+                            </span>
                         </li>
                     @endfor
                 </ul>

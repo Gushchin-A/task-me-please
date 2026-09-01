@@ -422,7 +422,7 @@ a {
     position: absolute;
     top: calc(100% + var(--base-size-8));
     right: 0;
-    width: min(256px, calc(100vw - var(--base-size-32)));
+    width: min(288px, calc(100vw - var(--base-size-32)));
     min-width: 192px;
     padding: var(--base-size-8);
     border: 0;
@@ -695,7 +695,11 @@ a {
 }
 
 .team-member-row-read-only {
-    grid-template-columns: minmax(280px, 1fr) 76px;
+    grid-template-columns: minmax(280px, 1fr) max-content;
+}
+
+.team-member-row-read-only .team-member-role-cell {
+    justify-content: flex-end;
 }
 
 .team-member-profile {
@@ -1152,11 +1156,11 @@ a {
     }
 
     .team-member-row-read-only {
-        grid-template-columns: minmax(0, 1fr) 76px;
+        grid-template-columns: minmax(0, 1fr) max-content;
     }
 
     .team-member-row-read-only .team-member-role-cell {
-        display: block;
+        display: flex;
     }
 }
 
@@ -1400,64 +1404,31 @@ a {
 }
 
 .team-list-item {
+    padding: var(--base-size-24) 0;
     border-bottom: var(--borderWidth-default) solid var(--borderColor-default);
 }
 
-.team-list-link {
-    display: flex;
-    min-height: 96px;
-    align-items: center;
-    gap: var(--base-size-12);
-    padding: var(--base-size-20) 0;
-    color: var(--fgColor-default);
+.team-list-name {
+    display: inline-block;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    color: var(--fgColor-link);
+    font-size: 16px;
+    font-weight: var(--base-text-weight-semibold);
+    line-height: 24px;
     text-decoration: none;
 }
 
-.team-list-link:hover {
-    background: var(--control-transparent-bgColor-hover);
+.team-list-name:hover {
+    text-decoration: underline;
 }
 
-.team-list-mark {
-    display: grid;
-    width: 40px;
-    height: 40px;
-    flex: 0 0 auto;
-    place-items: center;
-    border-radius: var(--borderRadius-medium);
-    background: var(--control-bgColor-rest);
-    color: var(--fgColor-link);
-    font-weight: 700;
-}
-
-.team-list-copy {
-    min-width: 0;
-}
-
-.team-list-copy strong,
-.team-list-copy small {
+.team-list-meta {
     display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.team-list-copy strong {
-    color: var(--fgColor-link);
-    font-size: 16px;
-    line-height: 24px;
-}
-
-.team-list-copy small {
-    margin-top: 4px;
+    margin-top: var(--base-size-4);
     color: var(--fgColor-muted);
-    font-size: 13px;
-    line-height: 20px;
-}
-
-.team-list-arrow {
-    flex: 0 0 auto;
-    margin-left: auto;
-    color: var(--fgColor-muted);
+    font-size: 14px;
+    line-height: 21px;
 }
 
 .task-grid {
@@ -1477,11 +1448,6 @@ a {
 .notifications-toolbar {
     min-height: 58px;
     margin-top: 0;
-}
-
-.notifications-empty-toolbar {
-    min-height: 58px;
-    margin-bottom: 12px;
 }
 
 .notification-read-button {
@@ -4291,11 +4257,6 @@ a {
 
     .task-grid {
         grid-template-columns: 1fr;
-    }
-
-    .team-list-link {
-        min-height: 88px;
-        padding: var(--base-size-16) 0;
     }
 
     .form-card {

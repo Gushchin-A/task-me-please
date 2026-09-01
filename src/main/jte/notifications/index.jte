@@ -31,7 +31,6 @@
             </nav>
 
             @if(page.page().items().isEmpty())
-                <div class="notifications-empty-toolbar" aria-hidden="true"></div>
                 <div class="empty-state notification-empty-state">
                     <svg
                         class="empty-state-icon"

@@ -316,8 +316,19 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("Команды (2)")))
                 .andExpect(content().string(containsString("class=\"team-list\"")))
                 .andExpect(content().string(containsString("class=\"team-list-item\"")))
-                .andExpect(content().string(containsString("data-tooltip=\"Открыть команду\"")))
-                .andExpect(content().string(not(containsString("Открыть задачи команды"))));
+                .andExpect(content().string(containsString("class=\"team-list-name\"")))
+                .andExpect(content().string(containsString("Всего задач: 1")))
+                .andExpect(content().string(not(containsString("team-list-mark"))))
+                .andExpect(content().string(not(containsString("team-list-arrow"))))
+                .andExpect(content().string(not(containsString("data-tooltip=\"Открыть команду\""))));
+    }
+
+    @Test
+    void teamsPageShouldShowRelevantTaskCountForMember() throws Exception {
+        mockMvc.perform(get("/teams").with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Актуальные задачи: 1")))
+                .andExpect(content().string(not(containsString("Всего задач:"))));
     }
 
     @Test

@@ -32,6 +32,7 @@ import dev.gushchin.taskmanager.service.UserService;
 import dev.gushchin.taskmanager.view.TaskParticipantView;
 import dev.gushchin.taskmanager.view.TaskView;
 import dev.gushchin.taskmanager.view.TeamInvitationView;
+import dev.gushchin.taskmanager.view.TeamListItemView;
 import dev.gushchin.taskmanager.view.TeamMemberView;
 import dev.gushchin.taskmanager.view.TeamPageView;
 import dev.gushchin.taskmanager.view.TeamTasksStats;
@@ -111,12 +112,30 @@ public class TeamPageController {
     @GetMapping("/teams")
     public String teamsPage(@AuthenticationPrincipal AuthUser authUser, Model model, CsrfToken csrfToken) {
         List<Team> teams = teamService.findByUserId(authUser.getId());
+        List<Task> tasks =
+                taskService.findByTeamIds(teams.stream().map(Team::getId).toList());
+        List<TeamListItemView> teamItems = teams.stream()
+                .map(team -> toTeamListItem(team, tasks, authUser.getId()))
+                .toList();
 
-        model.addAttribute("teams", teams);
+        model.addAttribute("teams", teamItems);
         model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
         addEmptyFlashAttributes(model);
 
         return "teams/index";
+    }
+
+    private TeamListItemView toTeamListItem(Team team, List<Task> tasks, UUID currentUserId) {
+        boolean owner = team.getCreatedBy().equals(currentUserId);
+        long taskCount = tasks.stream()
+                .filter(task -> task.getTeamId().equals(team.getId()))
+                .filter(task -> owner
+                        || (!task.isArchived()
+                                && (task.getAuthorId().equals(currentUserId)
+                                        || task.getAssigneeId().equals(currentUserId))))
+                .count();
+
+        return new TeamListItemView(team, owner, Math.toIntExact(taskCount));
     }
 
     @GetMapping("/teams/new")
