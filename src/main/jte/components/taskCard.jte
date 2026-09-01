@@ -77,7 +77,11 @@
 
         <div class="task-card-labels">
             <span class="task-card-tag">${task.tagName()}</span>
-            <span class="task-card-deadline ${!task.archived() && (task.deadlineToday() || task.deadlineOverdue()) ? "task-card-deadline-urgent" : ""}">
+            <span class="task-card-deadline ${!task.archived()
+                    && task.status() != TaskStatus.DONE
+                    && (task.deadlineToday() || task.deadlineOverdue())
+                    ? "task-card-deadline-urgent"
+                    : ""}">
                 ${task.deadlineText()}
             </span>
         </div>
@@ -383,7 +387,7 @@
                 @endif
                 </div>
 
-                <footer class="settings-dialog-footer task-edit-dialog-footer">
+                <footer class="settings-dialog-footer task-edit-dialog-footer" data-keyboard-action-group>
                     <button class="button button-secondary" type="button" data-task-edit-cancel>Отменить</button>
                     <button
                         class="button button-primary"

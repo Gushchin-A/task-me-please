@@ -82,6 +82,7 @@ public class TaskService {
 
         Instant deadlineAt =
                 deadlineDate == null ? null : deadlineDate.atStartOfDay().toInstant(ZoneOffset.UTC);
+        String preparedDescription = prepareDescription(description);
 
         Task task = new Task(
                 null,
@@ -89,7 +90,7 @@ public class TaskService {
                 authorId,
                 assigneeId,
                 title,
-                description,
+                preparedDescription,
                 deadlineAt,
                 TaskStatus.OPEN,
                 tagId,
@@ -179,6 +180,16 @@ public class TaskService {
                 .toList();
     }
 
+    public List<Task> filterByAuthorIds(List<Task> tasks, List<UUID> authorIds) {
+        if (authorIds.isEmpty()) {
+            return tasks;
+        }
+
+        return tasks.stream()
+                .filter(task -> authorIds.contains(task.getAuthorId()))
+                .toList();
+    }
+
     public List<Task> filterByAssigneeId(List<Task> tasks, UUID assigneeId) {
         if (assigneeId == null) {
             return tasks;
@@ -189,12 +200,30 @@ public class TaskService {
                 .toList();
     }
 
+    public List<Task> filterByAssigneeIds(List<Task> tasks, List<UUID> assigneeIds) {
+        if (assigneeIds.isEmpty()) {
+            return tasks;
+        }
+
+        return tasks.stream()
+                .filter(task -> assigneeIds.contains(task.getAssigneeId()))
+                .toList();
+    }
+
     public List<Task> filterByTagId(List<Task> tasks, Long tagId) {
         if (tagId == null) {
             return tasks;
         }
 
         return tasks.stream().filter(task -> tagId.equals(task.getTagId())).toList();
+    }
+
+    public List<Task> filterByTagIds(List<Task> tasks, List<Long> tagIds) {
+        if (tagIds.isEmpty()) {
+            return tasks;
+        }
+
+        return tasks.stream().filter(task -> tagIds.contains(task.getTagId())).toList();
     }
 
     public List<Task> sortTasks(List<Task> tasks, TaskSort sort) {
@@ -360,7 +389,7 @@ public class TaskService {
                 : update.deadlineDate().atStartOfDay().toInstant(ZoneOffset.UTC);
 
         task.setTitle(update.title());
-        task.setDescription(update.description());
+        task.setDescription(prepareDescription(update.description()));
         task.setDeadlineAt(deadlineAt);
         task.setStatus(update.status());
         task.setTagId(update.tagId());
@@ -431,6 +460,20 @@ public class TaskService {
 
     public boolean isTeamOwner(Task task, UUID userId) {
         return taskPermissionService.isTeamOwner(task, userId);
+    }
+
+    private String prepareDescription(String description) {
+        if (description == null) {
+            return null;
+        }
+
+        String preparedDescription = description.stripTrailing();
+
+        if (preparedDescription.isBlank()) {
+            throw new IllegalArgumentException("Task description must not be blank");
+        }
+
+        return preparedDescription;
     }
 
     private void publishDetailsChanges(Task before, Task after, UUID userId) {

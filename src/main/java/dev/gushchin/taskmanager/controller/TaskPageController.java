@@ -90,9 +90,9 @@ public class TaskPageController {
         Long teamId = filters.getTeamId();
         TaskRoleFilter role = filters.getRole();
         TaskSort sort = filters.getSort();
-        UUID authorId = filters.getAuthorId();
-        UUID assigneeId = filters.getAssigneeId();
-        Long tagId = filters.getTagId();
+        List<UUID> authorIds = filters.getAuthorIds();
+        List<UUID> assigneeIds = filters.getAssigneeIds();
+        List<Long> tagIds = filters.getTagIds();
         List<Team> teams = teamService.findByUserId(authUser.getId());
         List<Long> teamIds = teams.stream().map(Team::getId).toList();
 
@@ -102,9 +102,9 @@ public class TaskPageController {
         List<Task> teamFilteredTasks = taskService.filterByTeamId(modeFilteredTasks, teamId);
         List<Task> roleFilteredTasks = taskService.filterByRole(teamFilteredTasks, role, authUser.getId());
         List<Task> statusFilteredTasks = taskService.filterByStatus(roleFilteredTasks, status);
-        List<Task> tagFilteredTasks = taskService.filterByTagId(statusFilteredTasks, tagId);
-        List<Task> authorFilteredTasks = taskService.filterByAuthorId(tagFilteredTasks, authorId);
-        List<Task> assigneeFilteredTasks = taskService.filterByAssigneeId(authorFilteredTasks, assigneeId);
+        List<Task> tagFilteredTasks = taskService.filterByTagIds(statusFilteredTasks, tagIds);
+        List<Task> authorFilteredTasks = taskService.filterByAuthorIds(tagFilteredTasks, authorIds);
+        List<Task> assigneeFilteredTasks = taskService.filterByAssigneeIds(authorFilteredTasks, assigneeIds);
 
         List<Task> statusScopedTasks = taskService.filterByStatus(teamFilteredTasks, status);
         int authorTasksCount = taskService
@@ -127,7 +127,8 @@ public class TaskPageController {
                 new MyTasksPageResources(teams, getFilterParticipants(visibleTasks), getTeamTags(teams)),
                 roleFilteredTasks.size(),
                 stats,
-                new MyTasksPageFilters(status, teamId, role, sort, authorId, assigneeId, tagId),
+                new MyTasksPageFilters(
+                        status, teamId, role, sort, authorIds, assigneeIds, tagIds, filters.getOpenFilter()),
                 new MyTasksRoleCounts(authorTasksCount, assigneeTasksCount),
                 !visibleTasks.isEmpty(),
                 TaskListMode.ACTIVE);
@@ -152,9 +153,9 @@ public class TaskPageController {
         Long teamId = filters.getTeamId();
         TaskRoleFilter role = filters.getRole();
         TaskSort sort = filters.getSort();
-        UUID authorId = filters.getAuthorId();
-        UUID assigneeId = filters.getAssigneeId();
-        Long tagId = filters.getTagId();
+        List<UUID> authorIds = filters.getAuthorIds();
+        List<UUID> assigneeIds = filters.getAssigneeIds();
+        List<Long> tagIds = filters.getTagIds();
         List<Team> teams = teamService.findByUserId(authUser.getId());
         List<Long> teamIds = teams.stream().map(Team::getId).toList();
 
@@ -164,9 +165,9 @@ public class TaskPageController {
         List<Task> teamFilteredTasks = taskService.filterByTeamId(modeFilteredTasks, teamId);
         List<Task> roleFilteredTasks = taskService.filterByRole(teamFilteredTasks, role, authUser.getId());
         List<Task> statusFilteredTasks = taskService.filterByStatus(roleFilteredTasks, status);
-        List<Task> tagFilteredTasks = taskService.filterByTagId(statusFilteredTasks, tagId);
-        List<Task> authorFilteredTasks = taskService.filterByAuthorId(tagFilteredTasks, authorId);
-        List<Task> assigneeFilteredTasks = taskService.filterByAssigneeId(authorFilteredTasks, assigneeId);
+        List<Task> tagFilteredTasks = taskService.filterByTagIds(statusFilteredTasks, tagIds);
+        List<Task> authorFilteredTasks = taskService.filterByAuthorIds(tagFilteredTasks, authorIds);
+        List<Task> assigneeFilteredTasks = taskService.filterByAssigneeIds(authorFilteredTasks, assigneeIds);
 
         List<Task> statusScopedTasks = taskService.filterByStatus(teamFilteredTasks, status);
         int authorTasksCount = taskService
@@ -189,7 +190,8 @@ public class TaskPageController {
                 new MyTasksPageResources(teams, getFilterParticipants(visibleTasks), getTeamTags(teams)),
                 roleFilteredTasks.size(),
                 stats,
-                new MyTasksPageFilters(status, teamId, role, sort, authorId, assigneeId, tagId),
+                new MyTasksPageFilters(
+                        status, teamId, role, sort, authorIds, assigneeIds, tagIds, filters.getOpenFilter()),
                 new MyTasksRoleCounts(authorTasksCount, assigneeTasksCount),
                 !visibleTasks.isEmpty(),
                 TaskListMode.ARCHIVE);

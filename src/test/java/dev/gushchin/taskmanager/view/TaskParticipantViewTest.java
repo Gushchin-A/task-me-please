@@ -23,4 +23,21 @@ class TaskParticipantViewTest {
         assertEquals("Илья Соколов", participant.commentDisplayName());
         assertNull(participant.commentDisplayNameTooltip());
     }
+
+    @Test
+    void filterDisplayNameShouldTruncateAfterFifteenCharactersAndExposeTooltip() {
+        String longName = "Илья Соколов с очень длинным именем";
+        TaskParticipantView participant = new TaskParticipantView(UUID.randomUUID(), longName, false);
+
+        assertEquals("Илья Соколов с ...", participant.filterDisplayName());
+        assertEquals(longName, participant.filterDisplayNameTooltip());
+    }
+
+    @Test
+    void filterDisplayNameShouldKeepFifteenCharactersWithoutTooltip() {
+        TaskParticipantView participant = new TaskParticipantView(UUID.randomUUID(), "123456789012345", false);
+
+        assertEquals("123456789012345", participant.filterDisplayName());
+        assertNull(participant.filterDisplayNameTooltip());
+    }
 }

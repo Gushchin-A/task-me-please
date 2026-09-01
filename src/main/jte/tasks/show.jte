@@ -30,12 +30,17 @@
     content = @`
         @template.components.teamNavigation(
             team = team,
-            activeTab = "tasks"
+            activeTab = task.archived() ? "archive" : "tasks"
         )
 
         <div class="task-detail-layout" data-task-detail>
         <section class="task-detail-main">
-            <a class="back-link team-create-back-link" href="/teams/${team.getId()}" data-history-back>
+            <a
+                class="back-link team-create-back-link"
+                href="/teams/${team.getId()}${task.archived() ? "/archive" : ""}"
+                data-history-back
+                data-history-back-scope="/tasks/${task.id()}"
+            >
                 <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                     <path d="M7.78 12.53a.75.75 0 0 1-1.06 0l-4-4a.75.75 0 0 1 0-1.06l4-4a.75.75 0 0 1 1.06 1.06L5.06 7.25h7.69a.75.75 0 0 1 0 1.5H5.06l2.72 2.72a.75.75 0 0 1 0 1.06Z"></path>
                 </svg>
@@ -67,6 +72,7 @@
                     action="/tasks/${task.id()}/edit"
                     hidden
                     data-task-title-edit-form
+                    data-keyboard-action-group
                 >
                     <input
                         type="hidden"
@@ -279,7 +285,7 @@
                 </form>
             </div>
 
-            <div class="task-parameters-actions" hidden data-task-parameters-actions>
+            <div class="task-parameters-actions" hidden data-task-parameters-actions data-keyboard-action-group>
                 <button class="button button-secondary" type="button" data-task-parameters-cancel>Отменить</button>
                 <button class="button button-primary" type="button" disabled data-task-parameters-save>Сохранить</button>
             </div>
@@ -335,7 +341,7 @@
                         </details>
                     </header>
 
-                    <div class="comment-body" data-description-view>${task.description() == null || task.description().isBlank() ? "Описание пока не добавлено." : task.description()}</div>
+                    <div class="comment-body" data-description-view>@if(task.description() == null || task.description().isBlank())Описание пока не добавлено.@else$unsafe{task.descriptionHtml()}@endif</div>
 
                     @if(task.canUpdateTask())
                         <form class="comment-edit-form task-description-edit-form" method="post" action="/tasks/${task.id()}/edit" hidden data-description-edit-form>
@@ -375,7 +381,7 @@
                                 </svg>
                                 <span>Добавить файлы</span>
                             </button>
-                            <div class="comment-edit-actions">
+                            <div class="comment-edit-actions" data-keyboard-action-group>
                                 <button class="button button-secondary" type="button" data-description-edit-cancel>Отменить</button>
                                 <button class="button button-primary" type="submit" disabled data-changed-value-submit>Сохранить</button>
                             </div>
@@ -392,11 +398,9 @@
                         <header class="comment-header">
                             <div class="comment-header-copy">
                                 <strong data-tooltip="${comment.author().commentDisplayNameTooltip()}">${comment.author().commentDisplayName()}</strong>
-                                <span class="comment-header-meta">прокомментировал · ${comment.createdAtText()}</span>
-
-                                @if(comment.edited())
-                                    <span class="comment-edited">Отредактировано</span>
-                                @endif
+                                <span class="comment-header-meta">
+                                    прокомментировал · ${comment.createdAtText()}@if(comment.edited())<em class="comment-edited"> · отредактировано</em>@endif
+                                </span>
                             </div>
 
                             <details class="task-card-actions comment-actions">
@@ -422,7 +426,7 @@
                             </details>
                         </header>
 
-                        <div class="comment-body" data-comment-view>${comment.message()}</div>
+                        <div class="comment-body" data-comment-view>$unsafe{comment.messageHtml()}</div>
 
                         @if(comment.canEdit())
                             <form class="comment-edit-form" method="post" action="/tasks/${task.id()}/comments/${comment.id()}/edit" hidden data-comment-edit-form>
@@ -454,7 +458,7 @@
                                     </svg>
                                     <span>Добавить файлы</span>
                                 </button>
-                                <div class="comment-edit-actions">
+                                <div class="comment-edit-actions" data-keyboard-action-group>
                                     <button class="button button-secondary" type="button" data-comment-edit-cancel>Отменить</button>
                                     <button class="button button-primary" type="submit" disabled data-changed-value-submit>Сохранить</button>
                                 </div>

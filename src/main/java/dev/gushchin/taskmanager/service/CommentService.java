@@ -15,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class CommentService {
+    private static final String BLANK_MESSAGE_ERROR = "Comment message must not be blank";
+
     private final CommentRepository commentRepository;
     private final NotificationPublisher notificationPublisher;
     private final TaskService taskService;
@@ -42,10 +44,11 @@ public class CommentService {
     public Comment create(Long taskId, UUID userId, String message) {
         Task task = taskService.findByIdForUser(taskId, userId);
         userService.findById(userId);
+        String preparedMessage = prepareMessage(message);
 
         Instant now = Instant.now();
 
-        Comment comment = new Comment(null, taskId, userId, message, now, now, false);
+        Comment comment = new Comment(null, taskId, userId, preparedMessage, now, now, false);
 
         Comment savedComment = commentRepository.save(comment);
         notificationPublisher.commentCreated(savedComment, task, userId);
@@ -58,8 +61,9 @@ public class CommentService {
         Comment comment = findById(id);
 
         checkCanUpdateComment(comment, userId);
+        String preparedMessage = prepareMessage(message);
 
-        Comment updatedComment = commentRepository.updateMessage(comment.getId(), message, Instant.now());
+        Comment updatedComment = commentRepository.updateMessage(comment.getId(), preparedMessage, Instant.now());
         notificationPublisher.commentUpdated(updatedComment, taskService.findById(comment.getTaskId()), userId);
 
         return updatedComment;
@@ -83,5 +87,19 @@ public class CommentService {
         if (!comment.getUserId().equals(userId)) {
             throw new AccessDeniedForTaskException();
         }
+    }
+
+    private String prepareMessage(String message) {
+        if (message == null) {
+            throw new IllegalArgumentException(BLANK_MESSAGE_ERROR);
+        }
+
+        String preparedMessage = message.stripTrailing();
+
+        if (preparedMessage.isBlank()) {
+            throw new IllegalArgumentException(BLANK_MESSAGE_ERROR);
+        }
+
+        return preparedMessage;
     }
 }

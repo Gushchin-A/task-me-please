@@ -178,6 +178,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/teams/" + team.getId() + "/members").with(user(new AuthUser(member))))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("class=\"local-tabs team-tabs\"")))
+                .andExpect(content().string(containsString("Настройки команды")))
                 .andExpect(content().string(containsString("aria-label=\"Разделы команды\"")))
                 .andExpect(content().string(containsString("href=\"/teams/" + team.getId() + "/archive\"")))
                 .andExpect(content().string(not(containsString("href=\"#\""))))
@@ -228,6 +229,18 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("Была удалена")))
                 .andExpect(content().string(not(containsString("task-card-footer-archive-with-team"))))
                 .andExpect(content().string(not(containsString("<time"))))
+                .andExpect(content().string(not(containsString("task-card-deadline-urgent"))));
+    }
+
+    @Test
+    void completedTeamTaskShouldNotHighlightOverdueDeadline() throws Exception {
+        Task task = taskService.findByTeamId(team.getId()).getFirst();
+        taskService.updateStatus(task.getId(), TaskStatus.DONE, owner.getId());
+        taskService.updateDeadline(task.getId(), LocalDate.now().minusDays(1), owner.getId());
+
+        mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString(task.getTitle())))
                 .andExpect(content().string(not(containsString("task-card-deadline-urgent"))));
     }
 
@@ -1357,7 +1370,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
 
         mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("assigneeId=" + member.getId())))
+                .andExpect(content().string(containsString("assigneeIds=" + member.getId())))
                 .andExpect(content().string(containsString("Member")))
                 .andExpect(content().string(containsString("color: red;")))
                 .andExpect(content().string(containsString("Пользователь был удалён из команды")));
@@ -1376,7 +1389,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
 
         mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
-                .andExpect(content().string(not(containsString("assigneeId=" + member.getId()))));
+                .andExpect(content().string(not(containsString("assigneeIds=" + member.getId()))));
     }
 
     @Test
@@ -1392,7 +1405,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
 
         mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
-                .andExpect(content().string(not(containsString("assigneeId=" + member.getId()))));
+                .andExpect(content().string(not(containsString("assigneeIds=" + member.getId()))));
     }
 
     private void cleanDatabase() {
