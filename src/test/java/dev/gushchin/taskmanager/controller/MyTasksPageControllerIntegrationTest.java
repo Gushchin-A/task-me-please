@@ -123,8 +123,14 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString(">Автор</span>")))
                 .andExpect(content().string(containsString(">Тег</span>")))
                 .andExpect(content().string(containsString(">Команда</span>")))
+                .andExpect(content().string(containsString(">Моя роль</span>")))
+                .andExpect(content().string(containsString(">Автор</a>")))
+                .andExpect(content().string(containsString(">Исполнитель</a>")))
                 .andExpect(content().string(containsString("Сортировать задачи")))
-                .andExpect(content().string(containsString("По команде")))
+                .andExpect(content().string(containsString("Сначала новые")))
+                .andExpect(content().string(containsString("Сначала старые")))
+                .andExpect(content().string(containsString("Ближайший дедлайн")))
+                .andExpect(content().string(containsString("Поздний дедлайн")))
                 .andExpect(content().string(containsString("class=\"button button-primary task-create-action\"")))
                 .andExpect(content().string(containsString("class=\"toolbar-popover task-filter-popover\"")))
                 .andExpect(content().string(containsString("class=\"task-grid\"")))
@@ -204,12 +210,12 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    void myTasksPageShouldOpenWithSortByTeam() throws Exception {
-        mockMvc.perform(get("/tasks?sort=TEAM").with(user(new AuthUser(owner))))
+    void myTasksPageShouldOpenWithOldestFirstSort() throws Exception {
+        mockMvc.perform(get("/tasks?sort=OLDEST").with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("First Team")))
                 .andExpect(content().string(containsString("Second Team")))
-                .andExpect(content().string(containsString("Команда")));
+                .andExpect(content().string(containsString("Сначала старые")));
     }
 
     @Test
@@ -272,6 +278,9 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("class=\"local-tabs\"")))
                 .andExpect(content().string(containsString("class=\"task-count\">Задачи (0)")))
                 .andExpect(content().string(containsString("class=\"toolbar-popover task-filter-popover\"")))
+                .andExpect(content().string(containsString(">Моя роль</span>")))
+                .andExpect(content().string(containsString("href=\"/tasks/archive?role=AUTHOR\"")))
+                .andExpect(content().string(containsString("href=\"/tasks/archive?role=ASSIGNEE\"")))
                 .andExpect(content().string(containsString("class=\"button button-primary task-create-action\"")))
                 .andExpect(content().string(containsString("В архиве пока что пусто")))
                 .andExpect(content()
@@ -318,6 +327,7 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("class=\"team-list-item\"")))
                 .andExpect(content().string(containsString("class=\"team-list-name\"")))
                 .andExpect(content().string(containsString("Всего задач: 1")))
+                .andExpect(content().string(containsString("Владелец команды")))
                 .andExpect(content().string(not(containsString("team-list-mark"))))
                 .andExpect(content().string(not(containsString("team-list-arrow"))))
                 .andExpect(content().string(not(containsString("data-tooltip=\"Открыть команду\""))));
@@ -328,6 +338,7 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/teams").with(user(new AuthUser(secondUser))))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Актуальные задачи: 1")))
+                .andExpect(content().string(containsString("Участник команды")))
                 .andExpect(content().string(not(containsString("Всего задач:"))));
     }
 

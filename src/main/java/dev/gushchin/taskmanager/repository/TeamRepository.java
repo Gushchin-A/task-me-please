@@ -7,6 +7,7 @@ import dev.gushchin.taskmanager.mapper.TeamMapper;
 import dev.gushchin.taskmanager.model.Team;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jooq.DSLContext;
 import org.springframework.stereotype.Repository;
@@ -24,6 +25,10 @@ public class TeamRepository {
 
     public List<Team> findAll() {
         return dsl.selectFrom(TEAMS).fetch().map(TeamMapper::toModel);
+    }
+
+    public List<Team> findByCreatedBy(UUID userId) {
+        return dsl.selectFrom(TEAMS).where(TEAMS.CREATED_BY.eq(userId)).fetch().map(TeamMapper::toModel);
     }
 
     public Team save(Team team) {

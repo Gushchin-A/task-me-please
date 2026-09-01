@@ -59,6 +59,12 @@ public class TeamService {
                 .toList();
     }
 
+    public List<Team> findOwnedByUserId(UUID userId) {
+        return teamRepository.findByCreatedBy(userId).stream()
+                .filter(Predicate.not(Team::isDeleted))
+                .toList();
+    }
+
     @Transactional
     public Team create(String name, UUID createdBy) {
         return create(name, createdBy, List.of());

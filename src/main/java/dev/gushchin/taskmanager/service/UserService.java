@@ -66,6 +66,14 @@ public class UserService {
         return create(email, null, password);
     }
 
+    public User updateName(UUID id, String name) {
+        User user = findById(id);
+        user.setName(name == null ? "" : name.strip());
+        user.setUpdatedAt(Instant.now());
+
+        return userRepository.update(user);
+    }
+
     public void deleteById(UUID id) {
         User user = findById(id);
         user.setDeleted(true);

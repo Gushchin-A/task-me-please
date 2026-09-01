@@ -7,7 +7,6 @@ import dev.gushchin.taskmanager.model.TaskDetailsUpdate;
 import dev.gushchin.taskmanager.model.TaskRoleFilter;
 import dev.gushchin.taskmanager.model.TaskSort;
 import dev.gushchin.taskmanager.model.TaskStatus;
-import dev.gushchin.taskmanager.model.TeamTag;
 import dev.gushchin.taskmanager.repository.TaskRepository;
 import dev.gushchin.taskmanager.view.TaskWithTeamView;
 import dev.gushchin.taskmanager.view.TeamTasksStats;
@@ -199,65 +198,71 @@ public class TaskService {
     }
 
     public List<Task> sortTasks(List<Task> tasks, TaskSort sort) {
-        if (sort == null) {
-            return tasks.stream().sorted(getDefaultTaskOrder()).toList();
-        }
+        TaskSort resolvedSort = sort == null ? TaskSort.NEWEST : sort;
+        Comparator<Task> order =
+                switch (resolvedSort) {
+                    case NEWEST -> getNewestTaskOrder();
+                    case OLDEST -> getOldestTaskOrder();
+                    case DEADLINE_ASC ->
+                        Comparator.comparing(Task::getDeadlineAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                                .thenComparing(getNewestTaskOrder());
+                    case DEADLINE_DESC ->
+                        Comparator.comparing(Task::getDeadlineAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                                .thenComparing(getNewestTaskOrder());
+                };
 
-        if (sort == TaskSort.DEADLINE) {
-            return tasks.stream()
-                    .sorted(Comparator.comparing(Task::getDeadlineAt, Comparator.nullsLast(Comparator.naturalOrder()))
-                            .thenComparing(getDefaultTaskOrder()))
-                    .toList();
-        }
-
-        if (sort == TaskSort.TAG) {
-            Comparator<Task> order = Comparator.comparing(
-                            (Task task) -> getTagName(task.getTagId()), String.CASE_INSENSITIVE_ORDER)
-                    .thenComparing(getDefaultTaskOrder());
-
-            return tasks.stream().sorted(order).toList();
-        }
-
-        return tasks.stream().sorted(getDefaultTaskOrder()).toList();
+        return tasks.stream().sorted(order).toList();
     }
 
     public List<TaskWithTeamView> sortTaskCards(List<TaskWithTeamView> taskCards, TaskSort sort) {
-        Comparator<TaskWithTeamView> order = getDefaultTaskCardOrder();
-
-        if (sort == null) {
-            order = getDefaultTaskCardOrder();
-        } else if (sort == TaskSort.DEADLINE) {
-            order = Comparator.comparing(
-                            (TaskWithTeamView taskCard) -> taskCard.task().deadlineAt(),
-                            Comparator.nullsLast(Comparator.naturalOrder()))
-                    .thenComparing(getDefaultTaskCardOrder());
-        } else if (sort == TaskSort.TAG) {
-            order = Comparator.comparing(
-                            (TaskWithTeamView taskCard) -> taskCard.task().tagName(), String.CASE_INSENSITIVE_ORDER)
-                    .thenComparing(getDefaultTaskCardOrder());
-        } else if (sort == TaskSort.TEAM) {
-            order = Comparator.comparing(TaskWithTeamView::teamName).thenComparing(getDefaultTaskCardOrder());
-        }
+        TaskSort resolvedSort = sort == null ? TaskSort.NEWEST : sort;
+        Comparator<TaskWithTeamView> order =
+                switch (resolvedSort) {
+                    case NEWEST -> getNewestTaskCardOrder();
+                    case OLDEST -> getOldestTaskCardOrder();
+                    case DEADLINE_ASC ->
+                        Comparator.comparing(
+                                        (TaskWithTeamView taskCard) ->
+                                                taskCard.task().deadlineAt(),
+                                        Comparator.nullsLast(Comparator.naturalOrder()))
+                                .thenComparing(getNewestTaskCardOrder());
+                    case DEADLINE_DESC ->
+                        Comparator.comparing(
+                                        (TaskWithTeamView taskCard) ->
+                                                taskCard.task().deadlineAt(),
+                                        Comparator.nullsLast(Comparator.reverseOrder()))
+                                .thenComparing(getNewestTaskCardOrder());
+                };
 
         return taskCards.stream().sorted(order).toList();
     }
 
-    private Comparator<Task> getDefaultTaskOrder() {
-        return Comparator.comparing(Task::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()))
-                .reversed()
+    private Comparator<Task> getNewestTaskOrder() {
+        return Comparator.comparing(Task::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder()))
                 .thenComparing(getIdDescOrder());
+    }
+
+    private Comparator<Task> getOldestTaskOrder() {
+        return Comparator.comparing(Task::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(Task::getId, Comparator.nullsLast(Comparator.naturalOrder()));
     }
 
     private Comparator<Task> getIdDescOrder() {
         return Comparator.comparing(Task::getId, Comparator.nullsLast(Comparator.reverseOrder()));
     }
 
-    private Comparator<TaskWithTeamView> getDefaultTaskCardOrder() {
+    private Comparator<TaskWithTeamView> getNewestTaskCardOrder() {
+        return Comparator.comparing(
+                        (TaskWithTeamView taskCard) -> taskCard.task().createdAt(),
+                        Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(getTaskCardIdDescOrder());
+    }
+
+    private Comparator<TaskWithTeamView> getOldestTaskCardOrder() {
         return Comparator.comparing(
                         (TaskWithTeamView taskCard) -> taskCard.task().createdAt(),
                         Comparator.nullsLast(Comparator.naturalOrder()))
-                .reversed()
-                .thenComparing(getTaskCardIdDescOrder());
+                .thenComparing(taskCard -> taskCard.task().id(), Comparator.nullsLast(Comparator.naturalOrder()));
     }
 
     private Comparator<TaskWithTeamView> getTaskCardIdDescOrder() {
@@ -426,12 +431,6 @@ public class TaskService {
 
     public boolean isTeamOwner(Task task, UUID userId) {
         return taskPermissionService.isTeamOwner(task, userId);
-    }
-
-    private String getTagName(Long tagId) {
-        TeamTag teamTag = teamTagService.findById(tagId);
-
-        return teamTag.getName();
     }
 
     private void publishDetailsChanges(Task before, Task after, UUID userId) {

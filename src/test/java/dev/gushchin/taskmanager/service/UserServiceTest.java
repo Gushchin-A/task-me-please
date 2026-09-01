@@ -190,6 +190,38 @@ class UserServiceTest {
     }
 
     @Test
+    void updateNameShouldStripAndSaveName() {
+        UUID id = UUID.randomUUID();
+        User existingUser = new User();
+        existingUser.setId(id);
+        existingUser.setName("Старое имя");
+
+        when(userRepository.findById(id)).thenReturn(existingUser);
+        when(userRepository.update(existingUser)).thenReturn(existingUser);
+
+        User updatedUser = userService.updateName(id, "  Новое имя  ");
+
+        assertEquals("Новое имя", updatedUser.getName());
+        verify(userRepository).update(existingUser);
+    }
+
+    @Test
+    void updateNameShouldAllowEmptyName() {
+        UUID id = UUID.randomUUID();
+        User existingUser = new User();
+        existingUser.setId(id);
+        existingUser.setName("Старое имя");
+
+        when(userRepository.findById(id)).thenReturn(existingUser);
+        when(userRepository.update(existingUser)).thenReturn(existingUser);
+
+        User updatedUser = userService.updateName(id, "   ");
+
+        assertEquals("", updatedUser.getName());
+        verify(userRepository).update(existingUser);
+    }
+
+    @Test
     void deleteByIdShouldMarkUserAsDeletedAndCallUpdate() {
         UUID id = UUID.randomUUID();
         User existingUser = new User();

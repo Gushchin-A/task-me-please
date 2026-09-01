@@ -61,6 +61,8 @@
                         <li class="team-list-item">
                             <a class="team-list-name" href="/teams/${item.team().getId()}">${item.team().getName()}</a>
                             <span class="team-list-meta">
+                                ${item.owner() ? "Владелец команды" : "Участник команды"}
+                                <span aria-hidden="true"> · </span>
                                 ${item.owner() ? "Всего задач: " : "Актуальные задачи: "}${item.taskCount()}
                             </span>
                         </li>

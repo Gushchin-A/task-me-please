@@ -140,10 +140,6 @@ public record TeamPageView(
         return buildUrl(null, selectedSort(), null, null, null);
     }
 
-    public String defaultSortUrl() {
-        return buildUrl(selectedStatus(), null, selectedAuthorId(), selectedAssigneeId(), selectedTagId());
-    }
-
     public String allAuthorsUrl() {
         return buildUrl(selectedStatus(), selectedSort(), null, selectedAssigneeId(), selectedTagId());
     }

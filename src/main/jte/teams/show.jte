@@ -237,48 +237,24 @@
                             </button>
                         </div>
                         <div class="primer-select-options" role="menu">
-                            <a
-                                class="primer-select-option"
-                                href="${page.sortUrl(TaskSort.DEADLINE)}"
-                                role="menuitem"
-                                aria-current="${page.selectedSort() == TaskSort.DEADLINE ? "true" : null}"
-                            >
-                                <span class="primer-select-check" aria-hidden="true">
-                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                                        <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 1 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
-                                    </svg>
-                                </span>
-                                <span>По дедлайну</span>
-                            </a>
-
-                            <a
-                                class="primer-select-option"
-                                href="${page.sortUrl(TaskSort.TAG)}"
-                                role="menuitem"
-                                aria-current="${page.selectedSort() == TaskSort.TAG ? "true" : null}"
-                            >
-                                <span class="primer-select-check" aria-hidden="true">
-                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                                        <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 1 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
-                                    </svg>
-                                </span>
-                                <span>По тегу</span>
-                            </a>
-
-                            <a
-                                class="primer-select-option"
-                                href="${page.defaultSortUrl()}"
-                                role="menuitem"
-                                aria-current="${page.selectedSort() == null ? "true" : null}"
-                                data-tooltip="Сначала новые задачи, затем старые"
-                            >
-                                <span class="primer-select-check" aria-hidden="true">
-                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                                        <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 1 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
-                                    </svg>
-                                </span>
-                                <span>По умолчанию</span>
-                            </a>
+                            @for(TaskSort taskSort : TaskSort.values())
+                                <a
+                                    class="primer-select-option"
+                                    href="${page.sortUrl(taskSort)}"
+                                    role="menuitem"
+                                    aria-current="${page.selectedSort() == taskSort
+                                        || page.selectedSort() == null && taskSort == TaskSort.NEWEST
+                                        ? "true"
+                                        : null}"
+                                >
+                                    <span class="primer-select-check" aria-hidden="true">
+                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                            <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 1 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+                                        </svg>
+                                    </span>
+                                    <span>${taskSort.getDisplayName()}</span>
+                                </a>
+                            @endfor
                         </div>
                     </div>
                 </div>

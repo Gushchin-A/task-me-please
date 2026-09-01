@@ -117,17 +117,6 @@ public record MyTasksPageView(
                 selectedTagId());
     }
 
-    public String allRolesUrl() {
-        return buildUrl(
-                selectedStatus(),
-                selectedTeamId(),
-                null,
-                selectedSort(),
-                selectedAuthorId(),
-                selectedAssigneeId(),
-                selectedTagId());
-    }
-
     public String roleUrl(TaskRoleFilter role) {
         return buildUrl(
                 selectedStatus(),
@@ -165,17 +154,6 @@ public record MyTasksPageView(
                 selectedTeamId(),
                 selectedRole(),
                 sort,
-                selectedAuthorId(),
-                selectedAssigneeId(),
-                selectedTagId());
-    }
-
-    public String defaultSortUrl() {
-        return buildUrl(
-                selectedStatus(),
-                selectedTeamId(),
-                selectedRole(),
-                null,
                 selectedAuthorId(),
                 selectedAssigneeId(),
                 selectedTagId());

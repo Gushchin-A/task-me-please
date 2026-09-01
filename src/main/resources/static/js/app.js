@@ -849,6 +849,7 @@ function setupTeamSettings() {
     }
 
     setupTeamDeleteDialog();
+    setupAccountDeleteDialog();
     setupTeamLeaveDialog();
     setupTeamMemberRemoveDialog();
 
@@ -946,6 +947,38 @@ function setupTeamDeleteDialog() {
     });
 
     dialog.querySelector('[data-team-delete-close]').addEventListener('click', function () {
+        dialog.close();
+    });
+
+    dialog.addEventListener('click', function (event) {
+        if (event.target === dialog) {
+            dialog.close();
+        }
+    });
+}
+
+function setupAccountDeleteDialog() {
+    const dialog = document.querySelector('[data-account-delete-dialog]');
+
+    if (dialog === null) {
+        return;
+    }
+
+    const input = dialog.querySelector('[data-account-delete-input]');
+    const submit = dialog.querySelector('[data-account-delete-submit]');
+
+    document.querySelector('[data-account-delete-open]').addEventListener('click', function () {
+        input.value = '';
+        submit.disabled = true;
+        dialog.showModal();
+        input.focus();
+    });
+
+    input.addEventListener('input', function () {
+        submit.disabled = input.value !== input.dataset.confirmationText;
+    });
+
+    dialog.querySelector('[data-account-delete-close]').addEventListener('click', function () {
         dialog.close();
     });
 

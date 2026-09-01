@@ -111,12 +111,9 @@
                                     @endif
                                 </a>
 
-                                <div data-tooltip="Настройки пока не реализованы" tabindex="0">
-                                    <button class="profile-action" type="button" disabled>
-                                        Настройки
-                                        <span class="profile-action-note">Настройки пока не реализованы</span>
-                                    </button>
-                                </div>
+                                <a class="profile-action" href="/settings" data-profile-focus>
+                                    Настройки
+                                </a>
 
                                 @if(_csrf != null)
                                     <form class="profile-logout-form" method="post" action="/logout">
