@@ -70,6 +70,10 @@ public record TaskView(
         return timeline.deadlineAt();
     }
 
+    public String descriptionHtml() {
+        return LimitedMarkdownRenderer.render(description);
+    }
+
     public Instant createdAt() {
         return timeline.createdAt();
     }

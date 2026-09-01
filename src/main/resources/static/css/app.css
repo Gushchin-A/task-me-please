@@ -3572,6 +3572,14 @@ input[type="date"] {
     white-space: pre-wrap;
 }
 
+.comment-body blockquote,
+.task-description-preview blockquote {
+    margin: 0;
+    padding-left: var(--base-size-12);
+    border-left: 3px solid var(--borderColor-muted);
+    color: var(--fgColor-muted);
+}
+
 .task-description-item .comment-body {
     text-align: left;
 }

@@ -341,7 +341,7 @@
                         </details>
                     </header>
 
-                    <div class="comment-body" data-description-view>${task.description() == null || task.description().isBlank() ? "Описание пока не добавлено." : task.description()}</div>
+                    <div class="comment-body" data-description-view>@if(task.description() == null || task.description().isBlank())Описание пока не добавлено.@else$unsafe{task.descriptionHtml()}@endif</div>
 
                     @if(task.canUpdateTask())
                         <form class="comment-edit-form task-description-edit-form" method="post" action="/tasks/${task.id()}/edit" hidden data-description-edit-form>
@@ -426,7 +426,7 @@
                             </details>
                         </header>
 
-                        <div class="comment-body" data-comment-view>${comment.message()}</div>
+                        <div class="comment-body" data-comment-view>$unsafe{comment.messageHtml()}</div>
 
                         @if(comment.canEdit())
                             <form class="comment-edit-form" method="post" action="/tasks/${task.id()}/comments/${comment.id()}/edit" hidden data-comment-edit-form>
@@ -449,7 +449,7 @@
                                         </div>
                                     </div>
 
-                                    <textarea id="comment-edit-${comment.id()}" name="message" rows="8" data-original-value="${comment.message()}" required data-enter-submit>${comment.message()}</textarea>
+                                    <textarea id="comment-edit-${comment.id()}" name="message" rows="8" data-original-value="${comment.message()}" required>${comment.message()}</textarea>
                                     <div id="comment-edit-preview-${comment.id()}" class="task-description-preview" data-description-preview hidden></div>
                                 </div>
                                 <button class="task-file-placeholder" type="button" aria-disabled="true" title="Еще не реализовано :(">
@@ -493,7 +493,7 @@
                             </div>
                         </div>
 
-                        <textarea id="new-comment-${task.id()}" name="message" rows="8" placeholder="Оставьте комментарий" required data-enter-submit></textarea>
+                        <textarea id="new-comment-${task.id()}" name="message" rows="8" placeholder="Оставьте комментарий" required></textarea>
                         <div id="new-comment-preview-${task.id()}" class="task-description-preview" data-description-preview hidden></div>
                     </div>
                     <button class="task-file-placeholder" type="button" aria-disabled="true" title="Еще не реализовано :(">

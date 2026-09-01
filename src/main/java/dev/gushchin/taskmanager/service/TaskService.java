@@ -82,6 +82,7 @@ public class TaskService {
 
         Instant deadlineAt =
                 deadlineDate == null ? null : deadlineDate.atStartOfDay().toInstant(ZoneOffset.UTC);
+        String preparedDescription = prepareDescription(description);
 
         Task task = new Task(
                 null,
@@ -89,7 +90,7 @@ public class TaskService {
                 authorId,
                 assigneeId,
                 title,
-                description,
+                preparedDescription,
                 deadlineAt,
                 TaskStatus.OPEN,
                 tagId,
@@ -388,7 +389,7 @@ public class TaskService {
                 : update.deadlineDate().atStartOfDay().toInstant(ZoneOffset.UTC);
 
         task.setTitle(update.title());
-        task.setDescription(update.description());
+        task.setDescription(prepareDescription(update.description()));
         task.setDeadlineAt(deadlineAt);
         task.setStatus(update.status());
         task.setTagId(update.tagId());
@@ -459,6 +460,16 @@ public class TaskService {
 
     public boolean isTeamOwner(Task task, UUID userId) {
         return taskPermissionService.isTeamOwner(task, userId);
+    }
+
+    private String prepareDescription(String description) {
+        String preparedDescription = description.stripTrailing();
+
+        if (preparedDescription.isBlank()) {
+            throw new IllegalArgumentException("Task description must not be blank");
+        }
+
+        return preparedDescription;
     }
 
     private void publishDetailsChanges(Task before, Task after, UUID userId) {

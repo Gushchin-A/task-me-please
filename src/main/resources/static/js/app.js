@@ -3,6 +3,8 @@ document.addEventListener('DOMContentLoaded', function () {
     setupProfileMenu();
     setupFlashMessages();
     setupKeyboardActions();
+    setupTextEditorValues();
+    setupMarkdownShortcuts();
     setupSubmitLoading();
     setupToolbarPopovers();
     setupToolbarSelects();
@@ -25,6 +27,118 @@ function setupDatePickers() {
             }
         });
     });
+}
+
+function renderLimitedMarkdown(value) {
+    const lines = value.split(/\r\n|\r|\n/);
+    const result = [];
+    let lineIndex = 0;
+
+    function renderInline(line) {
+        const container = document.createElement('span');
+
+        container.textContent = line;
+        return container.innerHTML
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/_(.+?)_/g, '<em>$1</em>');
+    }
+
+    while (lineIndex < lines.length) {
+        if (lines[lineIndex].startsWith('>')) {
+            const quoteLines = [];
+
+            while (lineIndex < lines.length && lines[lineIndex].startsWith('>')) {
+                const quoteLine = lines[lineIndex].slice(1);
+
+                quoteLines.push(renderInline(quoteLine.startsWith(' ') ? quoteLine.slice(1) : quoteLine));
+                lineIndex++;
+            }
+            result.push('<blockquote>' + quoteLines.join('<br>') + '</blockquote>');
+        } else {
+            const normalLines = [];
+
+            while (lineIndex < lines.length && !lines[lineIndex].startsWith('>')) {
+                normalLines.push(renderInline(lines[lineIndex]));
+                lineIndex++;
+            }
+            result.push(normalLines.join('<br>'));
+        }
+    }
+
+    return result.join('');
+}
+
+function setupTextEditorValues() {
+    document.querySelectorAll('.task-description-editor textarea').forEach(function (input) {
+        const form = input.closest('form');
+
+        if (form === null) {
+            return;
+        }
+
+        form.addEventListener('submit', function (event) {
+            input.value = input.value.trimEnd();
+
+            if (input.value.trim() === '') {
+                event.preventDefault();
+                input.dispatchEvent(new Event('input', {bubbles: true}));
+                input.focus();
+            }
+        });
+    });
+}
+
+function setupMarkdownShortcuts() {
+    document.querySelectorAll('.task-description-editor textarea').forEach(function (input) {
+        input.addEventListener('keydown', function (event) {
+            if ((!event.metaKey && !event.ctrlKey) || event.altKey) {
+                return;
+            }
+
+            let format = null;
+
+            if (!event.shiftKey && event.code === 'KeyB') {
+                format = 'bold';
+            } else if (!event.shiftKey && event.code === 'KeyI') {
+                format = 'italic';
+            } else if (event.shiftKey && event.code === 'Period') {
+                format = 'quote';
+            }
+
+            if (format !== null) {
+                event.preventDefault();
+                formatEditorSelection(input, format);
+            }
+        });
+    });
+}
+
+function formatEditorSelection(input, format) {
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+
+    if (start === end) {
+        input.focus();
+        return;
+    }
+
+    const selectedText = input.value.slice(start, end);
+    let formattedText = selectedText
+            .split(/\r\n|\r|\n/)
+            .map(function (line) {
+                return '> ' + line;
+            })
+            .join('\n');
+
+    if (format === 'bold') {
+        formattedText = '**' + selectedText + '**';
+    } else if (format === 'italic') {
+        formattedText = '_' + selectedText + '_';
+    }
+
+    input.setRangeText(formattedText, start, end, 'select');
+    input.dispatchEvent(new Event('input', {bubbles: true}));
+    input.focus();
 }
 
 function setupKeyboardActions() {
@@ -272,7 +386,10 @@ function setupTaskDetail() {
         const descriptionSubmit = descriptionForm.querySelector('[data-changed-value-submit]');
 
         function updateDescriptionSubmitState() {
-            descriptionSubmit.disabled = descriptionInput.value === descriptionInput.dataset.originalValue;
+            const value = descriptionInput.value.trimEnd();
+            const originalValue = descriptionInput.dataset.originalValue.trimEnd();
+
+            descriptionSubmit.disabled = value.trim() === '' || value === originalValue;
         }
 
         descriptionOpen.addEventListener('click', function () {
@@ -303,7 +420,10 @@ function setupTaskDetail() {
         const submit = form.querySelector('[data-changed-value-submit]');
 
         function updateSubmitState() {
-            submit.disabled = input.value === input.dataset.originalValue;
+            const value = input.value.trimEnd();
+            const originalValue = input.dataset.originalValue.trimEnd();
+
+            submit.disabled = value.trim() === '' || value === originalValue;
         }
 
         open.addEventListener('click', function () {
@@ -349,7 +469,7 @@ function setupTaskDetail() {
                 editor.classList.toggle('task-description-editor-preview', !writeMode);
 
                 if (!writeMode) {
-                    preview.textContent = input.value;
+                    preview.innerHTML = renderLimitedMarkdown(input.value);
                     preview.style.height = editorHeight + 'px';
                 }
             });
@@ -357,22 +477,7 @@ function setupTaskDetail() {
 
         editor.querySelectorAll('[data-format]').forEach(function (button) {
             button.addEventListener('click', function () {
-                const start = input.selectionStart;
-                const end = input.selectionEnd;
-                const selectedText = input.value.slice(start, end) || 'текст';
-                let formattedText = '> ' + selectedText;
-
-                if (button.dataset.format === 'bold') {
-                    formattedText = '**' + selectedText + '**';
-                }
-
-                if (button.dataset.format === 'italic') {
-                    formattedText = '_' + selectedText + '_';
-                }
-
-                input.setRangeText(formattedText, start, end, 'end');
-                input.dispatchEvent(new Event('input', {bubbles: true}));
-                input.focus();
+                formatEditorSelection(input, button.dataset.format);
             });
         });
     });
@@ -1644,6 +1749,10 @@ function setupTooltips() {
 function setupSubmitLoading() {
     document.querySelectorAll('[data-submit-loading]').forEach(function (form) {
         form.addEventListener('submit', function (event) {
+            if (event.defaultPrevented) {
+                return;
+            }
+
             const submitButton = event.submitter === null
                     ? form.querySelector('button[type="submit"]')
                     : event.submitter;

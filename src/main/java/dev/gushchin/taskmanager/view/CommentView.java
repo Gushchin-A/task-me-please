@@ -33,4 +33,8 @@ public record CommentView(
 
         return !createdAt.equals(updatedAt);
     }
+
+    public String messageHtml() {
+        return LimitedMarkdownRenderer.render(message);
+    }
 }

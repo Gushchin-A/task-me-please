@@ -581,7 +581,7 @@
                         );
 
                         if (!writeMode) {
-                            descriptionPreview.textContent = descriptionInput.value;
+                            descriptionPreview.innerHTML = renderLimitedMarkdown(descriptionInput.value);
                             descriptionPreview.style.height = editorHeight + 'px';
                         }
                     });
@@ -591,21 +591,7 @@
                 .querySelectorAll('[data-format]')
                 .forEach(function (button) {
                     button.addEventListener('click', function () {
-                        const start = descriptionInput.selectionStart;
-                        const end = descriptionInput.selectionEnd;
-                        const selectedText = descriptionInput.value.slice(start, end) || 'текст';
-                        let formattedText = '> ' + selectedText;
-
-                        if (button.dataset.format === 'bold') {
-                            formattedText = '**' + selectedText + '**';
-                        }
-
-                        if (button.dataset.format === 'italic') {
-                            formattedText = '_' + selectedText + '_';
-                        }
-
-                        descriptionInput.setRangeText(formattedText, start, end, 'end');
-                        descriptionInput.focus();
+                        formatEditorSelection(descriptionInput, button.dataset.format);
                     });
                 });
 
