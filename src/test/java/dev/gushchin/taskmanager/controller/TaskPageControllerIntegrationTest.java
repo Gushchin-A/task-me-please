@@ -135,8 +135,12 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("Задача восстановлена из архива")))
                 .andExpect(content().string(containsString("Important task")))
                 .andExpect(content().string(containsString("data-history-back")))
+                .andExpect(content().string(containsString("data-history-back-scope=\"/tasks/" + task.getId() + "\"")))
                 .andExpect(content().string(containsString("Task description")))
                 .andExpect(content().string(containsString("task-detail-status-archive\">Архив")))
+                .andExpect(content().string(containsString("href=\"/teams/" + team.getId() + "/archive\"")))
+                .andExpect(content().string(containsString("class=\"local-tab-active\"")))
+                .andExpect(content().string(containsString("href=\"/teams/" + team.getId() + "/archive\"")))
                 .andExpect(content().string(containsString("task-detail-archive-outcome-resolved")))
                 .andExpect(content().string(containsString("Задача решена и перенесена в архив")))
                 .andExpect(content().string(containsString(">Решена</span>")))
@@ -320,7 +324,7 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                 // then
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Edited comment")))
-                .andExpect(content().string(containsString("Отредактировано")));
+                .andExpect(content().string(containsString(" · отредактировано</em>")));
 
         // when
         mockMvc.perform(post("/tasks/" + taskId + "/comments/" + createdComment.getId() + "/delete")

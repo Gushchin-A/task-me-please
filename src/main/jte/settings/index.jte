@@ -101,6 +101,7 @@
                     method="post"
                     action="/settings/delete"
                     data-submit-loading
+                    data-pointer-submit-only
                 >
                 <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
 
@@ -142,7 +143,9 @@
                         class="button button-danger"
                         type="submit"
                         disabled
+                        tabindex="-1"
                         data-account-delete-submit
+                        data-pointer-submit
                         data-loading-text="Обработка..."
                     >
                         Удалить

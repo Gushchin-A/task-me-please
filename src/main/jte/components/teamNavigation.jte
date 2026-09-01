@@ -25,6 +25,6 @@
         href="/teams/${team.getId()}/settings"
         aria-current="${"settings".equals(activeTab) ? "page" : null}"
     >
-        Настройки
+        Настройки команды
     </a>
 </nav>

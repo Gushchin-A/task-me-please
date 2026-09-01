@@ -449,7 +449,7 @@
                             </div>
                         </div>
 
-                        <div class="team-create-submit">
+                        <div class="team-create-submit" data-keyboard-action-group>
                             <a class="button button-secondary" href="/tasks">
                                 Отменить
                             </a>

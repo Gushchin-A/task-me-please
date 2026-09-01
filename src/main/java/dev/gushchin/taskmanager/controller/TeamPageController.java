@@ -157,9 +157,9 @@ public class TeamPageController {
 
         TaskStatus status = request.getStatus();
         TaskSort sort = request.getSort();
-        UUID authorId = request.getAuthorId();
-        UUID assigneeId = request.getAssigneeId();
-        Long tagId = request.getTagId();
+        List<UUID> authorIds = request.getAuthorIds();
+        List<UUID> assigneeIds = request.getAssigneeIds();
+        List<Long> tagIds = request.getTagIds();
 
         Team team = teamService.findById(id);
         List<Task> visibleTasks = taskService.findVisibleByTeamId(id, authUser.getId());
@@ -173,9 +173,9 @@ public class TeamPageController {
 
         TeamTasksStats stats = taskService.getStats(modeFilteredTasks);
         List<Task> statusFilteredTasks = taskService.filterByStatus(modeFilteredTasks, status);
-        List<Task> tagFilteredTasks = taskService.filterByTagId(statusFilteredTasks, tagId);
-        List<Task> authorFilteredTasks = taskService.filterByAuthorId(tagFilteredTasks, authorId);
-        List<Task> assigneeFilteredTasks = taskService.filterByAssigneeId(authorFilteredTasks, assigneeId);
+        List<Task> tagFilteredTasks = taskService.filterByTagIds(statusFilteredTasks, tagIds);
+        List<Task> authorFilteredTasks = taskService.filterByAuthorIds(tagFilteredTasks, authorIds);
+        List<Task> assigneeFilteredTasks = taskService.filterByAssigneeIds(authorFilteredTasks, assigneeIds);
         List<Task> sortedTasks = taskService.sortTasks(assigneeFilteredTasks, sort);
 
         List<TaskView> taskViews = sortedTasks.stream()
@@ -192,7 +192,8 @@ public class TeamPageController {
                 new TeamPageView.TeamPageCounts(
                         activeTasks.size(), archivedTasks.size(), sortedTasks.size(), teamMembers.size()),
                 stats,
-                new TeamPageView.TeamPageFilters(status, sort, authorId, assigneeId, tagId),
+                new TeamPageView.TeamPageFilters(
+                        status, sort, authorIds, assigneeIds, tagIds, request.getOpenFilter()),
                 new TeamPageView.TeamPageAccess(
                         canInvite, currentMember.getTaskVisibility() == TeamTaskVisibility.OWN_TASKS),
                 TaskListMode.ACTIVE);
@@ -221,9 +222,9 @@ public class TeamPageController {
 
         TaskStatus status = request.getStatus();
         TaskSort sort = request.getSort();
-        UUID authorId = request.getAuthorId();
-        UUID assigneeId = request.getAssigneeId();
-        Long tagId = request.getTagId();
+        List<UUID> authorIds = request.getAuthorIds();
+        List<UUID> assigneeIds = request.getAssigneeIds();
+        List<Long> tagIds = request.getTagIds();
 
         Team team = teamService.findById(id);
         List<Task> visibleTasks = taskService.findVisibleByTeamId(id, authUser.getId());
@@ -237,9 +238,9 @@ public class TeamPageController {
 
         TeamTasksStats stats = taskService.getStats(modeFilteredTasks);
         List<Task> statusFilteredTasks = taskService.filterByStatus(modeFilteredTasks, status);
-        List<Task> tagFilteredTasks = taskService.filterByTagId(statusFilteredTasks, tagId);
-        List<Task> authorFilteredTasks = taskService.filterByAuthorId(tagFilteredTasks, authorId);
-        List<Task> assigneeFilteredTasks = taskService.filterByAssigneeId(authorFilteredTasks, assigneeId);
+        List<Task> tagFilteredTasks = taskService.filterByTagIds(statusFilteredTasks, tagIds);
+        List<Task> authorFilteredTasks = taskService.filterByAuthorIds(tagFilteredTasks, authorIds);
+        List<Task> assigneeFilteredTasks = taskService.filterByAssigneeIds(authorFilteredTasks, assigneeIds);
         List<Task> sortedTasks = taskService.sortTasks(assigneeFilteredTasks, sort);
 
         List<TaskView> taskViews = sortedTasks.stream()
@@ -256,7 +257,8 @@ public class TeamPageController {
                 new TeamPageView.TeamPageCounts(
                         activeTasks.size(), archivedTasks.size(), sortedTasks.size(), teamMembers.size()),
                 stats,
-                new TeamPageView.TeamPageFilters(status, sort, authorId, assigneeId, tagId),
+                new TeamPageView.TeamPageFilters(
+                        status, sort, authorIds, assigneeIds, tagIds, request.getOpenFilter()),
                 new TeamPageView.TeamPageAccess(
                         canInvite, currentMember.getTaskVisibility() == TeamTaskVisibility.OWN_TASKS),
                 TaskListMode.ARCHIVE);

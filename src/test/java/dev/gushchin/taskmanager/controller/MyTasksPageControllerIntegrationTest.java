@@ -119,13 +119,13 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(not(containsString("class=\"page-actions\""))))
                 .andExpect(content().string(containsString("class=\"task-toolbar\"")))
                 .andExpect(content().string(containsString("Выберите фильтры")))
-                .andExpect(content().string(not(containsString(">Исполнитель</span>"))))
+                .andExpect(content().string(containsString(">Исполнитель</span>")))
                 .andExpect(content().string(containsString(">Автор</span>")))
                 .andExpect(content().string(containsString(">Тег</span>")))
                 .andExpect(content().string(containsString(">Команда</span>")))
                 .andExpect(content().string(containsString(">Моя роль</span>")))
-                .andExpect(content().string(containsString(">Автор</a>")))
-                .andExpect(content().string(containsString(">Исполнитель</a>")))
+                .andExpect(content().string(containsString("role=AUTHOR")))
+                .andExpect(content().string(containsString("role=ASSIGNEE")))
                 .andExpect(content().string(containsString("Сортировать задачи")))
                 .andExpect(content().string(containsString("Сначала новые")))
                 .andExpect(content().string(containsString("Сначала старые")))
@@ -185,20 +185,35 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
 
     @Test
     void myTasksPageShouldFilterByAuthorAssigneeAndTag() throws Exception {
-        mockMvc.perform(get("/tasks?authorId=" + owner.getId()).with(user(new AuthUser(owner))))
+        mockMvc.perform(get("/tasks?authorIds=" + owner.getId()).with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Owner author task")))
                 .andExpect(content().string(not(containsString("Owner assignee task"))));
 
-        mockMvc.perform(get("/tasks?assigneeId=" + owner.getId()).with(user(new AuthUser(owner))))
+        mockMvc.perform(get("/tasks?assigneeIds=" + owner.getId()).with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Owner assignee task")))
                 .andExpect(content().string(not(containsString("Owner author task"))));
 
-        mockMvc.perform(get("/tasks?tagId=" + firstTeamTag.getId()).with(user(new AuthUser(owner))))
+        mockMvc.perform(get("/tasks?tagIds=" + firstTeamTag.getId()).with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Owner author task")))
                 .andExpect(content().string(not(containsString("Owner assignee task"))));
+    }
+
+    @Test
+    void myTasksPageShouldCombineMultipleValuesWithinOneFilter() throws Exception {
+        mockMvc.perform(get("/tasks")
+                        .queryParam(
+                                "authorIds",
+                                owner.getId().toString(),
+                                secondUser.getId().toString())
+                        .with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Owner author task")))
+                .andExpect(content().string(containsString("Owner assignee task")))
+                .andExpect(content().string(containsString("data-filter-overflow")))
+                .andExpect(content().string(containsString("data-filter-option")));
     }
 
     @Test
@@ -304,6 +319,27 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("Решена")))
                 .andExpect(content().string(not(containsString("<time"))))
                 .andExpect(content().string(not(containsString("task-card-deadline-urgent"))));
+    }
+
+    @Test
+    void completedActiveTaskShouldNotHighlightOverdueDeadline() throws Exception {
+        taskService.updateDeadline(assigneeTask.getId(), LocalDate.now().minusDays(1), secondUser.getId());
+
+        mockMvc.perform(get("/tasks").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Owner assignee task")))
+                .andExpect(content().string(not(containsString("task-card-deadline-urgent"))));
+    }
+
+    @Test
+    void openActiveTaskShouldHighlightOverdueDeadline() throws Exception {
+        Task openTask = taskService.findByTeamId(firstTeam.getId()).getFirst();
+        taskService.updateDeadline(openTask.getId(), LocalDate.now().minusDays(1), owner.getId());
+
+        mockMvc.perform(get("/tasks?teamId=" + firstTeam.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Owner author task")))
+                .andExpect(content().string(containsString("task-card-deadline-urgent")));
     }
 
     @Test

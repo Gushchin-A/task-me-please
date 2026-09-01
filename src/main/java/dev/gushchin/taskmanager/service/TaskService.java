@@ -179,6 +179,16 @@ public class TaskService {
                 .toList();
     }
 
+    public List<Task> filterByAuthorIds(List<Task> tasks, List<UUID> authorIds) {
+        if (authorIds.isEmpty()) {
+            return tasks;
+        }
+
+        return tasks.stream()
+                .filter(task -> authorIds.contains(task.getAuthorId()))
+                .toList();
+    }
+
     public List<Task> filterByAssigneeId(List<Task> tasks, UUID assigneeId) {
         if (assigneeId == null) {
             return tasks;
@@ -189,12 +199,30 @@ public class TaskService {
                 .toList();
     }
 
+    public List<Task> filterByAssigneeIds(List<Task> tasks, List<UUID> assigneeIds) {
+        if (assigneeIds.isEmpty()) {
+            return tasks;
+        }
+
+        return tasks.stream()
+                .filter(task -> assigneeIds.contains(task.getAssigneeId()))
+                .toList();
+    }
+
     public List<Task> filterByTagId(List<Task> tasks, Long tagId) {
         if (tagId == null) {
             return tasks;
         }
 
         return tasks.stream().filter(task -> tagId.equals(task.getTagId())).toList();
+    }
+
+    public List<Task> filterByTagIds(List<Task> tasks, List<Long> tagIds) {
+        if (tagIds.isEmpty()) {
+            return tasks;
+        }
+
+        return tasks.stream().filter(task -> tagIds.contains(task.getTagId())).toList();
     }
 
     public List<Task> sortTasks(List<Task> tasks, TaskSort sort) {

@@ -5,6 +5,7 @@ import dev.gushchin.taskmanager.model.TaskSort;
 import dev.gushchin.taskmanager.model.TaskStatus;
 import dev.gushchin.taskmanager.model.Team;
 import dev.gushchin.taskmanager.model.TeamTag;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.StringJoiner;
 import java.util.UUID;
@@ -71,16 +72,20 @@ public record TeamPageView(
         return filters.selectedSort();
     }
 
-    public UUID selectedAuthorId() {
-        return filters.selectedAuthorId();
+    public List<UUID> selectedAuthorIds() {
+        return filters.selectedAuthorIds();
     }
 
-    public UUID selectedAssigneeId() {
-        return filters.selectedAssigneeId();
+    public List<UUID> selectedAssigneeIds() {
+        return filters.selectedAssigneeIds();
     }
 
-    public Long selectedTagId() {
-        return filters.selectedTagId();
+    public List<Long> selectedTagIds() {
+        return filters.selectedTagIds();
+    }
+
+    public String openFilter() {
+        return filters.openFilter();
     }
 
     public boolean activeMode() {
@@ -119,52 +124,58 @@ public record TeamPageView(
 
     public boolean hasSelectedFilters() {
         return selectedStatus() != null
-                || selectedAuthorId() != null
-                || selectedAssigneeId() != null
-                || selectedTagId() != null;
+                || !selectedAuthorIds().isEmpty()
+                || !selectedAssigneeIds().isEmpty()
+                || !selectedTagIds().isEmpty();
     }
 
     public String allStatusesUrl() {
-        return buildUrl(null, selectedSort(), selectedAuthorId(), selectedAssigneeId(), selectedTagId());
+        return buildUrl(null, selectedSort(), selectedAuthorIds(), selectedAssigneeIds(), selectedTagIds());
     }
 
     public String statusUrl(TaskStatus status) {
-        return buildUrl(status, selectedSort(), selectedAuthorId(), selectedAssigneeId(), selectedTagId());
+        TaskStatus nextStatus = status == selectedStatus() ? null : status;
+
+        return buildUrl(nextStatus, selectedSort(), selectedAuthorIds(), selectedAssigneeIds(), selectedTagIds());
     }
 
     public String sortUrl(TaskSort sort) {
-        return buildUrl(selectedStatus(), sort, selectedAuthorId(), selectedAssigneeId(), selectedTagId());
+        return buildUrl(selectedStatus(), sort, selectedAuthorIds(), selectedAssigneeIds(), selectedTagIds());
     }
 
     public String clearFiltersUrl() {
-        return buildUrl(null, selectedSort(), null, null, null);
-    }
-
-    public String allAuthorsUrl() {
-        return buildUrl(selectedStatus(), selectedSort(), null, selectedAssigneeId(), selectedTagId());
+        return buildUrl(null, selectedSort(), List.of(), List.of(), List.of());
     }
 
     public String authorUrl(UUID authorId) {
-        return buildUrl(selectedStatus(), selectedSort(), authorId, selectedAssigneeId(), selectedTagId());
-    }
-
-    public String allAssigneesUrl() {
-        return buildUrl(selectedStatus(), selectedSort(), selectedAuthorId(), null, selectedTagId());
+        return buildUrl(
+                selectedStatus(),
+                selectedSort(),
+                toggleValue(selectedAuthorIds(), authorId),
+                selectedAssigneeIds(),
+                selectedTagIds());
     }
 
     public String assigneeUrl(UUID assigneeId) {
-        return buildUrl(selectedStatus(), selectedSort(), selectedAuthorId(), assigneeId, selectedTagId());
-    }
-
-    public String allTagsUrl() {
-        return buildUrl(selectedStatus(), selectedSort(), selectedAuthorId(), selectedAssigneeId(), null);
+        return buildUrl(
+                selectedStatus(),
+                selectedSort(),
+                selectedAuthorIds(),
+                toggleValue(selectedAssigneeIds(), assigneeId),
+                selectedTagIds());
     }
 
     public String tagUrl(Long tagId) {
-        return buildUrl(selectedStatus(), selectedSort(), selectedAuthorId(), selectedAssigneeId(), tagId);
+        return buildUrl(
+                selectedStatus(),
+                selectedSort(),
+                selectedAuthorIds(),
+                selectedAssigneeIds(),
+                toggleValue(selectedTagIds(), tagId));
     }
 
-    private String buildUrl(TaskStatus status, TaskSort sort, UUID authorId, UUID assigneeId, Long tagId) {
+    private String buildUrl(
+            TaskStatus status, TaskSort sort, List<UUID> authorIds, List<UUID> assigneeIds, List<Long> tagIds) {
         StringJoiner query = new StringJoiner("&");
 
         if (status != null) {
@@ -175,17 +186,9 @@ public record TeamPageView(
             query.add("sort=" + sort.name());
         }
 
-        if (authorId != null) {
-            query.add("authorId=" + authorId);
-        }
-
-        if (assigneeId != null) {
-            query.add("assigneeId=" + assigneeId);
-        }
-
-        if (tagId != null) {
-            query.add("tagId=" + tagId);
-        }
+        authorIds.forEach(authorId -> query.add("authorIds=" + authorId));
+        assigneeIds.forEach(assigneeId -> query.add("assigneeIds=" + assigneeId));
+        tagIds.forEach(tagId -> query.add("tagIds=" + tagId));
 
         String queryString = query.toString();
 
@@ -194,6 +197,19 @@ public record TeamPageView(
         }
 
         return baseUrl() + "?" + queryString;
+    }
+
+    private <T> List<T> toggleValue(List<T> selectedValues, T value) {
+        if (selectedValues.contains(value)) {
+            return selectedValues.stream()
+                    .filter(selectedValue -> !selectedValue.equals(value))
+                    .toList();
+        }
+
+        List<T> values = new ArrayList<>(selectedValues);
+
+        values.add(value);
+        return List.copyOf(values);
     }
 
     public record TeamPageResources(
@@ -205,9 +221,10 @@ public record TeamPageView(
     public record TeamPageFilters(
             TaskStatus selectedStatus,
             TaskSort selectedSort,
-            UUID selectedAuthorId,
-            UUID selectedAssigneeId,
-            Long selectedTagId) {}
+            List<UUID> selectedAuthorIds,
+            List<UUID> selectedAssigneeIds,
+            List<Long> selectedTagIds,
+            String openFilter) {}
 
     public record TeamPageAccess(boolean canInvite, boolean limitedTaskVisibility) {}
 }

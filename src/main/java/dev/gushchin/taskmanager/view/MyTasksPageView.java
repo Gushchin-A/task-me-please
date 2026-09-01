@@ -6,6 +6,7 @@ import dev.gushchin.taskmanager.model.TaskSort;
 import dev.gushchin.taskmanager.model.TaskStatus;
 import dev.gushchin.taskmanager.model.Team;
 import dev.gushchin.taskmanager.model.TeamTag;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.StringJoiner;
 import java.util.UUID;
@@ -53,16 +54,20 @@ public record MyTasksPageView(
         return filters.selectedSort();
     }
 
-    public UUID selectedAuthorId() {
-        return filters.selectedAuthorId();
+    public List<UUID> selectedAuthorIds() {
+        return filters.selectedAuthorIds();
     }
 
-    public UUID selectedAssigneeId() {
-        return filters.selectedAssigneeId();
+    public List<UUID> selectedAssigneeIds() {
+        return filters.selectedAssigneeIds();
     }
 
-    public Long selectedTagId() {
-        return filters.selectedTagId();
+    public List<Long> selectedTagIds() {
+        return filters.selectedTagIds();
+    }
+
+    public String openFilter() {
+        return filters.openFilter();
     }
 
     public int authorTasksCount() {
@@ -79,20 +84,22 @@ public record MyTasksPageView(
                 selectedTeamId(),
                 selectedRole(),
                 selectedSort(),
-                selectedAuthorId(),
-                selectedAssigneeId(),
-                selectedTagId());
+                selectedAuthorIds(),
+                selectedAssigneeIds(),
+                selectedTagIds());
     }
 
     public String statusUrl(TaskStatus status) {
+        TaskStatus nextStatus = status == selectedStatus() ? null : status;
+
         return buildUrl(
-                status,
+                nextStatus,
                 selectedTeamId(),
                 selectedRole(),
                 selectedSort(),
-                selectedAuthorId(),
-                selectedAssigneeId(),
-                selectedTagId());
+                selectedAuthorIds(),
+                selectedAssigneeIds(),
+                selectedTagIds());
     }
 
     public String allTeamsUrl() {
@@ -101,31 +108,35 @@ public record MyTasksPageView(
                 null,
                 selectedRole(),
                 selectedSort(),
-                selectedAuthorId(),
-                selectedAssigneeId(),
-                selectedTagId());
+                selectedAuthorIds(),
+                selectedAssigneeIds(),
+                selectedTagIds());
     }
 
     public String teamUrl(Long teamId) {
+        Long nextTeamId = teamId.equals(selectedTeamId()) ? null : teamId;
+
         return buildUrl(
                 selectedStatus(),
-                teamId,
+                nextTeamId,
                 selectedRole(),
                 selectedSort(),
-                selectedAuthorId(),
-                selectedAssigneeId(),
-                selectedTagId());
+                selectedAuthorIds(),
+                selectedAssigneeIds(),
+                selectedTagIds());
     }
 
     public String roleUrl(TaskRoleFilter role) {
+        TaskRoleFilter nextRole = role == selectedRole() ? null : role;
+
         return buildUrl(
                 selectedStatus(),
                 selectedTeamId(),
-                role,
+                nextRole,
                 selectedSort(),
-                selectedAuthorId(),
-                selectedAssigneeId(),
-                selectedTagId());
+                selectedAuthorIds(),
+                selectedAssigneeIds(),
+                selectedTagIds());
     }
 
     public boolean archiveMode() {
@@ -154,46 +165,52 @@ public record MyTasksPageView(
                 selectedTeamId(),
                 selectedRole(),
                 sort,
-                selectedAuthorId(),
-                selectedAssigneeId(),
-                selectedTagId());
+                selectedAuthorIds(),
+                selectedAssigneeIds(),
+                selectedTagIds());
     }
 
     public String clearFiltersUrl() {
-        return buildUrl(null, null, null, selectedSort(), null, null, null);
+        return buildUrl(null, null, null, selectedSort(), List.of(), List.of(), List.of());
     }
 
     public String authorUrl(UUID authorId) {
+        List<UUID> authorIds = toggleValue(selectedAuthorIds(), authorId);
+
         return buildUrl(
                 selectedStatus(),
                 selectedTeamId(),
                 selectedRole(),
                 selectedSort(),
-                authorId,
-                selectedAssigneeId(),
-                selectedTagId());
+                authorIds,
+                selectedAssigneeIds(),
+                selectedTagIds());
     }
 
     public String assigneeUrl(UUID assigneeId) {
+        List<UUID> assigneeIds = toggleValue(selectedAssigneeIds(), assigneeId);
+
         return buildUrl(
                 selectedStatus(),
                 selectedTeamId(),
                 selectedRole(),
                 selectedSort(),
-                selectedAuthorId(),
-                assigneeId,
-                selectedTagId());
+                selectedAuthorIds(),
+                assigneeIds,
+                selectedTagIds());
     }
 
     public String tagUrl(Long tagId) {
+        List<Long> tagIds = toggleValue(selectedTagIds(), tagId);
+
         return buildUrl(
                 selectedStatus(),
                 selectedTeamId(),
                 selectedRole(),
                 selectedSort(),
-                selectedAuthorId(),
-                selectedAssigneeId(),
-                tagId);
+                selectedAuthorIds(),
+                selectedAssigneeIds(),
+                tagIds);
     }
 
     private String buildUrl(
@@ -201,9 +218,9 @@ public record MyTasksPageView(
             Long teamId,
             TaskRoleFilter role,
             TaskSort sort,
-            UUID authorId,
-            UUID assigneeId,
-            Long tagId) {
+            List<UUID> authorIds,
+            List<UUID> assigneeIds,
+            List<Long> tagIds) {
         StringJoiner query = new StringJoiner("&");
 
         if (status != null) {
@@ -222,17 +239,9 @@ public record MyTasksPageView(
             query.add("sort=" + sort.name());
         }
 
-        if (authorId != null) {
-            query.add("authorId=" + authorId);
-        }
-
-        if (assigneeId != null) {
-            query.add("assigneeId=" + assigneeId);
-        }
-
-        if (tagId != null) {
-            query.add("tagId=" + tagId);
-        }
+        authorIds.forEach(authorId -> query.add("authorIds=" + authorId));
+        assigneeIds.forEach(assigneeId -> query.add("assigneeIds=" + assigneeId));
+        tagIds.forEach(tagId -> query.add("tagIds=" + tagId));
 
         String queryString = query.toString();
         String baseUrl = activeMode() ? "/tasks" : "/tasks/archive";
@@ -244,14 +253,28 @@ public record MyTasksPageView(
         return baseUrl + "?" + queryString;
     }
 
+    private <T> List<T> toggleValue(List<T> selectedValues, T value) {
+        if (selectedValues.contains(value)) {
+            return selectedValues.stream()
+                    .filter(selectedValue -> !selectedValue.equals(value))
+                    .toList();
+        }
+
+        List<T> values = new ArrayList<>(selectedValues);
+
+        values.add(value);
+        return List.copyOf(values);
+    }
+
     public record MyTasksPageFilters(
             TaskStatus selectedStatus,
             Long selectedTeamId,
             TaskRoleFilter selectedRole,
             TaskSort selectedSort,
-            UUID selectedAuthorId,
-            UUID selectedAssigneeId,
-            Long selectedTagId) {}
+            List<UUID> selectedAuthorIds,
+            List<UUID> selectedAssigneeIds,
+            List<Long> selectedTagIds,
+            String openFilter) {}
 
     public record MyTasksPageResources(List<Team> teams, List<TaskParticipantView> filterMembers, List<TeamTag> tags) {}
 

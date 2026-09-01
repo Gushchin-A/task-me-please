@@ -135,7 +135,7 @@
 
                 @if(canManageVisibility)
                     <dialog class="settings-dialog team-member-remove-dialog" data-team-member-remove-dialog>
-                        <form class="settings-dialog-form" method="post" data-team-member-remove-form data-submit-loading>
+                        <form class="settings-dialog-form" method="post" data-team-member-remove-form data-submit-loading data-pointer-submit-only>
                             <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
 
                             <header class="settings-dialog-header">
@@ -165,7 +165,7 @@
                                 <button class="button button-secondary" type="button" data-team-member-remove-cancel>
                                     Отмена
                                 </button>
-                                <button class="button button-danger" type="submit" data-loading-text="Обработка...">
+                                <button class="button button-danger" type="submit" tabindex="-1" data-pointer-submit data-loading-text="Обработка...">
                                     Удалить
                                 </button>
                             </footer>

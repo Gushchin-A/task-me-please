@@ -24,7 +24,7 @@
             </p>
         </div>
 
-        <footer class="settings-dialog-footer invitation-decision-actions">
+        <footer class="settings-dialog-footer invitation-decision-actions" data-keyboard-action-group>
             <form method="post" action="/invitations/${invitation.token()}/decline" data-submit-loading>
                 <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
                 @if(returnTo != null)

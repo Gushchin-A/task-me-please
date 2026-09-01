@@ -2,10 +2,12 @@ document.addEventListener('DOMContentLoaded', function () {
     setupHistoryBackLinks();
     setupProfileMenu();
     setupFlashMessages();
+    setupKeyboardActions();
     setupSubmitLoading();
     setupToolbarPopovers();
     setupToolbarSelects();
     setupFilterSelects();
+    setupDatePickers();
     setupTeamSettings();
     setupTeamVisibilitySwitches();
     setupTaskCards();
@@ -15,9 +17,118 @@ document.addEventListener('DOMContentLoaded', function () {
     setupTooltips();
 });
 
+function setupDatePickers() {
+    document.querySelectorAll('input[type="date"]').forEach(function (input) {
+        input.addEventListener('click', function () {
+            if (!input.disabled && !input.readOnly && typeof input.showPicker === 'function') {
+                input.showPicker();
+            }
+        });
+    });
+}
+
+function setupKeyboardActions() {
+    document.querySelectorAll('[data-enter-submit]').forEach(function (control) {
+        control.addEventListener('keydown', function (event) {
+            if (event.key !== 'Enter' || event.shiftKey || event.isComposing) {
+                return;
+            }
+
+            const form = control.closest('form');
+            const submit = form?.querySelector('button[type="submit"]:not(:disabled), input[type="submit"]:not(:disabled)');
+
+            event.preventDefault();
+            if (submit !== null && submit !== undefined) {
+                form.requestSubmit(submit);
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-keyboard-action-group]').forEach(function (group) {
+        group.addEventListener('keydown', function (event) {
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
+                return;
+            }
+
+            const current = event.target.closest('button, a[href]');
+            const actions = Array.from(group.querySelectorAll('button:not(:disabled), a[href]'))
+                    .filter(function (action) {
+                        return action.tabIndex >= 0 && !action.hidden;
+                    });
+            const currentIndex = actions.indexOf(current);
+
+            if (currentIndex === -1 || actions.length < 2) {
+                return;
+            }
+
+            const direction = event.key === 'ArrowRight' ? 1 : -1;
+            const nextIndex = (currentIndex + direction + actions.length) % actions.length;
+
+            event.preventDefault();
+            actions[nextIndex].focus();
+        });
+    });
+
+    document.querySelectorAll('[data-pointer-submit-only]').forEach(function (form) {
+        const submit = form.querySelector('[data-pointer-submit]');
+
+        if (submit === null) {
+            return;
+        }
+
+        let pointerSubmission = false;
+
+        submit.addEventListener('click', function (event) {
+            if (event.detail === 0) {
+                event.preventDefault();
+                return;
+            }
+
+            pointerSubmission = true;
+        });
+        form.addEventListener('submit', function (event) {
+            if (!pointerSubmission) {
+                event.preventDefault();
+                return;
+            }
+
+            pointerSubmission = false;
+        });
+        form.addEventListener('keydown', function (event) {
+            const button = event.target.closest('button');
+
+            if (event.key === 'Enter' && !event.isComposing && (button === null || button === submit)) {
+                event.preventDefault();
+            }
+        });
+    });
+}
+
 function setupHistoryBackLinks() {
     document.querySelectorAll('[data-history-back]').forEach(function (link) {
+        const scope = link.dataset.historyBackScope;
+        const storageKey = scope === undefined ? null : 'history-back:' + scope;
+
+        if (storageKey !== null && document.referrer !== '') {
+            const referrer = new URL(document.referrer);
+            const referrerWithinScope = referrer.pathname === scope || referrer.pathname.startsWith(scope + '/');
+
+            if (referrer.origin === window.location.origin && !referrerWithinScope) {
+                sessionStorage.setItem(storageKey, referrer.pathname + referrer.search + referrer.hash);
+            } else if (referrer.origin !== window.location.origin) {
+                sessionStorage.removeItem(storageKey);
+            }
+        }
+
         link.addEventListener('click', function (event) {
+            const storedReturnUrl = storageKey === null ? null : sessionStorage.getItem(storageKey);
+
+            if (storedReturnUrl !== null) {
+                event.preventDefault();
+                window.location.assign(storedReturnUrl);
+                return;
+            }
+
             if (document.referrer === '') {
                 return;
             }
@@ -136,13 +247,17 @@ function setupTaskDetail() {
             titleInput.select();
         });
 
-        titleCancel.addEventListener('click', function () {
+        titleCancel.addEventListener('click', function (event) {
             titleForm.reset();
             titleSubmit.disabled = true;
             titleLength.textContent = titleInput.value.length;
             titleForm.hidden = true;
             titleRow.hidden = false;
-            titleOpen.focus();
+            if (event.detail === 0) {
+                titleOpen.focus();
+            } else {
+                titleOpen.blur();
+            }
         });
     }
 
@@ -498,7 +613,7 @@ function setupTaskDetail() {
                 : authorSelect.nativeSelect.dataset.accessWarning;
     }
 
-    function closeEditor() {
+    function closeEditor(restoreFocus) {
         parameters.classList.remove('task-parameters-editing');
         readOnlyTooltips.forEach(function (element) {
             element.setAttribute('data-tooltip-disabled', 'true');
@@ -521,7 +636,11 @@ function setupTaskDetail() {
         }
         editOpen.hidden = false;
         updateSaveState();
-        editOpen.focus();
+        if (restoreFocus) {
+            editOpen.focus();
+        } else {
+            editOpen.blur();
+        }
     }
 
     editOpen.addEventListener('click', function () {
@@ -555,7 +674,9 @@ function setupTaskDetail() {
         form.addEventListener('input', updateSaveState);
     });
 
-    cancel.addEventListener('click', closeEditor);
+    cancel.addEventListener('click', function (event) {
+        closeEditor(event.detail === 0);
+    });
 
     document.addEventListener('click', function (event) {
         if (!event.target.closest('.task-parameter-select')) {
@@ -635,6 +756,13 @@ function setupTaskCards() {
         const closeButtons = dialog.querySelectorAll('[data-task-edit-close], [data-task-edit-cancel]');
         const originalValues = new URLSearchParams(new FormData(form)).toString();
         const authorWarningTrigger = dialog.querySelector('[data-author-change-warning]');
+        const originalSelectValues = new Map();
+
+        selects.forEach(function (select) {
+            const hiddenInput = select.parentElement.querySelector('input[type="hidden"]');
+
+            originalSelectValues.set(select, hiddenInput.value);
+        });
 
         function updateAuthorChangeWarning() {
             const assigneeInput = form.querySelector('input[name="assigneeId"]');
@@ -672,6 +800,8 @@ function setupTaskCards() {
 
             selects.forEach(function (select) {
                 const hiddenInput = select.parentElement.querySelector('input[type="hidden"]');
+
+                hiddenInput.value = originalSelectValues.get(select);
                 const selectedOption = Array.from(select.querySelectorAll('.primer-select-option'))
                         .find(function (option) {
                             return option.dataset.value === hiddenInput.value;
@@ -691,6 +821,7 @@ function setupTaskCards() {
                     }
                 }
             });
+            updateAuthorChangeWarning();
         }
 
         function updateSubmitState() {
@@ -900,9 +1031,13 @@ function setupTeamMemberRemoveDialog() {
     const name = dialog.querySelector('[data-team-member-remove-name]');
     const email = dialog.querySelector('[data-team-member-remove-email]');
     const cancel = dialog.querySelector('[data-team-member-remove-cancel]');
+    let openButton = null;
+    let openedWithPointer = false;
 
     document.querySelectorAll('[data-team-member-remove-open]').forEach(function (button) {
-        button.addEventListener('click', function () {
+        button.addEventListener('click', function (event) {
+            openButton = button;
+            openedWithPointer = event.detail > 0;
             form.action = window.location.pathname + '/' + button.dataset.memberId + '/remove';
             avatar.textContent = button.dataset.memberInitials;
             name.textContent = button.dataset.memberName;
@@ -921,6 +1056,11 @@ function setupTeamMemberRemoveDialog() {
     dialog.addEventListener('click', function (event) {
         if (event.target === dialog) {
             dialog.close();
+        }
+    });
+    dialog.addEventListener('close', function () {
+        if (openedWithPointer && openButton !== null) {
+            openButton.blur();
         }
     });
 }
@@ -1043,6 +1183,58 @@ function setupChangedValueSubmitState(input, submit) {
 
 function setupFilterSelects() {
     const selects = document.querySelectorAll('[data-filter-select]');
+    const openFilterStorageKey = 'open-task-filter';
+
+    function updateSelectedValueOverflow(select) {
+        const values = select.querySelector('[data-filter-selected-values]');
+
+        if (values === null) {
+            return;
+        }
+
+        const chips = Array.from(values.querySelectorAll('[data-filter-chip]'));
+        const overflow = values.querySelector('[data-filter-overflow]');
+
+        chips.forEach(function (chip) {
+            chip.hidden = false;
+        });
+        overflow.hidden = true;
+
+        if (chips.length < 2 || values.clientWidth === 0) {
+            return;
+        }
+
+        const valuesRight = values.getBoundingClientRect().right;
+
+        if (chips[chips.length - 1].getBoundingClientRect().right <= valuesRight) {
+            return;
+        }
+
+        for (let visibleCount = chips.length - 1; visibleCount > 0; visibleCount--) {
+            const hiddenCount = chips.length - visibleCount;
+
+            chips.forEach(function (chip, index) {
+                chip.hidden = index >= visibleCount;
+            });
+            overflow.hidden = false;
+            overflow.textContent = '+' + hiddenCount;
+
+            if (overflow.getBoundingClientRect().right <= valuesRight) {
+                break;
+            }
+        }
+    }
+
+    function clearOpenFilterUrl() {
+        const url = new URL(window.location.href);
+
+        if (!url.searchParams.has('openFilter')) {
+            return;
+        }
+
+        url.searchParams.delete('openFilter');
+        window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+    }
 
     function closeFilterSelect(select) {
         const trigger = select.querySelector(':scope > .primer-select-trigger');
@@ -1069,6 +1261,76 @@ function setupFilterSelects() {
 
             panel.hidden = !shouldOpen;
             trigger.setAttribute('aria-expanded', String(shouldOpen));
+            if (shouldOpen) {
+                window.requestAnimationFrame(function () {
+                    updateSelectedValueOverflow(select);
+                });
+                sessionStorage.setItem(openFilterStorageKey, JSON.stringify({
+                    path: window.location.pathname,
+                    filterKey: select.dataset.filterKey
+                }));
+            } else {
+                sessionStorage.removeItem(openFilterStorageKey);
+                clearOpenFilterUrl();
+            }
+        });
+
+        select.querySelectorAll('[data-filter-option]').forEach(function (option) {
+            option.addEventListener('click', function () {
+                const url = new URL(option.href);
+
+                url.searchParams.set('openFilter', select.dataset.filterKey);
+                option.href = url.href;
+                sessionStorage.setItem(openFilterStorageKey, JSON.stringify({
+                    path: window.location.pathname,
+                    filterKey: select.dataset.filterKey
+                }));
+            });
+        });
+
+        updateSelectedValueOverflow(select);
+    });
+
+    const storedOpenFilter = sessionStorage.getItem(openFilterStorageKey);
+
+    if (storedOpenFilter !== null) {
+        const openFilter = JSON.parse(storedOpenFilter);
+        const select = Array.from(selects).find(function (filterSelect) {
+            return openFilter.path === window.location.pathname
+                    && filterSelect.dataset.filterKey === openFilter.filterKey;
+        });
+
+        if (select !== undefined) {
+            const toolbarSelect = select.closest('[data-toolbar-select]');
+            const toolbarTrigger = toolbarSelect.querySelector('.task-toolbar-trigger');
+            const toolbarPanel = toolbarTrigger.nextElementSibling;
+            const trigger = select.querySelector(':scope > .primer-select-trigger');
+
+            toolbarPanel.hidden = false;
+            toolbarTrigger.setAttribute('aria-expanded', 'true');
+            trigger.nextElementSibling.hidden = false;
+            trigger.setAttribute('aria-expanded', 'true');
+            window.requestAnimationFrame(function () {
+                updateSelectedValueOverflow(select);
+            });
+        } else {
+            sessionStorage.removeItem(openFilterStorageKey);
+        }
+    }
+
+    window.addEventListener('resize', function () {
+        selects.forEach(updateSelectedValueOverflow);
+    });
+
+    document.querySelectorAll('[data-toolbar-select]').forEach(function (toolbarSelect) {
+        const trigger = toolbarSelect.querySelector('.task-toolbar-trigger');
+
+        trigger.addEventListener('click', function () {
+            if (trigger.getAttribute('aria-expanded') === 'true') {
+                window.requestAnimationFrame(function () {
+                    toolbarSelect.querySelectorAll('[data-filter-select]').forEach(updateSelectedValueOverflow);
+                });
+            }
         });
     });
 
@@ -1078,6 +1340,11 @@ function setupFilterSelects() {
                 closeFilterSelect(select);
             }
         });
+
+        if (!event.target.closest('[data-filter-select]')) {
+            sessionStorage.removeItem(openFilterStorageKey);
+            clearOpenFilterUrl();
+        }
     });
 
     document.addEventListener('keydown', function (event) {
@@ -1096,12 +1363,15 @@ function setupFilterSelects() {
             event.stopImmediatePropagation();
             closeFilterSelect(openSelect);
             trigger.focus();
+            sessionStorage.removeItem(openFilterStorageKey);
+            clearOpenFilterUrl();
         }
     });
 }
 
 function setupToolbarSelects() {
     const selects = document.querySelectorAll('[data-toolbar-select]');
+    const openFilterStorageKey = 'open-task-filter';
 
     function closeToolbarSelect(select) {
         const trigger = select.querySelector('.task-toolbar-trigger');
@@ -1115,6 +1385,9 @@ function setupToolbarSelects() {
             filterTrigger.nextElementSibling.hidden = true;
             filterTrigger.setAttribute('aria-expanded', 'false');
         });
+        if (select.querySelector('[data-filter-key]') !== null) {
+            sessionStorage.removeItem(openFilterStorageKey);
+        }
     }
 
     selects.forEach(function (select) {
@@ -1289,8 +1562,14 @@ function setupFlashMessages() {
 }
 
 function setupTooltips() {
+    const showDelay = 400;
     const tooltip = document.createElement('div');
     let showTimer = null;
+
+    function hideTooltip() {
+        window.clearTimeout(showTimer);
+        tooltip.hidden = true;
+    }
 
     tooltip.className = 'ui-tooltip';
     tooltip.setAttribute('role', 'tooltip');
@@ -1305,11 +1584,6 @@ function setupTooltips() {
     });
 
     document.querySelectorAll('[data-tooltip]').forEach(function (element) {
-        function hideTooltip() {
-            window.clearTimeout(showTimer);
-            tooltip.hidden = true;
-        }
-
         function scheduleTooltip() {
             window.clearTimeout(showTimer);
 
@@ -1341,13 +1615,29 @@ function setupTooltips() {
 
                 tooltip.style.left = left + 'px';
                 tooltip.style.top = top + 'px';
-            }, 200);
+            }, showDelay);
         }
 
         element.addEventListener('mouseenter', scheduleTooltip);
         element.addEventListener('mouseleave', hideTooltip);
-        element.addEventListener('focus', scheduleTooltip);
+        element.addEventListener('pointerdown', hideTooltip);
+        element.addEventListener('click', hideTooltip);
+        element.addEventListener('focus', function () {
+            if (element.matches(':focus-visible')) {
+                scheduleTooltip();
+            }
+        });
         element.addEventListener('blur', hideTooltip);
+    });
+
+    document.querySelectorAll('dialog').forEach(function (dialog) {
+        dialog.addEventListener('close', hideTooltip);
+    });
+    document.addEventListener('scroll', hideTooltip, true);
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            hideTooltip();
+        }
     });
 }
 
