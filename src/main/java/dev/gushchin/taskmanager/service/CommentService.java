@@ -15,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class CommentService {
+    private static final String BLANK_MESSAGE_ERROR = "Comment message must not be blank";
+
     private final CommentRepository commentRepository;
     private final NotificationPublisher notificationPublisher;
     private final TaskService taskService;
@@ -88,10 +90,14 @@ public class CommentService {
     }
 
     private String prepareMessage(String message) {
+        if (message == null) {
+            throw new IllegalArgumentException(BLANK_MESSAGE_ERROR);
+        }
+
         String preparedMessage = message.stripTrailing();
 
         if (preparedMessage.isBlank()) {
-            throw new IllegalArgumentException("Comment message must not be blank");
+            throw new IllegalArgumentException(BLANK_MESSAGE_ERROR);
         }
 
         return preparedMessage;

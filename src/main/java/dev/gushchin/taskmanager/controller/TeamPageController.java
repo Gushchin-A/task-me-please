@@ -192,8 +192,7 @@ public class TeamPageController {
                 new TeamPageView.TeamPageCounts(
                         activeTasks.size(), archivedTasks.size(), sortedTasks.size(), teamMembers.size()),
                 stats,
-                new TeamPageView.TeamPageFilters(
-                        status, sort, authorIds, assigneeIds, tagIds, request.getOpenFilter()),
+                new TeamPageView.TeamPageFilters(status, sort, authorIds, assigneeIds, tagIds, request.getOpenFilter()),
                 new TeamPageView.TeamPageAccess(
                         canInvite, currentMember.getTaskVisibility() == TeamTaskVisibility.OWN_TASKS),
                 TaskListMode.ACTIVE);
@@ -257,8 +256,7 @@ public class TeamPageController {
                 new TeamPageView.TeamPageCounts(
                         activeTasks.size(), archivedTasks.size(), sortedTasks.size(), teamMembers.size()),
                 stats,
-                new TeamPageView.TeamPageFilters(
-                        status, sort, authorIds, assigneeIds, tagIds, request.getOpenFilter()),
+                new TeamPageView.TeamPageFilters(status, sort, authorIds, assigneeIds, tagIds, request.getOpenFilter()),
                 new TeamPageView.TeamPageAccess(
                         canInvite, currentMember.getTaskVisibility() == TeamTaskVisibility.OWN_TASKS),
                 TaskListMode.ARCHIVE);

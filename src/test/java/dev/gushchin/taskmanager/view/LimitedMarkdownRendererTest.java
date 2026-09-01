@@ -11,8 +11,8 @@ class LimitedMarkdownRendererTest {
 
         String result = LimitedMarkdownRenderer.render(markdown);
 
-        assertThat(result).isEqualTo(
-                "<strong>Жирный</strong> и <em>курсив</em>"
+        assertThat(result)
+                .isEqualTo("<strong>Жирный</strong> и <em>курсив</em>"
                         + "<blockquote>Первая строка<br>Вторая строка</blockquote>");
     }
 
@@ -20,8 +20,7 @@ class LimitedMarkdownRendererTest {
     void renderShouldEscapeHtml() {
         String result = LimitedMarkdownRenderer.render("<script>alert('xss')</script> **текст**");
 
-        assertThat(result)
-                .isEqualTo("&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt; <strong>текст</strong>");
+        assertThat(result).isEqualTo("&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt; <strong>текст</strong>");
     }
 
     @Test

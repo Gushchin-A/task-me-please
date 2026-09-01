@@ -463,6 +463,10 @@ public class TaskService {
     }
 
     private String prepareDescription(String description) {
+        if (description == null) {
+            return null;
+        }
+
         String preparedDescription = description.stripTrailing();
 
         if (preparedDescription.isBlank()) {

@@ -71,8 +71,7 @@ public final class LimitedMarkdownRenderer {
         StringBuilder result = new StringBuilder();
 
         while (matcher.find()) {
-            matcher.appendReplacement(
-                    result, Matcher.quoteReplacement(openingTag + matcher.group(1) + closingTag));
+            matcher.appendReplacement(result, Matcher.quoteReplacement(openingTag + matcher.group(1) + closingTag));
         }
         matcher.appendTail(result);
         return result.toString();
