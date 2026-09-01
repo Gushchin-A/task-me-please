@@ -1,12 +1,14 @@
 package dev.gushchin.taskmanager.controller;
 
 import static dev.gushchin.taskmanager.jooq.Tables.COMMENTS;
+import static dev.gushchin.taskmanager.jooq.Tables.NOTIFICATION_EVENTS;
 import static dev.gushchin.taskmanager.jooq.Tables.TASKS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAMS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAM_INVITATIONS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAM_MEMBERS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAM_TAGS;
 import static dev.gushchin.taskmanager.jooq.Tables.USERS;
+import static dev.gushchin.taskmanager.jooq.Tables.USER_NOTIFICATIONS;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -132,9 +134,14 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("data-flash-message")))
                 .andExpect(content().string(containsString("Задача восстановлена из архива")))
                 .andExpect(content().string(containsString("Important task")))
+                .andExpect(content().string(containsString("data-history-back")))
                 .andExpect(content().string(containsString("Task description")))
                 .andExpect(content().string(containsString("task-detail-status-archive\">Архив")))
-                .andExpect(content().string(containsString("Задача была выполнена и перенесена в архив")))
+                .andExpect(content().string(containsString("task-detail-archive-outcome-resolved")))
+                .andExpect(content().string(containsString("Задача решена и перенесена в архив")))
+                .andExpect(content().string(containsString(">Решена</span>")))
+                .andExpect(content().string(containsString("task-detail-status-archived-original\">Готово")))
+                .andExpect(content().string(not(containsString("Задача была выполнена и перенесена в архив"))))
                 .andExpect(content().string(containsString("Вернуть из архива")))
                 .andExpect(content().string(containsString("20 января 2035")))
                 .andExpect(content().string(containsString("Кинопоиск")))
@@ -165,8 +172,9 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/tasks/" + task.getId()).with(user(new AuthUser(secondUser))))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("task-detail-status-archive\">Архив")))
-                .andExpect(content().string(containsString("task-detail-status-open\">Открыто")))
-                .andExpect(content().string(containsString("Задача была удалена")))
+                .andExpect(content().string(containsString("task-detail-archive-outcome-deleted\">Удалена")))
+                .andExpect(content().string(containsString("task-detail-status-archived-original\">Открыто")))
+                .andExpect(content().string(not(containsString("Задача была удалена"))))
                 .andExpect(content().string(not(containsString("Вернуть из архива"))))
                 .andExpect(content().string(not(containsString("data-task-title-edit-open"))))
                 .andExpect(content().string(not(containsString("class=\"comment-create-form\""))));
@@ -857,6 +865,8 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     private void cleanDatabase() {
+        dsl.deleteFrom(USER_NOTIFICATIONS).execute();
+        dsl.deleteFrom(NOTIFICATION_EVENTS).execute();
         dsl.deleteFrom(COMMENTS).execute();
         dsl.deleteFrom(TASKS).execute();
         dsl.deleteFrom(TEAM_INVITATIONS).execute();

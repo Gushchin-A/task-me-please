@@ -2,6 +2,7 @@ package dev.gushchin.taskmanager.service;
 
 import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
 import dev.gushchin.taskmanager.model.Comment;
+import dev.gushchin.taskmanager.model.Task;
 import dev.gushchin.taskmanager.repository.CommentRepository;
 import java.time.Instant;
 import java.util.List;
@@ -9,11 +10,13 @@ import java.util.UUID;
 import java.util.function.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class CommentService {
     private final CommentRepository commentRepository;
+    private final NotificationPublisher notificationPublisher;
     private final TaskService taskService;
     private final UserService userService;
 
@@ -35,31 +38,43 @@ public class CommentService {
                 .toList();
     }
 
+    @Transactional
     public Comment create(Long taskId, UUID userId, String message) {
-        taskService.findByIdForUser(taskId, userId);
+        Task task = taskService.findByIdForUser(taskId, userId);
         userService.findById(userId);
 
         Instant now = Instant.now();
 
         Comment comment = new Comment(null, taskId, userId, message, now, now, false);
 
-        return commentRepository.save(comment);
+        Comment savedComment = commentRepository.save(comment);
+        notificationPublisher.commentCreated(savedComment, task, userId);
+
+        return savedComment;
     }
 
+    @Transactional
     public Comment updateMessage(Long id, String message, UUID userId) {
         Comment comment = findById(id);
 
         checkCanUpdateComment(comment, userId);
 
-        return commentRepository.updateMessage(comment.getId(), message, Instant.now());
+        Comment updatedComment = commentRepository.updateMessage(comment.getId(), message, Instant.now());
+        notificationPublisher.commentUpdated(updatedComment, taskService.findById(comment.getTaskId()), userId);
+
+        return updatedComment;
     }
 
+    @Transactional
     public Comment deleteById(Long id, UUID userId) {
         Comment comment = findById(id);
 
         checkCanUpdateComment(comment, userId);
 
-        return commentRepository.markAsDeleted(comment.getId(), Instant.now());
+        Comment deletedComment = commentRepository.markAsDeleted(comment.getId(), Instant.now());
+        notificationPublisher.commentDeleted(deletedComment, taskService.findById(comment.getTaskId()), userId);
+
+        return deletedComment;
     }
 
     private void checkCanUpdateComment(Comment comment, UUID userId) {

@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', function () {
+    setupHistoryBackLinks();
     setupProfileMenu();
     setupFlashMessages();
     setupSubmitLoading();
@@ -13,6 +14,25 @@ document.addEventListener('DOMContentLoaded', function () {
     setupTaskDetail();
     setupTooltips();
 });
+
+function setupHistoryBackLinks() {
+    document.querySelectorAll('[data-history-back]').forEach(function (link) {
+        link.addEventListener('click', function (event) {
+            if (document.referrer === '') {
+                return;
+            }
+
+            const referrer = new URL(document.referrer);
+
+            if (referrer.origin !== window.location.origin || window.history.length <= 1) {
+                return;
+            }
+
+            event.preventDefault();
+            window.history.back();
+        });
+    });
+}
 
 function setupInvitationDecisionDialog() {
     const dialog = document.querySelector('[data-invitation-decision-dialog]');
@@ -1084,11 +1104,13 @@ function setupToolbarSelects() {
             trigger.setAttribute('aria-expanded', String(shouldOpen));
         });
 
-        closeButton.addEventListener('click', function (event) {
-            event.stopPropagation();
-            closeToolbarSelect(select);
-            trigger.focus();
-        });
+        if (closeButton !== null) {
+            closeButton.addEventListener('click', function (event) {
+                event.stopPropagation();
+                closeToolbarSelect(select);
+                trigger.focus();
+            });
+        }
     });
 
     document.addEventListener('click', function (event) {

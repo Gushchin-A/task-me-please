@@ -424,7 +424,7 @@ public class TeamPageController {
         }
 
         try {
-            teamTagService.create(id, name);
+            teamTagService.create(id, name, authUser.getId());
             redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Тег успешно добавлен");
         } catch (TeamTagAlreadyExistsException ex) {
             redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, TEAM_TAG_EXISTS_MESSAGE);
@@ -448,7 +448,7 @@ public class TeamPageController {
         }
 
         try {
-            teamTagService.rename(tagId, teamId, name);
+            teamTagService.rename(tagId, teamId, name, authUser.getId());
             redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Тег успешно изменен");
         } catch (TeamTagAlreadyExistsException ex) {
             redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, TEAM_TAG_EXISTS_MESSAGE);
@@ -470,7 +470,7 @@ public class TeamPageController {
         }
 
         try {
-            teamTagService.delete(tagId, teamId);
+            teamTagService.delete(tagId, teamId, authUser.getId());
             redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Тег успешно удален");
         } catch (InvalidTeamTagException | TeamTagNotFoundException ex) {
             redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, "Не удалось удалить тег");

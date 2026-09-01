@@ -20,6 +20,7 @@ import java.util.UUID;
 import java.util.function.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +29,7 @@ public class TaskService {
     private final TaskPermissionService taskPermissionService;
     private final TeamTagService teamTagService;
     private final TeamMemberService teamMemberService;
+    private final NotificationPublisher notificationPublisher;
 
     public List<Task> findByTeamId(Long teamId) {
         return taskRepository.findByTeamId(teamId).stream()
@@ -64,6 +66,7 @@ public class TaskService {
         return task;
     }
 
+    @Transactional
     public Task create(
             Long teamId,
             UUID authorId,
@@ -97,7 +100,10 @@ public class TaskService {
                 false,
                 false);
 
-        return taskRepository.save(task);
+        Task savedTask = taskRepository.save(task);
+        notificationPublisher.taskCreated(savedTask, authorId);
+
+        return savedTask;
     }
 
     public TeamTasksStats getStats(List<Task> tasks) {
@@ -258,41 +264,66 @@ public class TaskService {
         return Comparator.comparing(taskCard -> taskCard.task().id(), Comparator.nullsLast(Comparator.reverseOrder()));
     }
 
+    @Transactional
     public Task updateStatus(Long id, TaskStatus status, UUID userId) {
         Task task = findByIdForUser(id, userId);
 
         checkCanUpdateStatus(task, userId);
 
-        return taskRepository.updateStatus(task.getId(), status, Instant.now());
+        Task updatedTask = taskRepository.updateStatus(task.getId(), status, Instant.now());
+        if (task.getStatus() != updatedTask.getStatus()) {
+            notificationPublisher.taskStatusChanged(task, updatedTask, userId);
+        }
+
+        return updatedTask;
     }
 
+    @Transactional
     public Task updateTag(Long id, Long tagId, UUID userId) {
         Task task = findByIdForUser(id, userId);
 
         checkCanUpdateTask(task, userId);
         teamTagService.findByIdForTeam(tagId, task.getTeamId());
 
-        return taskRepository.updateTag(task.getId(), tagId, Instant.now());
+        Task updatedTask = taskRepository.updateTag(task.getId(), tagId, Instant.now());
+        if (!task.getTagId().equals(updatedTask.getTagId())) {
+            notificationPublisher.taskTagChanged(task, updatedTask, userId);
+        }
+
+        return updatedTask;
     }
 
+    @Transactional
     public Task updateAuthor(Long id, UUID authorId, UUID userId) {
         Task task = findByIdForUser(id, userId);
 
         checkCanUpdateTask(task, userId);
         teamMemberService.findById(task.getTeamId(), authorId);
 
-        return taskRepository.updateAuthor(task.getId(), authorId, Instant.now());
+        Task updatedTask = taskRepository.updateAuthor(task.getId(), authorId, Instant.now());
+        if (!task.getAuthorId().equals(updatedTask.getAuthorId())) {
+            notificationPublisher.taskAuthorChanged(task, updatedTask, userId);
+        }
+
+        return updatedTask;
     }
 
+    @Transactional
     public Task updateAssignee(Long id, UUID assigneeId, UUID userId) {
         Task task = findByIdForUser(id, userId);
 
         checkCanUpdateTask(task, userId);
         teamMemberService.findById(task.getTeamId(), assigneeId);
 
-        return taskRepository.updateAssignee(task.getId(), assigneeId, Instant.now());
+        Task updatedTask = taskRepository.updateAssignee(task.getId(), assigneeId, Instant.now());
+        if (!task.getAssigneeId().equals(updatedTask.getAssigneeId())) {
+            notificationPublisher.taskAssigneeChanged(task, updatedTask, userId);
+        }
+
+        return updatedTask;
     }
 
+    @Transactional
     public Task updateDeadline(Long id, LocalDate deadlineDate, UUID userId) {
         Task task = findByIdForUser(id, userId);
 
@@ -301,11 +332,18 @@ public class TaskService {
         Instant deadlineAt =
                 deadlineDate == null ? null : deadlineDate.atStartOfDay().toInstant(ZoneOffset.UTC);
 
-        return taskRepository.updateDeadline(task.getId(), deadlineAt, Instant.now());
+        Task updatedTask = taskRepository.updateDeadline(task.getId(), deadlineAt, Instant.now());
+        if (!java.util.Objects.equals(task.getDeadlineAt(), updatedTask.getDeadlineAt())) {
+            notificationPublisher.taskDeadlineChanged(task, updatedTask, userId);
+        }
+
+        return updatedTask;
     }
 
+    @Transactional
     public Task updateDetails(Long id, TaskDetailsUpdate update, UUID userId) {
         Task task = findByIdForUser(id, userId);
+        final Task before = copyTask(task);
 
         checkCanUpdateTask(task, userId);
         teamMemberService.findById(task.getTeamId(), update.authorId());
@@ -324,9 +362,13 @@ public class TaskService {
         task.setAuthorId(update.authorId());
         task.setAssigneeId(update.assigneeId());
 
-        return taskRepository.updateDetails(task, Instant.now());
+        Task updatedTask = taskRepository.updateDetails(task, Instant.now());
+        publishDetailsChanges(before, updatedTask, userId);
+
+        return updatedTask;
     }
 
+    @Transactional
     public Task archive(Long id, UUID userId) {
         Task task = findById(id);
 
@@ -334,9 +376,13 @@ public class TaskService {
             throw new AccessDeniedForTaskException();
         }
 
-        return taskRepository.archive(task.getId(), userId, Instant.now());
+        Task updatedTask = taskRepository.archive(task.getId(), userId, Instant.now());
+        notificationPublisher.taskArchived(task, updatedTask, userId);
+
+        return updatedTask;
     }
 
+    @Transactional
     public Task restoreFromArchive(Long id, UUID userId) {
         Task task = findById(id);
 
@@ -344,7 +390,10 @@ public class TaskService {
             throw new AccessDeniedForTaskException();
         }
 
-        return taskRepository.restoreFromArchive(task.getId(), Instant.now());
+        Task updatedTask = taskRepository.restoreFromArchive(task.getId(), Instant.now());
+        notificationPublisher.taskRestored(task, updatedTask, userId);
+
+        return updatedTask;
     }
 
     private void checkCanUpdateTask(Task task, UUID userId) {
@@ -383,5 +432,47 @@ public class TaskService {
         TeamTag teamTag = teamTagService.findById(tagId);
 
         return teamTag.getName();
+    }
+
+    private void publishDetailsChanges(Task before, Task after, UUID userId) {
+        if (before.getStatus() != after.getStatus()) {
+            notificationPublisher.taskStatusChanged(before, after, userId);
+        }
+        if (!before.getAuthorId().equals(after.getAuthorId())) {
+            notificationPublisher.taskAuthorChanged(before, after, userId);
+        }
+        if (!before.getAssigneeId().equals(after.getAssigneeId())) {
+            notificationPublisher.taskAssigneeChanged(before, after, userId);
+        }
+        if (!java.util.Objects.equals(before.getTitle(), after.getTitle())) {
+            notificationPublisher.taskTitleChanged(before, after, userId);
+        }
+        if (!java.util.Objects.equals(before.getDescription(), after.getDescription())) {
+            notificationPublisher.taskDescriptionChanged(before, after, userId);
+        }
+        if (!java.util.Objects.equals(before.getDeadlineAt(), after.getDeadlineAt())) {
+            notificationPublisher.taskDeadlineChanged(before, after, userId);
+        }
+        if (!java.util.Objects.equals(before.getTagId(), after.getTagId())) {
+            notificationPublisher.taskTagChanged(before, after, userId);
+        }
+    }
+
+    private Task copyTask(Task task) {
+        return new Task(
+                task.getId(),
+                task.getTeamId(),
+                task.getAuthorId(),
+                task.getAssigneeId(),
+                task.getTitle(),
+                task.getDescription(),
+                task.getDeadlineAt(),
+                task.getStatus(),
+                task.getTagId(),
+                task.getCreatedAt(),
+                task.getUpdatedAt(),
+                task.getArchivedBy(),
+                task.isArchived(),
+                task.isDeleted());
     }
 }

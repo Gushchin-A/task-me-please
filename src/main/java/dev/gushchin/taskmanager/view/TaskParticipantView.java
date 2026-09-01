@@ -6,6 +6,8 @@ import java.util.UUID;
 public record TaskParticipantView(UUID id, String name, boolean removedFromTeam) {
     private static final int MAX_DISPLAY_NAME_LENGTH = 18;
     private static final int TRUNCATED_DISPLAY_NAME_LENGTH = 15;
+    private static final int MAX_COMMENT_DISPLAY_NAME_LENGTH = 40;
+    private static final int TRUNCATED_COMMENT_DISPLAY_NAME_LENGTH = 37;
     private static final String REMOVED_FROM_TEAM_TITLE = "Пользователь был удалён из команды";
     private static final String REMOVED_FROM_TEAM_STYLE = "color: red;";
 
@@ -27,6 +29,22 @@ public record TaskParticipantView(UUID id, String name, boolean removedFromTeam)
         }
 
         return displayName;
+    }
+
+    public String commentDisplayName() {
+        String displayName = displayName();
+
+        if (displayName.length() > MAX_COMMENT_DISPLAY_NAME_LENGTH) {
+            return displayName.substring(0, TRUNCATED_COMMENT_DISPLAY_NAME_LENGTH) + "...";
+        }
+
+        return displayName;
+    }
+
+    public String commentDisplayNameTooltip() {
+        String displayName = displayName();
+
+        return displayName.length() > MAX_COMMENT_DISPLAY_NAME_LENGTH ? displayName : null;
     }
 
     public String initial() {

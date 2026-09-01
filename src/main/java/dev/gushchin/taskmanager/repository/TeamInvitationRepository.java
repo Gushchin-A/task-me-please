@@ -38,9 +38,29 @@ public class TeamInvitationRepository {
         return TeamInvitationMapper.toModel(record);
     }
 
+    public List<TeamInvitation> findExpiredPending(Instant expiresBefore, int limit) {
+        return dsl.selectFrom(TEAM_INVITATIONS)
+                .where(TEAM_INVITATIONS.STATUS.eq(TeamInvitationStatus.PENDING.name()))
+                .and(TEAM_INVITATIONS.EXPIRES_AT.lt(expiresBefore.atOffset(ZoneOffset.UTC)))
+                .and(TEAM_INVITATIONS.IS_DELETED.eq(false))
+                .orderBy(TEAM_INVITATIONS.ID.asc())
+                .limit(limit)
+                .fetch()
+                .map(TeamInvitationMapper::toModel);
+    }
+
     public TeamInvitation findByToken(String token) {
         TeamInvitationsRecord record = dsl.selectFrom(TEAM_INVITATIONS)
                 .where(TEAM_INVITATIONS.TOKEN.eq(token))
+                .and(TEAM_INVITATIONS.IS_DELETED.eq(false))
+                .fetchOne();
+
+        return TeamInvitationMapper.toModel(record);
+    }
+
+    public TeamInvitation findById(Long id) {
+        TeamInvitationsRecord record = dsl.selectFrom(TEAM_INVITATIONS)
+                .where(TEAM_INVITATIONS.ID.eq(id))
                 .and(TEAM_INVITATIONS.IS_DELETED.eq(false))
                 .fetchOne();
 
@@ -73,6 +93,18 @@ public class TeamInvitationRepository {
                 .set(TEAM_INVITATIONS.STATUS, status.name())
                 .set(TEAM_INVITATIONS.UPDATED_AT, updatedAt.atOffset(ZoneOffset.UTC))
                 .where(TEAM_INVITATIONS.ID.eq(id))
+                .returning()
+                .fetchOne();
+
+        return TeamInvitationMapper.toModel(record);
+    }
+
+    public TeamInvitation updateStatusIfPending(Long id, TeamInvitationStatus status, Instant updatedAt) {
+        TeamInvitationsRecord record = dsl.update(TEAM_INVITATIONS)
+                .set(TEAM_INVITATIONS.STATUS, status.name())
+                .set(TEAM_INVITATIONS.UPDATED_AT, updatedAt.atOffset(ZoneOffset.UTC))
+                .where(TEAM_INVITATIONS.ID.eq(id))
+                .and(TEAM_INVITATIONS.STATUS.eq(TeamInvitationStatus.PENDING.name()))
                 .returning()
                 .fetchOne();
 

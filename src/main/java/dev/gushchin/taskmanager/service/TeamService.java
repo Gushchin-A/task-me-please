@@ -34,6 +34,7 @@ public class TeamService {
     private final UserService userService;
     private final TeamMemberRepository teamMemberRepository;
     private final TeamTagRepository teamTagRepository;
+    private final NotificationPublisher notificationPublisher;
 
     public Team findById(Long id) {
         Team team = teamRepository.findById(id);
@@ -84,6 +85,8 @@ public class TeamService {
 
         teamTags.forEach(teamTagRepository::save);
 
+        notificationPublisher.teamCreated(savedTeam, createdBy);
+
         return savedTeam;
     }
 
@@ -120,6 +123,7 @@ public class TeamService {
         return preparedNames;
     }
 
+    @Transactional
     public void delete(Long id, UUID currentUserId) {
         Team team = findById(id);
         TeamMember currentMember = teamMemberRepository.findByTeamIdAndUserId(id, currentUserId);
@@ -131,8 +135,10 @@ public class TeamService {
         team.setDeleted(true);
         team.setUpdatedAt(Instant.now());
         teamRepository.update(team);
+        notificationPublisher.teamDeleted(team, currentUserId);
     }
 
+    @Transactional
     public Team rename(Long id, String name, UUID currentUserId) {
         final Team team = findById(id);
         TeamMember currentMember = teamMemberRepository.findByTeamIdAndUserId(id, currentUserId);
@@ -147,10 +153,15 @@ public class TeamService {
             throw new InvalidTeamNameException(Reason.UNCHANGED);
         }
 
+        Team before = new Team(
+                team.getId(), team.getName(), team.getCreatedBy(), team.getCreatedAt(), team.getUpdatedAt(), false);
         team.setName(preparedName);
         team.setUpdatedAt(Instant.now());
 
-        return teamRepository.update(team);
+        Team renamedTeam = teamRepository.update(team);
+        notificationPublisher.teamRenamed(before, renamedTeam, currentUserId);
+
+        return renamedTeam;
     }
 
     private String prepareName(String name) {

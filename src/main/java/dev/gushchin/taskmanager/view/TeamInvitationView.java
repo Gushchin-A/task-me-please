@@ -50,7 +50,7 @@ public record TeamInvitationView(
 
     public String statusTooltip() {
         return switch (status) {
-            case PENDING -> "Ссылку на приглашение можно скопировать и отправить лично";
+            case PENDING -> "Скопируйте ссылку и отправьте ее лично";
             case ACCEPTED -> "Пользователь принял приглашение";
             case DECLINED -> "Пользователь отклонил приглашение";
             case CANCELED -> "Вы отменили приглашение";

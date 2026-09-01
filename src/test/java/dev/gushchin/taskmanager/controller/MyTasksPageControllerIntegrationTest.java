@@ -1,12 +1,14 @@
 package dev.gushchin.taskmanager.controller;
 
 import static dev.gushchin.taskmanager.jooq.Tables.COMMENTS;
+import static dev.gushchin.taskmanager.jooq.Tables.NOTIFICATION_EVENTS;
 import static dev.gushchin.taskmanager.jooq.Tables.TASKS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAMS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAM_INVITATIONS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAM_MEMBERS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAM_TAGS;
 import static dev.gushchin.taskmanager.jooq.Tables.USERS;
+import static dev.gushchin.taskmanager.jooq.Tables.USER_NOTIFICATIONS;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -212,6 +214,7 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
 
     @Test
     void taskPagesWithoutHistoryShouldHideWorkspaceNavigation() throws Exception {
+        deleteNotifications();
         dsl.deleteFrom(TASKS).execute();
 
         mockMvc.perform(get("/tasks").with(user(new AuthUser(owner))))
@@ -240,6 +243,7 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
 
     @Test
     void taskPagesWithoutTeamsShouldOfferTeamCreation() throws Exception {
+        deleteNotifications();
         dsl.deleteFrom(TASKS).execute();
         dsl.deleteFrom(TEAM_INVITATIONS).execute();
         dsl.deleteFrom(TEAM_TAGS).execute();
@@ -318,6 +322,7 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
 
     @Test
     void emptyTeamsPageShouldUseSharedBlankSlate() throws Exception {
+        deleteNotifications();
         dsl.deleteFrom(TASKS).execute();
         dsl.deleteFrom(TEAM_INVITATIONS).execute();
         dsl.deleteFrom(TEAM_TAGS).execute();
@@ -326,11 +331,12 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
 
         mockMvc.perform(get("/teams").with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("class=\"teams-toolbar\"")))
+                .andExpect(content().string(containsString("class=\"teams-toolbar teams-toolbar-empty\"")))
                 .andExpect(content().string(containsString("class=\"button button-primary team-create-action\"")))
                 .andExpect(content().string(containsString("class=\"empty-state team-empty-state\"")))
                 .andExpect(content().string(containsString("class=\"empty-state-icon\"")))
                 .andExpect(content().string(containsString("Команд пока нет")))
+                .andExpect(content().string(not(containsString("Команды (0)"))))
                 .andExpect(content()
                         .string(containsString("Создайте команду, чтобы распределять задачи и работать вместе")));
     }
@@ -346,6 +352,7 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     private void cleanDatabase() {
+        deleteNotifications();
         dsl.deleteFrom(COMMENTS).execute();
         dsl.deleteFrom(TASKS).execute();
         dsl.deleteFrom(TEAM_INVITATIONS).execute();
@@ -353,5 +360,10 @@ class MyTasksPageControllerIntegrationTest extends IntegrationTestBase {
         dsl.deleteFrom(TEAM_MEMBERS).execute();
         dsl.deleteFrom(TEAMS).execute();
         dsl.deleteFrom(USERS).execute();
+    }
+
+    private void deleteNotifications() {
+        dsl.deleteFrom(USER_NOTIFICATIONS).execute();
+        dsl.deleteFrom(NOTIFICATION_EVENTS).execute();
     }
 }

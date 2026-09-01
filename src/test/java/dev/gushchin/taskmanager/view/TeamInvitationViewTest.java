@@ -16,7 +16,7 @@ class TeamInvitationViewTest {
         TeamInvitationView invitation = createView(TeamInvitationStatus.PENDING);
 
         assertEquals("Ожидание", invitation.statusText());
-        assertEquals("Ссылку на приглашение можно скопировать и отправить лично", invitation.statusTooltip());
+        assertEquals("Скопируйте ссылку и отправьте ее лично", invitation.statusTooltip());
         assertTrue(invitation.canCancel());
     }
 

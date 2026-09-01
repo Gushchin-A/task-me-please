@@ -19,8 +19,10 @@
     headerContext = null,
     content = @`
         <section class="workspace-page teams-page">
-            <div class="teams-toolbar">
-                <span class="teams-count">Команды (${teams.size()})</span>
+            <div class="teams-toolbar${teams.isEmpty() ? " teams-toolbar-empty" : ""}">
+                @if(!teams.isEmpty())
+                    <span class="teams-count">Команды (${teams.size()})</span>
+                @endif
 
                 <a class="button button-primary team-create-action" href="/teams/new">
                     Создать команду

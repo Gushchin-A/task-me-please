@@ -33,6 +33,7 @@ public class TeamInvitationService {
     public static final int EXPIRATION_DAYS = 7;
 
     private static final int TOKEN_BYTES = 32;
+    private static final int EXPIRATION_BATCH_SIZE = 100;
 
     private final SecureRandom secureRandom = new SecureRandom();
     private final InvitationEmailService invitationEmailService;
@@ -40,7 +41,9 @@ public class TeamInvitationService {
     private final TeamMemberService teamMemberService;
     private final TeamService teamService;
     private final UserService userService;
+    private final NotificationPublisher notificationPublisher;
 
+    @Transactional
     public List<TeamInvitation> findByTeamId(Long teamId, UUID currentUserId) {
         TeamMember currentMember = teamMemberService.findById(teamId, currentUserId);
 
@@ -53,6 +56,7 @@ public class TeamInvitationService {
                 .toList();
     }
 
+    @Transactional
     public TeamInvitation create(Long teamId, String invitedEmail, UUID currentUserId) {
         TeamMember currentMember = teamMemberService.findById(teamId, currentUserId);
 
@@ -83,7 +87,10 @@ public class TeamInvitationService {
                 now,
                 false);
 
-        return teamInvitationRepository.save(invitation);
+        TeamInvitation savedInvitation = teamInvitationRepository.save(invitation);
+        notificationPublisher.teamInvitationCreated(savedInvitation);
+
+        return savedInvitation;
     }
 
     @Transactional
@@ -103,8 +110,10 @@ public class TeamInvitationService {
                 invitation.getId(), generateToken(), now.plus(Duration.ofDays(EXPIRATION_DAYS)), now);
 
         sendInvitation(updatedInvitation);
+        notificationPublisher.teamInvitationResent(updatedInvitation, currentUserId);
     }
 
+    @Transactional
     public TeamInvitation findByToken(String token) {
         TeamInvitation invitation = teamInvitationRepository.findByToken(token);
         if (invitation == null) {
@@ -120,30 +129,59 @@ public class TeamInvitationService {
     public TeamInvitation accept(String token, UUID currentUserId) {
         TeamInvitation invitation = findPendingByToken(token);
 
-        teamMemberService.addMember(invitation.getTeamId(), currentUserId);
+        TeamMember member = teamMemberService.addMember(invitation.getTeamId(), currentUserId);
+        TeamInvitation acceptedInvitation =
+                teamInvitationRepository.updateStatus(invitation.getId(), TeamInvitationStatus.ACCEPTED, Instant.now());
+        notificationPublisher.teamMemberJoinedAfterInvitation(member, currentUserId, invitation.getInvitedBy());
+        notificationPublisher.teamInvitationAccepted(acceptedInvitation, currentUserId);
 
-        return teamInvitationRepository.updateStatus(invitation.getId(), TeamInvitationStatus.ACCEPTED, Instant.now());
+        return acceptedInvitation;
     }
 
+    @Transactional
     public TeamInvitation decline(String token, UUID currentUserId) {
         TeamInvitation invitation = findPendingByToken(token);
 
         userService.findById(currentUserId);
 
-        return teamInvitationRepository.updateStatus(invitation.getId(), TeamInvitationStatus.DECLINED, Instant.now());
+        TeamInvitation declinedInvitation =
+                teamInvitationRepository.updateStatus(invitation.getId(), TeamInvitationStatus.DECLINED, Instant.now());
+        notificationPublisher.teamInvitationDeclined(declinedInvitation, currentUserId);
+
+        return declinedInvitation;
     }
 
+    @Transactional
     public TeamInvitation cancel(Long id, Long teamId, UUID currentUserId) {
         TeamInvitation invitation = findPendingById(id, teamId, currentUserId);
+        TeamInvitation canceledInvitation =
+                teamInvitationRepository.updateStatus(invitation.getId(), TeamInvitationStatus.CANCELED, Instant.now());
+        notificationPublisher.teamInvitationCanceled(canceledInvitation, currentUserId);
 
-        return teamInvitationRepository.updateStatus(invitation.getId(), TeamInvitationStatus.CANCELED, Instant.now());
+        return canceledInvitation;
     }
 
+    @Transactional(noRollbackFor = TeamInvitationNotPendingException.class)
     public TeamInvitation findPendingByToken(String token) {
         TeamInvitation invitation = findByToken(token);
         ensurePending(invitation);
 
         return invitation;
+    }
+
+    @Transactional
+    public int expirePendingInvitations() {
+        List<TeamInvitation> invitations =
+                teamInvitationRepository.findExpiredPending(Instant.now(), EXPIRATION_BATCH_SIZE);
+        int expiredCount = 0;
+
+        for (TeamInvitation invitation : invitations) {
+            if (cancelIfExpired(invitation).getStatus() == TeamInvitationStatus.EXPIRED) {
+                expiredCount++;
+            }
+        }
+
+        return expiredCount;
     }
 
     private TeamInvitation findPendingById(Long id, Long teamId, UUID currentUserId) {
@@ -201,8 +239,14 @@ public class TeamInvitationService {
     private TeamInvitation cancelIfExpired(TeamInvitation invitation) {
         if (invitation.getStatus() == TeamInvitationStatus.PENDING
                 && invitation.getExpiresAt().isBefore(Instant.now())) {
-            return teamInvitationRepository.updateStatus(
+            TeamInvitation expiredInvitation = teamInvitationRepository.updateStatusIfPending(
                     invitation.getId(), TeamInvitationStatus.EXPIRED, Instant.now());
+            if (expiredInvitation != null) {
+                notificationPublisher.teamInvitationExpired(expiredInvitation);
+                return expiredInvitation;
+            }
+
+            return teamInvitationRepository.findByToken(invitation.getToken());
         }
 
         return invitation;

@@ -182,12 +182,7 @@ public record TaskView(
     }
 
     public static String statusText(TaskStatus status) {
-        return switch (status) {
-            case OPEN -> "Открыто";
-            case IN_PROGRESS -> "В работе";
-            case DONE -> "Готово";
-            case NOT_RELEVANT -> "Неактуально";
-        };
+        return status.getDisplayName();
     }
 
     public String statusCssClass() {

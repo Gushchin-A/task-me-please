@@ -3,6 +3,7 @@
 
 @param InvitationDecisionView invitation
 @param CsrfToken _csrf
+@param String returnTo = null
 
 <dialog
     class="settings-dialog invitation-decision-dialog"
@@ -26,6 +27,9 @@
         <footer class="settings-dialog-footer invitation-decision-actions">
             <form method="post" action="/invitations/${invitation.token()}/decline" data-submit-loading>
                 <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                @if(returnTo != null)
+                    <input type="hidden" name="returnTo" value="${returnTo}">
+                @endif
                 <button class="button button-secondary" type="submit" data-loading-text="Обработка...">
                     Отклонить
                 </button>

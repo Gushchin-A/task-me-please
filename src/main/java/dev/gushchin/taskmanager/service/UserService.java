@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final NotificationService notificationService;
 
     public User findById(UUID id) {
         User user = userRepository.findById(id);
@@ -55,7 +56,10 @@ public class UserService {
 
         User user = new User(UUID.randomUUID(), email, userName, passwordHash, now, now, false, null, false);
 
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        notificationService.claimInvitations(savedUser.getId(), savedUser.getEmail());
+
+        return savedUser;
     }
 
     public User create(String email, String password) {

@@ -2,6 +2,7 @@ package dev.gushchin.taskmanager.controller;
 
 import static dev.gushchin.taskmanager.jooq.Tables.ACCOUNT_TOKENS;
 import static dev.gushchin.taskmanager.jooq.Tables.COMMENTS;
+import static dev.gushchin.taskmanager.jooq.Tables.NOTIFICATION_EVENTS;
 import static dev.gushchin.taskmanager.jooq.Tables.PERSISTENT_LOGINS;
 import static dev.gushchin.taskmanager.jooq.Tables.TASKS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAMS;
@@ -9,6 +10,7 @@ import static dev.gushchin.taskmanager.jooq.Tables.TEAM_INVITATIONS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAM_MEMBERS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAM_TAGS;
 import static dev.gushchin.taskmanager.jooq.Tables.USERS;
+import static dev.gushchin.taskmanager.jooq.Tables.USER_NOTIFICATIONS;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -873,6 +875,10 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("data-profile-focus")))
                 .andExpect(content().string(containsString("Auth user")))
                 .andExpect(content().string(containsString(EMAIL)))
+                .andExpect(content().string(containsString("href=\"/tasks\" data-profile-focus")))
+                .andExpect(content().string(containsString("Мои задачи")))
+                .andExpect(content().string(containsString("href=\"/teams\" data-profile-focus")))
+                .andExpect(content().string(containsString("Мои команды")))
                 .andExpect(content().string(containsString("Настройки пока не реализованы")))
                 .andExpect(content().string(containsString("action=\"/logout\"")))
                 .andExpect(content().string(containsString("Выйти из профиля")));
@@ -990,6 +996,8 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
     private void cleanDatabase() {
         dsl.deleteFrom(PERSISTENT_LOGINS).execute();
         dsl.deleteFrom(ACCOUNT_TOKENS).execute();
+        dsl.deleteFrom(USER_NOTIFICATIONS).execute();
+        dsl.deleteFrom(NOTIFICATION_EVENTS).execute();
         dsl.deleteFrom(COMMENTS).execute();
         dsl.deleteFrom(TASKS).execute();
         dsl.deleteFrom(TEAM_INVITATIONS).execute();

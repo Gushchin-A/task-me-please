@@ -4,6 +4,7 @@
 @import dev.gushchin.taskmanager.view.TeamMemberView
 @import dev.gushchin.taskmanager.view.UserAvatarView
 @import java.util.List
+@import java.util.UUID
 @import org.springframework.security.web.csrf.CsrfToken
 
 @param Team team
@@ -11,6 +12,7 @@
 @param List<TeamMemberView> members
 @param boolean canInvite
 @param boolean canManageVisibility
+@param UUID currentUserId
 @param CsrfToken _csrf
 @param String successMessage
 @param String errorMessage
@@ -59,6 +61,10 @@
                             <div class="team-member-role-cell">
                                 @if(member.role() == TeamMemberRole.OWNER)
                                     <span class="team-member-role task-card-deadline">Владелец</span>
+                                @elseif(!canManageVisibility
+                                    && member.userId().equals(currentUserId)
+                                    && member.taskVisibility() == TeamTaskVisibility.ALL_TASKS)
+                                    <span class="team-member-role task-card-deadline">Видит все задачи</span>
                                 @endif
                             </div>
 

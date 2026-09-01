@@ -723,6 +723,25 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void memberShouldSeeAllTasksBadgeOnlyOnOwnRow() throws Exception {
+        User otherMember = userService.create("other-member@test.com", "Other member", "qwerty");
+        teamMemberService.addMember(team.getId(), otherMember.getId());
+        teamMemberService.updateTaskVisibility(
+                team.getId(), member.getId(), TeamTaskVisibility.ALL_TASKS, owner.getId());
+        teamMemberService.updateTaskVisibility(
+                team.getId(), otherMember.getId(), TeamTaskVisibility.ALL_TASKS, owner.getId());
+
+        MvcResult result = mockMvc.perform(
+                        get("/teams/" + team.getId() + "/members").with(user(new AuthUser(member))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Видит все задачи")))
+                .andReturn();
+
+        String response = result.getResponse().getContentAsString();
+        assertEquals(1, response.split("Видит все задачи", -1).length - 1);
+    }
+
+    @Test
     void memberShouldLeaveTeamAfterConfirmation() throws Exception {
         mockMvc.perform(post("/teams/" + team.getId() + "/leave")
                         .with(csrf())

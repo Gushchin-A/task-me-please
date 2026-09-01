@@ -21,7 +21,7 @@
     headerContext = null,
     content = @`
         <section class="workspace-page form-page">
-            <a class="back-link" href="/tasks/${task.id()}">
+            <a class="back-link" href="/tasks/${task.id()}" data-history-back>
                 ← Назад к задаче
             </a>
 

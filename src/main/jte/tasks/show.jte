@@ -35,7 +35,7 @@
 
         <div class="task-detail-layout" data-task-detail>
         <section class="task-detail-main">
-            <a class="back-link team-create-back-link" href="/teams/${team.getId()}">
+            <a class="back-link team-create-back-link" href="/teams/${team.getId()}" data-history-back>
                 <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                     <path d="M7.78 12.53a.75.75 0 0 1-1.06 0l-4-4a.75.75 0 0 1 0-1.06l4-4a.75.75 0 0 1 1.06 1.06L5.06 7.25h7.69a.75.75 0 0 1 0 1.5H5.06l2.72 2.72a.75.75 0 0 1 0 1.06Z"></path>
                 </svg>
@@ -123,16 +123,23 @@
             @endif
 
             <div class="task-detail-summary">
-                @if(task.archived())
-                    <span class="task-detail-status task-detail-status-archive">Архив</span>
-                @else
-                    <span class="task-detail-status task-detail-status-${task.statusCssClass()}">${task.statusText()}</span>
-                @endif
+                <span class="task-detail-summary-statuses">
+                    @if(task.archived())
+                        <span class="task-detail-status task-detail-status-archive">Архив</span>
+                        @if(task.status() == TaskStatus.DONE)
+                            <span
+                                class="task-detail-status task-detail-archive-outcome-resolved"
+                                data-tooltip="Задача решена и перенесена в архив"
+                            >Решена</span>
+                        @else
+                            <span class="task-detail-status task-detail-archive-outcome-deleted">Удалена</span>
+                        @endif
+                    @else
+                        <span class="task-detail-status task-detail-status-${task.statusCssClass()}">${task.statusText()}</span>
+                    @endif
+                </span>
                 <span>
                     <strong>${task.authorName()}</strong> создал задачу ${task.createdAtText()}
-                    @if(task.archived())
-                        · ${task.status() == TaskStatus.DONE ? "Задача была выполнена и перенесена в архив" : "Задача была удалена"}
-                    @endif
                 </span>
             </div>
         </section>
@@ -154,7 +161,7 @@
                     @if(task.archived())
                         <span class="task-detail-status task-detail-status-archive">Архив</span>
                     @endif
-                    <span class="task-detail-status task-detail-status-${task.statusCssClass()}">${task.statusText()}</span>
+                    <span class="task-detail-status task-detail-status-${task.archived() ? "archived-original" : task.statusCssClass()}">${task.statusText()}</span>
                 </span>
                 <form method="post" action="/tasks/${task.id()}/status" hidden data-task-parameter-form>
                     <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
@@ -306,9 +313,9 @@
 
                 <div class="comment-card">
                     <header class="comment-header">
-                        <div>
-                            <strong>${task.authorName()}</strong>
-                            <small>добавил описание задачи · ${task.updatedAtText()}</small>
+                        <div class="comment-header-copy">
+                            <strong data-tooltip="${task.participants().author().commentDisplayNameTooltip()}">${task.participants().author().commentDisplayName()}</strong>
+                            <span class="comment-header-meta">добавил описание задачи · ${task.updatedAtText()}</span>
                         </div>
 
                         <details class="task-card-actions comment-actions">
@@ -383,9 +390,9 @@
 
                     <div class="comment-card">
                         <header class="comment-header">
-                            <div>
-                                <strong>${comment.author().displayName()}</strong>
-                                <small>прокомментировал · ${comment.createdAtText()}</small>
+                            <div class="comment-header-copy">
+                                <strong data-tooltip="${comment.author().commentDisplayNameTooltip()}">${comment.author().commentDisplayName()}</strong>
+                                <span class="comment-header-meta">прокомментировал · ${comment.createdAtText()}</span>
 
                                 @if(comment.edited())
                                     <span class="comment-edited">Отредактировано</span>

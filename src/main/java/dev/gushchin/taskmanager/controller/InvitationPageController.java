@@ -16,6 +16,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -89,7 +90,10 @@ public class InvitationPageController {
     }
 
     @PostMapping("/invitations/{token}/decline")
-    public String declineInvitation(@AuthenticationPrincipal AuthUser authUser, @PathVariable String token) {
+    public String declineInvitation(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable String token,
+            @RequestParam(required = false) String returnTo) {
         TeamInvitation invitation = findPendingInvitation(token);
         if (invitation == null) {
             return REDIRECT_PREFIX + INVITATIONS_PATH_PREFIX + token;
@@ -101,7 +105,7 @@ public class InvitationPageController {
 
         teamInvitationService.decline(token, authUser.getId());
 
-        return REDIRECT_TASKS;
+        return "notifications".equals(returnTo) ? "redirect:/notifications" : REDIRECT_TASKS;
     }
 
     private TeamInvitation findPendingInvitation(String token) {

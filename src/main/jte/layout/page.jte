@@ -70,6 +70,9 @@
                             data-profile-trigger
                         >
                             <span data-profile-initial>${currentUser.initial()}</span>
+                            @if(currentUser.hasUnreadNotifications())
+                                <span class="profile-unread-indicator" aria-hidden="true"></span>
+                            @endif
                         </button>
 
                         <div class="profile-menu" id="profile-menu" data-profile-menu hidden>
@@ -92,6 +95,22 @@
                             </div>
 
                             <div class="profile-actions">
+                                <a class="profile-action" href="/tasks" data-profile-focus>
+                                    Мои задачи
+                                </a>
+
+                                <a class="profile-action" href="/teams" data-profile-focus>
+                                    Мои команды
+                                </a>
+
+                                <a class="profile-action" href="/notifications" data-profile-focus>
+                                    Уведомления
+                                    @if(currentUser.hasUnreadNotifications())
+                                        <span class="profile-menu-unread-indicator" aria-hidden="true"></span>
+                                        <span class="visually-hidden">Есть непрочитанные уведомления</span>
+                                    @endif
+                                </a>
+
                                 <div data-tooltip="Настройки пока не реализованы" tabindex="0">
                                     <button class="profile-action" type="button" disabled>
                                         Настройки
