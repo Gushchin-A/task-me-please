@@ -10,6 +10,7 @@
 @param List<TeamTag> tags
 @param Set<Long> usedTagIds
 @param String settingsSection
+@param boolean owner
 @param String successMessage
 @param String errorMessage
 @param CsrfToken _csrf
@@ -29,41 +30,40 @@
         @template.components.teamNavigation(team = team, activeTab = "settings")
 
         <section class="workspace-page team-settings-page">
-            <aside class="team-settings-sidebar">
-                <nav aria-label="Настройки команды">
-                    <a
-                        class="${"general".equals(settingsSection) ? "team-settings-nav-active" : ""}"
-                        href="/teams/${team.getId()}/settings"
-                        aria-current="${"general".equals(settingsSection) ? "page" : null}"
-                    >
-                        Основные настройки
-                    </a>
-                    <a href="/teams/${team.getId()}/members">Участники</a>
-                    <a
-                        class="${"delete".equals(settingsSection) ? "team-settings-nav-active" : ""}"
-                        href="/teams/${team.getId()}/settings?section=delete"
-                        aria-current="${"delete".equals(settingsSection) ? "page" : null}"
-                    >
-                        Удаление команды
-                    </a>
-                </nav>
-            </aside>
+            @template.components.teamSettingsSidebar(
+                team = team,
+                activeSection = settingsSection,
+                owner = owner
+            )
 
             <div class="team-settings-content">
-                @if("delete".equals(settingsSection))
+                @if("leave".equals(settingsSection))
                     <header class="team-create-header team-settings-header">
-                        <h1>Удаление команды</h1>
+                        <h1>Покинуть команду</h1>
+                        <p>
+                            После выхода из команды все ее задачи, включая ваши, будут недоступны.
+                            Пожалуйста, будьте внимательны.
+                        </p>
                     </header>
 
                     <section class="team-settings-delete-section">
+                        <button class="button team-settings-delete" type="button" data-team-leave-open>
+                            Покинуть команду
+                        </button>
+                    </section>
+                @elseif("delete".equals(settingsSection))
+                    <header class="team-create-header team-settings-header">
+                        <h1>Удаление команды</h1>
                         <p>
                             После удаления команды она и все ее задачи исчезнут навсегда.
                             Пожалуйста, будьте внимательны.
                         </p>
+                    </header>
 
-                        <a class="button team-settings-delete" href="/teams/${team.getId()}/delete">
+                    <section class="team-settings-delete-section">
+                        <button class="button team-settings-delete" type="button" data-team-delete-open>
                             Удалить команду
-                        </a>
+                        </button>
                     </section>
                 @else
                     <header class="team-create-header team-settings-header">
@@ -88,9 +88,10 @@
                                     type="text"
                                     name="name"
                                     value="${team.getName()}"
-                                    maxlength="255"
+                                    maxlength="100"
                                     required
                                     autocomplete="off"
+                                    aria-describedby="team-name-count"
                                     data-settings-name
                                     data-original-value="${team.getName()}"
                                 >
@@ -107,6 +108,10 @@
                                     </button>
                                 </span>
                             </div>
+
+                            <p class="form-help task-title-count" id="team-name-count" hidden data-settings-name-count>
+                                <span data-settings-name-length>${team.getName().length()}</span> / 100 символов
+                            </p>
                         </div>
                     </form>
 
@@ -221,6 +226,102 @@
                         data-loading-text="Обработка..."
                     >
                         Изменить
+                    </button>
+                </footer>
+                </form>
+            </dialog>
+        @elseif("delete".equals(settingsSection))
+            <dialog class="settings-dialog" data-team-delete-dialog>
+                <form
+                    class="settings-dialog-form"
+                    method="post"
+                    action="/teams/${team.getId()}/delete"
+                    data-submit-loading
+                >
+                <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+
+                <header class="settings-dialog-header">
+                    <h2>Удаление команды</h2>
+                    <button type="button" aria-label="Закрыть" data-team-delete-close>×</button>
+                </header>
+
+                <div class="settings-dialog-body">
+                    <p>
+                        Вы уверены, что хотите удалить команду «${team.getName()}»?
+                        Если да, напишите <strong>«я хочу удалить команду»</strong> в поле ниже.
+                    </p>
+
+                    <div class="form-field">
+                        <label for="team-delete-confirmation">Введите проверочный текст</label>
+                        <input
+                            id="team-delete-confirmation"
+                            type="text"
+                            name="confirmationText"
+                            required
+                            autocomplete="off"
+                            data-team-delete-input
+                            data-confirmation-text="я хочу удалить команду"
+                        >
+                    </div>
+                </div>
+
+                <footer class="settings-dialog-footer">
+                    <button
+                        class="button button-danger"
+                        type="submit"
+                        disabled
+                        data-team-delete-submit
+                        data-loading-text="Обработка..."
+                    >
+                        Удалить
+                    </button>
+                </footer>
+                </form>
+            </dialog>
+        @elseif("leave".equals(settingsSection))
+            <dialog class="settings-dialog" data-team-leave-dialog>
+                <form
+                    class="settings-dialog-form"
+                    method="post"
+                    action="/teams/${team.getId()}/leave"
+                    data-submit-loading
+                >
+                <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+
+                <header class="settings-dialog-header">
+                    <h2>Покинуть команду</h2>
+                    <button type="button" aria-label="Закрыть" data-team-leave-close>×</button>
+                </header>
+
+                <div class="settings-dialog-body">
+                    <p>
+                        Вы уверены, что хотите покинуть команду «${team.getName()}»?
+                        Если да, напишите <strong>«да хочу выйти из команды»</strong> в поле ниже.
+                    </p>
+
+                    <div class="form-field">
+                        <label for="team-leave-confirmation">Введите проверочный текст</label>
+                        <input
+                            id="team-leave-confirmation"
+                            type="text"
+                            name="confirmationText"
+                            required
+                            autocomplete="off"
+                            data-team-leave-input
+                            data-confirmation-text="да хочу выйти из команды"
+                        >
+                    </div>
+                </div>
+
+                <footer class="settings-dialog-footer">
+                    <button
+                        class="button button-danger"
+                        type="submit"
+                        disabled
+                        data-team-leave-submit
+                        data-loading-text="Обработка..."
+                    >
+                        Покинуть команду
                     </button>
                 </footer>
                 </form>

@@ -56,9 +56,26 @@
         </form>
 
         @if(unverifiedEmail != null)
-            <a class="auth-submit" href="/verification-pending">
-                Перейти к повторной отправке
-            </a>
+            <form method="post" action="/resend-verification" data-submit-loading>
+                <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                <input type="hidden" name="email" value="${unverifiedEmail}">
+
+                @if(redirect != null)
+                    <input type="hidden" name="redirect" value="${redirect}">
+                @endif
+
+                @if(invite != null)
+                    <input type="hidden" name="invite" value="${invite}">
+                @endif
+
+                <button
+                    class="auth-submit auth-submit-secondary"
+                    type="submit"
+                    data-loading-text="Отправляем письмо…"
+                >
+                    Отправить письмо повторно
+                </button>
+            </form>
         @endif
     `
 )

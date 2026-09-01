@@ -15,7 +15,7 @@
 @param UserAvatarView currentUser
 
 @template.layout.page(
-    title = team.getName() + " — пригласить",
+    title = team.getName() + " — приглашения",
     _csrf = _csrf,
     currentUser = currentUser,
     activeSection = "teams",
@@ -25,138 +25,92 @@
         @template.components.teamSwitcher(team = team, navigationTeams = navigationTeams)
     `,
     content = @`
-        @template.components.teamNavigation(
-            team = team,
-            activeTab = "invite"
-        )
+        @template.components.teamNavigation(team = team, activeTab = "settings")
 
-        <section class="workspace-page team-invite-page">
-            @if(canInvite)
-                <form
-                    class="invite-form"
-                    method="post"
-                    action="/teams/${team.getId()}/members"
-                    data-submit-loading
-                >
-                    <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+        <section class="workspace-page team-settings-page">
+            @template.components.teamSettingsSidebar(team = team, activeSection = "invitations", owner = canInvite)
 
-                    <div class="form-field">
-                        <label for="invitation-email">Email пользователя</label>
+            <div class="team-settings-content">
+                <header class="team-create-header team-settings-header">
+                    <h1>Приглашения</h1>
+                </header>
 
-                        <input
-                            id="invitation-email"
-                            type="email"
-                            name="email"
-                            required
-                        >
-                    </div>
-
-                    <button
-                        class="button button-primary"
-                        type="submit"
-                        data-loading-text="Отправляем приглашение…"
+                @if(canInvite)
+                    <form
+                        class="team-settings-form team-invitation-form"
+                        method="post"
+                        action="/teams/${team.getId()}/members"
+                        data-submit-loading
                     >
-                        Отправить приглашение
-                    </button>
+                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                        <div class="form-field">
+                            <label for="invitation-email">Email пользователя</label>
+                            <div class="field-with-action">
+                                <input
+                                    id="invitation-email"
+                                    type="email"
+                                    name="email"
+                                    maxlength="255"
+                                    required
+                                    autocomplete="email"
+                                >
+                                <button class="button button-secondary" type="submit" data-loading-text="Отправляем...">
+                                    Отправить приглашение
+                                </button>
+                            </div>
+                            <p class="form-help">Ссылка действует ${invitationExpirationDays} дней</p>
+                        </div>
+                    </form>
 
-                    <p class="form-help">Ссылка-приглашение действует ${invitationExpirationDays} дней.</p>
-                </form>
-            @else
-                <p>Вы можете просматривать команду, но не можете приглашать новых участников.</p>
-            @endif
+                    <section class="team-invitation-history" aria-labelledby="invitation-history-title">
+                        <h2 id="invitation-history-title">История приглашений</h2>
 
-            @if(canInvite)
-                <h2>Статус отправленных приглашений</h2>
+                        @if(invitations.isEmpty())
+                            <p class="team-invitation-empty">Приглашений пока нет</p>
+                        @else
+                            <div class="team-invitation-list">
+                                @for(TeamInvitationView invitation : invitations)
+                                    <div class="team-invitation-row">
+                                        <span class="team-invitation-email" title="${invitation.invitedEmail()}">${invitation.invitedEmail()}</span>
+                                        <span
+                                            class="invitation-status invitation-status-${invitation.statusCssClass()}"
+                                            tabindex="0"
+                                            data-tooltip="${invitation.statusTooltip()}"
+                                        >${invitation.statusText()}</span>
+                                        <time>${invitation.createdAtText()}</time>
 
-                <div class="table-card">
-                <table class="data-table invitation-table">
-                    <thead>
-                        <tr>
-                            <th>Email получателя</th>
-                            <th>Status</th>
-                            <th>Ссылка приглашение</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        @for(TeamInvitationView invitation : invitations)
-                            <tr>
-                                <td>${invitation.invitedEmail()}</td>
-                                <td>${invitation.status()}</td>
-                                <td>
-                                    @if(invitation.invitationUrl() != null)
-                                        <a href="${invitation.invitationUrl()}">
-                                            ${invitation.invitationUrl()}
-                                        </a>
-                                    @else
-                                        —
-                                    @endif
-
-                                    @if(invitation.canCancel())
-                                        <form
-                                            method="post"
-                                            action="/teams/${team.getId()}/invitations/${invitation.id()}/resend"
-                                            style="display: inline;"
-                                            data-submit-loading
-                                        >
-                                            <input
-                                                type="hidden"
-                                                name="${_csrf.getParameterName()}"
-                                                value="${_csrf.getToken()}"
-                                            >
-
-                                            <button
-                                                class="button button-secondary"
-                                                type="submit"
-                                                data-loading-text="Отправляем письмо…"
-                                            >
-                                                Отправить письмо повторно
-                                            </button>
-                                        </form>
-
-                                        <div
-                                            id="cancel-invitation-action-${invitation.id()}"
-                                            style="display: inline;"
-                                        >
-                                            <button
-                                                type="button"
-                                                onclick="document.getElementById('cancel-invitation-confirm-${invitation.id()}').style.display = 'inline'; document.getElementById('cancel-invitation-action-${invitation.id()}').style.display = 'none';"
-                                            >
-                                                Отменить приглашение
-                                            </button>
-                                        </div>
-
-                                        <form
-                                            id="cancel-invitation-confirm-${invitation.id()}"
-                                            method="post"
-                                            action="/teams/${team.getId()}/invitations/${invitation.id()}/cancel"
-                                            style="display: none;"
-                                        >
-                                            <input
-                                                type="hidden"
-                                                name="${_csrf.getParameterName()}"
-                                                value="${_csrf.getToken()}"
-                                            >
-
-                                            <button type="submit">
-                                                Да
-                                            </button>
-
-                                            <button
-                                                type="button"
-                                                onclick="document.getElementById('cancel-invitation-confirm-${invitation.id()}').style.display = 'none'; document.getElementById('cancel-invitation-action-${invitation.id()}').style.display = 'inline';"
-                                            >
-                                                Нет
-                                            </button>
-                                        </form>
-                                    @endif
-                                </td>
-                            </tr>
-                        @endfor
-                    </tbody>
-                </table>
-                </div>
-            @endif
+                                        @if(invitation.canCancel())
+                                            <details class="task-card-actions team-invitation-actions">
+                                                <summary class="task-card-menu" aria-label="Действия с приглашением ${invitation.invitedEmail()}">
+                                                    <svg aria-hidden="true" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
+                                                        <path d="M2 7a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm6 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm6 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z"></path>
+                                                    </svg>
+                                                </summary>
+                                                <div class="task-card-actions-panel">
+                                                    <button class="task-card-action-option" type="button" data-invitation-copy data-invitation-url="${invitation.invitationUrl()}">
+                                                        Скопировать ссылку
+                                                    </button>
+                                                    <form method="post" action="/teams/${team.getId()}/invitations/${invitation.id()}/resend" data-submit-loading>
+                                                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                                                        <button class="task-card-action-option" type="submit" data-loading-text="Отправляем...">Отправить повторно</button>
+                                                    </form>
+                                                    <div class="task-card-actions-divider" role="separator"></div>
+                                                    <form method="post" action="/teams/${team.getId()}/invitations/${invitation.id()}/cancel">
+                                                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                                                        <button class="task-card-action-option task-card-delete-action" type="submit">Отменить приглашение</button>
+                                                    </form>
+                                                </div>
+                                            </details>
+                                        @endif
+                                    </div>
+                                @endfor
+                            </div>
+                        @endif
+                    </section>
+                @else
+                    <p class="team-settings-access-note">Просматривать и отправлять приглашения может только owner команды</p>
+                @endif
+            </div>
         </section>
     `
 )

@@ -20,7 +20,7 @@
     headerContext = null,
     content = @`
         <section class="workspace-page form-page task-create-page">
-            <a class="back-link team-create-back-link" href="/tasks">
+            <a class="back-link team-create-back-link" href="/tasks" data-history-back>
                 <svg
                     aria-hidden="true"
                     width="16"

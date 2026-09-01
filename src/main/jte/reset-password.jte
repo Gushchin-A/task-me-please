@@ -8,17 +8,15 @@
 @param String errorMessage
 
 @template.layout.auth(
-    title = "Новый password",
+    title = "Установите новый password",
     loginUrl = loginUrl,
     registrationUrl = registrationUrl,
-    activeTab = "",
+    activeTab = "reset-password",
     invite = null,
     inviteContext = null,
     successMessage = successMessage,
     errorMessage = errorMessage,
     content = @`
-        <h1 id="auth-heading">Установите новый password</h1>
-
         <form method="post" action="/reset-password/${token}" data-submit-loading>
             <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
 

@@ -5,6 +5,7 @@ import dev.gushchin.taskmanager.exception.TransactionalEmailSendingException;
 import dev.gushchin.taskmanager.model.AccountToken;
 import dev.gushchin.taskmanager.model.AccountTokenType;
 import dev.gushchin.taskmanager.model.EmailVerificationResendState;
+import dev.gushchin.taskmanager.model.EmailVerificationResult;
 import dev.gushchin.taskmanager.model.User;
 import dev.gushchin.taskmanager.repository.AccountTokenRepository;
 import dev.gushchin.taskmanager.repository.UserRepository;
@@ -62,11 +63,44 @@ public class EmailVerificationService {
     }
 
     @Transactional
-    public User verify(String token) {
-        AccountToken accountToken = accountTokenService.consume(token, AccountTokenType.EMAIL_VERIFICATION);
+    public EmailVerificationResult verify(String token) {
+        AccountToken accountToken = accountTokenService.find(token, AccountTokenType.EMAIL_VERIFICATION);
+        if (accountToken == null) {
+            throw new InvalidAccountTokenException();
+        }
+
         User user = userService.findById(accountToken.getUserId());
         if (user.isDeleted()) {
             throw new InvalidAccountTokenException();
+        }
+
+        if (accountToken.getInvalidatedAt() != null) {
+            throw new InvalidAccountTokenException();
+        }
+
+        if (accountToken.getUsedAt() != null) {
+            if (user.isEmailVerified()) {
+                return new EmailVerificationResult(user, true);
+            }
+
+            throw new InvalidAccountTokenException();
+        }
+
+        AccountToken consumedToken = accountTokenService.consumeIfActive(token, AccountTokenType.EMAIL_VERIFICATION);
+        if (consumedToken == null) {
+            AccountToken latestToken = accountTokenService.find(token, AccountTokenType.EMAIL_VERIFICATION);
+            User currentUser = userService.findById(accountToken.getUserId());
+            if (latestToken != null
+                    && latestToken.getUsedAt() != null
+                    && latestToken.getInvalidatedAt() == null
+                    && currentUser.isEmailVerified()) {
+                return new EmailVerificationResult(currentUser, true);
+            }
+
+            throw new InvalidAccountTokenException();
+        }
+        if (user.isEmailVerified()) {
+            return new EmailVerificationResult(user, true);
         }
 
         Instant now = Instant.now();
@@ -74,9 +108,10 @@ public class EmailVerificationService {
         user.setEmailVerifiedAt(now);
         user.setUpdatedAt(now);
         User verifiedUser = userRepository.update(user);
-        accountTokenRepository.invalidateActiveByUserIdAndType(user.getId(), AccountTokenType.EMAIL_VERIFICATION, now);
+        accountTokenRepository.invalidateReplacedByUserIdAndType(
+                user.getId(), AccountTokenType.EMAIL_VERIFICATION, now);
 
-        return verifiedUser;
+        return new EmailVerificationResult(verifiedUser, false);
     }
 
     private void createAndSend(User user, String invite) {

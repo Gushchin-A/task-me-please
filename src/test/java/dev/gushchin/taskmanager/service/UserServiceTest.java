@@ -23,7 +23,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 class UserServiceTest {
     private final UserRepository userRepository = mock(UserRepository.class);
     private final PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
-    private final UserService userService = new UserService(userRepository, passwordEncoder);
+    private final NotificationService notificationService = mock(NotificationService.class);
+    private final UserService userService = new UserService(userRepository, passwordEncoder, notificationService);
 
     @Test
     void createShouldReturnSavedUser() {
@@ -186,6 +187,38 @@ class UserServiceTest {
         assertEquals(1, users.size());
         assertEquals("active@test.com", users.getFirst().getEmail());
         verify(userRepository).findAll();
+    }
+
+    @Test
+    void updateNameShouldStripAndSaveName() {
+        UUID id = UUID.randomUUID();
+        User existingUser = new User();
+        existingUser.setId(id);
+        existingUser.setName("Старое имя");
+
+        when(userRepository.findById(id)).thenReturn(existingUser);
+        when(userRepository.update(existingUser)).thenReturn(existingUser);
+
+        User updatedUser = userService.updateName(id, "  Новое имя  ");
+
+        assertEquals("Новое имя", updatedUser.getName());
+        verify(userRepository).update(existingUser);
+    }
+
+    @Test
+    void updateNameShouldAllowEmptyName() {
+        UUID id = UUID.randomUUID();
+        User existingUser = new User();
+        existingUser.setId(id);
+        existingUser.setName("Старое имя");
+
+        when(userRepository.findById(id)).thenReturn(existingUser);
+        when(userRepository.update(existingUser)).thenReturn(existingUser);
+
+        User updatedUser = userService.updateName(id, "   ");
+
+        assertEquals("", updatedUser.getName());
+        verify(userRepository).update(existingUser);
     }
 
     @Test

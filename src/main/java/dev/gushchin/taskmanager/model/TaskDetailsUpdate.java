@@ -4,4 +4,10 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 public record TaskDetailsUpdate(
-        String title, String description, LocalDate deadlineDate, TaskStatus status, Long tagId, UUID assigneeId) {}
+        String title,
+        String description,
+        LocalDate deadlineDate,
+        TaskStatus status,
+        Long tagId,
+        UUID authorId,
+        UUID assigneeId) {}

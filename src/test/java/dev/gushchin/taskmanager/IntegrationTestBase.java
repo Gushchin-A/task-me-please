@@ -33,6 +33,7 @@ public abstract class IntegrationTestBase {
         registry.add("spring.datasource.username", POSTGRES_CONTAINER::getUsername);
         registry.add("spring.datasource.password", POSTGRES_CONTAINER::getPassword);
         registry.add("app.security.remember-me-key", () -> "integration-test-remember-me-key");
+        registry.add("notifications.invitation-expiration-enabled", () -> "false");
     }
 
     protected String readJson(String path) throws IOException {

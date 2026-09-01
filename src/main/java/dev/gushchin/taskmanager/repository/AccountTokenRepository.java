@@ -47,6 +47,11 @@ public class AccountTokenRepository {
                         accountToken.getUsedAt() == null
                                 ? null
                                 : accountToken.getUsedAt().atOffset(ZoneOffset.UTC))
+                .set(
+                        ACCOUNT_TOKENS.INVALIDATED_AT,
+                        accountToken.getInvalidatedAt() == null
+                                ? null
+                                : accountToken.getInvalidatedAt().atOffset(ZoneOffset.UTC))
                 .set(ACCOUNT_TOKENS.CREATED_AT, accountToken.getCreatedAt().atOffset(ZoneOffset.UTC))
                 .returning()
                 .fetchOne();
@@ -60,7 +65,19 @@ public class AccountTokenRepository {
                 .where(ACCOUNT_TOKENS.USER_ID.eq(userId))
                 .and(ACCOUNT_TOKENS.TYPE.eq(type.name()))
                 .and(ACCOUNT_TOKENS.USED_AT.isNull())
+                .and(ACCOUNT_TOKENS.INVALIDATED_AT.isNull())
                 .and(ACCOUNT_TOKENS.EXPIRES_AT.gt(usedAt.atOffset(ZoneOffset.UTC)))
+                .execute();
+    }
+
+    public void invalidateReplacedByUserIdAndType(UUID userId, AccountTokenType type, Instant invalidatedAt) {
+        dsl.update(ACCOUNT_TOKENS)
+                .set(ACCOUNT_TOKENS.INVALIDATED_AT, invalidatedAt.atOffset(ZoneOffset.UTC))
+                .where(ACCOUNT_TOKENS.USER_ID.eq(userId))
+                .and(ACCOUNT_TOKENS.TYPE.eq(type.name()))
+                .and(ACCOUNT_TOKENS.USED_AT.isNull())
+                .and(ACCOUNT_TOKENS.INVALIDATED_AT.isNull())
+                .and(ACCOUNT_TOKENS.EXPIRES_AT.gt(invalidatedAt.atOffset(ZoneOffset.UTC)))
                 .execute();
     }
 
@@ -69,6 +86,7 @@ public class AccountTokenRepository {
                 .set(ACCOUNT_TOKENS.USED_AT, usedAt.atOffset(ZoneOffset.UTC))
                 .where(ACCOUNT_TOKENS.ID.eq(id))
                 .and(ACCOUNT_TOKENS.USED_AT.isNull())
+                .and(ACCOUNT_TOKENS.INVALIDATED_AT.isNull())
                 .and(ACCOUNT_TOKENS.EXPIRES_AT.gt(usedAt.atOffset(ZoneOffset.UTC)))
                 .returning()
                 .fetchOne();

@@ -9,17 +9,10 @@
 
 @param Team team
 @param List<Team> navigationTeams
-@param int totalTasksCount
-@param int archiveTasksCount
-@param int membersCount
 @param List<TeamMemberView> members
-@param boolean onlyCurrentOwnerInTeam
 @param boolean canInvite
 @param boolean canManageVisibility
-@param boolean canSeeMemberDetails
-@param boolean canSeeMemberPrivateData
 @param UUID currentUserId
-@param TeamTaskVisibility[] taskVisibilities
 @param CsrfToken _csrf
 @param String successMessage
 @param String errorMessage
@@ -36,173 +29,150 @@
         @template.components.teamSwitcher(team = team, navigationTeams = navigationTeams)
     `,
     content = @`
-        @template.components.teamNavigation(
-            team = team,
-            activeTab = "members"
-        )
+        @template.components.teamNavigation(team = team, activeTab = "settings")
 
-        <section class="workspace-page team-members-page">
-            @if(onlyCurrentOwnerInTeam)
-                <div class="empty-state empty-state-compact">
-                    <p>Кроме вас в команде пока никого нет.</p>
+        <section class="workspace-page team-settings-page team-members-settings-page">
+            @template.components.teamSettingsSidebar(team = team, activeSection = "members", owner = canInvite)
 
-                    @if(canInvite)
-                        <a href="/teams/${team.getId()}/invite">
-                            Пригласить в команду
-                        </a>
-                    @else
-                        <span class="disabled-action">Приглашать участников может только owner команды</span>
-                    @endif
+            <div class="team-settings-content">
+                <header class="team-create-header team-settings-header">
+                    <h1>Участники</h1>
+                    <p>${canManageVisibility
+                        ? "Настройте, видит ли участник все задачи команды или только задачи, где он автор или исполнитель"
+                        : "Актуальный список участников команды «" + team.getName() + "»"}</p>
+                </header>
+
+                <div class="${canManageVisibility ? "team-member-list" : "team-member-list team-member-list-read-only"}">
+                    @for(TeamMemberView member : members)
+                        <div class="${canManageVisibility ? "team-member-row" : "team-member-row team-member-row-read-only"}">
+                            <div class="team-member-profile">
+                                <span
+                                    class="team-member-avatar"
+                                    aria-hidden="true"
+                                >
+                                    ${member.initials()}
+                                </span>
+                                <div class="team-member-identity">
+                                    <strong title="${member.name()}">${member.displayName()}</strong>
+                                    <span>${member.email()}</span>
+                                </div>
+                            </div>
+
+                            <div class="team-member-role-cell">
+                                @if(member.role() == TeamMemberRole.OWNER)
+                                    <span class="team-member-role task-card-deadline">Владелец</span>
+                                @elseif(!canManageVisibility
+                                    && member.userId().equals(currentUserId)
+                                    && member.taskVisibility() == TeamTaskVisibility.ALL_TASKS)
+                                    <span class="team-member-role task-card-deadline">Видит все задачи</span>
+                                @endif
+                            </div>
+
+                            @if(canManageVisibility)
+                                <div class="team-member-visibility">
+                                @if(member.role() != TeamMemberRole.OWNER)
+                                    <form
+                                        class="team-member-visibility-control"
+                                        method="post"
+                                        action="/teams/${team.getId()}/members/${member.userId().toString()}/visibility"
+                                        data-team-visibility-form
+                                    >
+                                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                                        <input
+                                            type="hidden"
+                                            name="taskVisibility"
+                                            value="${member.taskVisibility() == TeamTaskVisibility.ALL_TASKS
+                                                ? TeamTaskVisibility.OWN_TASKS.name()
+                                                : TeamTaskVisibility.ALL_TASKS.name()}"
+                                        >
+                                        <button
+                                            class="team-visibility-switch"
+                                            type="submit"
+                                            role="switch"
+                                            aria-checked="${member.taskVisibility() == TeamTaskVisibility.ALL_TASKS}"
+                                            aria-label="Изменить видимость задач для ${member.name()}"
+                                        ><span aria-hidden="true"></span></button>
+                                    </form>
+                                @else
+                                    <div class="team-member-visibility-control">
+                                        <button
+                                            class="team-visibility-switch"
+                                            type="button"
+                                            role="switch"
+                                            aria-checked="${member.taskVisibility() == TeamTaskVisibility.ALL_TASKS}"
+                                            aria-disabled="true"
+                                            disabled
+                                        ><span aria-hidden="true"></span></button>
+                                    </div>
+                                @endif
+                                <span data-team-visibility-status>${member.taskVisibility() == TeamTaskVisibility.ALL_TASKS
+                                    ? "Видит все задачи" : "Видит только свои задачи"}</span>
+                                </div>
+
+                                <div class="team-member-remove-cell">
+                                @if(member.role() != TeamMemberRole.OWNER)
+                                    <button
+                                        class="task-detail-icon-button"
+                                        type="button"
+                                        aria-label="Удалить ${member.name()} из команды"
+                                        data-tooltip="Удалить участника"
+                                        data-team-member-remove-open
+                                        data-member-id="${member.userId().toString()}"
+                                        data-member-name="${member.name()}"
+                                        data-member-email="${member.email()}"
+                                        data-member-initials="${member.initials()}"
+                                    >
+                                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                            <path d="M6.5 1.75A.75.75 0 0 1 7.25 1h1.5a.75.75 0 0 1 .75.75V3h3.75a.75.75 0 0 1 0 1.5h-.55l-.66 9.19A1.42 1.42 0 0 1 10.62 15H5.38a1.42 1.42 0 0 1-1.42-1.31L3.3 4.5h-.55a.75.75 0 0 1 0-1.5H6.5V1.75ZM4.8 4.5l.65 9h5.1l.65-9H4.8Z"></path>
+                                        </svg>
+                                    </button>
+                                @endif
+                                </div>
+                            @endif
+                        </div>
+                    @endfor
                 </div>
-            @endif
 
-            @if(members.isEmpty())
-                    <div class="empty-state empty-state-compact">
-                        <p>В команде нет участников.</p>
+                @if(canManageVisibility)
+                    <dialog class="settings-dialog team-member-remove-dialog" data-team-member-remove-dialog>
+                        <form class="settings-dialog-form" method="post" data-team-member-remove-form data-submit-loading>
+                            <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
 
-                        @if(canInvite)
-                            <a href="/teams/${team.getId()}/invite">
-                                Пригласить в команду
-                            </a>
-                        @else
-                            <span class="disabled-action">Приглашать участников может только owner команды</span>
-                        @endif
-                    </div>
-                @else
-                    <div class="table-card">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Имя</th>
+                            <header class="settings-dialog-header">
+                                <h2>Удаление участника</h2>
+                                <button
+                                    class="settings-dialog-close"
+                                    type="button"
+                                    aria-label="Закрыть"
+                                    data-team-member-remove-close
+                                >
+                                    ×
+                                </button>
+                            </header>
 
-                                @if(canSeeMemberPrivateData)
-                                    <th>Почта</th>
-                                    <th>Роль в команде</th>
-                                @endif
+                            <div class="settings-dialog-body">
+                                <div class="team-member-remove-profile">
+                                    <span class="team-member-avatar" aria-hidden="true" data-team-member-remove-avatar></span>
+                                    <div class="team-member-identity">
+                                        <strong data-team-member-remove-name></strong>
+                                        <span data-team-member-remove-email></span>
+                                    </div>
+                                </div>
+                                <p>Участник потеряет доступ к задачам команды. Его можно будет пригласить повторно.</p>
+                            </div>
 
-                                @if(canSeeMemberDetails)
-                                    <th>Кол-во задач, где автор</th>
-                                    <th>Кол-во задач, где исполнитель</th>
-                                @endif
-
-                                @if(canManageVisibility)
-                                    <th>Видимость задач</th>
-                                    <th>Действия</th>
-                                @endif
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            @for(TeamMemberView member : members)
-                                <tr>
-                                    <td>${member.name()}</td>
-
-                                    @if(canSeeMemberPrivateData)
-                                        <td>${member.email()}</td>
-                                        <td>${member.role().name()}</td>
-                                    @endif
-
-                                    @if(canSeeMemberDetails)
-                                        <td>${member.authorTasksCount()}</td>
-                                        <td>${member.assigneeTasksCount()}</td>
-                                    @endif
-
-                                    @if(canManageVisibility)
-                                        <td>
-                                            @if(member.userId().equals(currentUserId))
-                                                <span>Видит все задачи</span>
-                                            @else
-                                                <form
-                                                    method="post"
-                                                    action="/teams/${team.getId()}/members/${member.userId().toString()}/visibility"
-                                                    style="display: inline;"
-                                                    data-inline-update-form="true"
-                                                >
-                                                    <input
-                                                        type="hidden"
-                                                        name="${_csrf.getParameterName()}"
-                                                        value="${_csrf.getToken()}"
-                                                    >
-
-                                                    <select
-                                                        name="taskVisibility"
-                                                        data-inline-control
-                                                        data-original-value="${member.taskVisibility().name()}"
-                                                        onchange="showInlineSavePanel(this)"
-                                                    >
-                                                        @for(TeamTaskVisibility taskVisibility : taskVisibilities)
-                                                            @if(taskVisibility == member.taskVisibility())
-                                                                <option value="${taskVisibility.name()}" selected>
-                                                                    @if(taskVisibility == TeamTaskVisibility.ALL_TASKS)
-                                                                        Видит все задачи
-                                                                    @else
-                                                                        Видит только свои задачи
-                                                                    @endif
-                                                                </option>
-                                                            @else
-                                                                <option value="${taskVisibility.name()}">
-                                                                    @if(taskVisibility == TeamTaskVisibility.ALL_TASKS)
-                                                                        Видит все задачи
-                                                                    @else
-                                                                        Видит только свои задачи
-                                                                    @endif
-                                                                </option>
-                                                            @endif
-                                                        @endfor
-                                                    </select>
-
-                                                    <span data-inline-actions style="display: none;">
-                                                        <button type="submit">
-                                                            Сохранить
-                                                        </button>
-
-                                                        <button type="button" onclick="cancelInlineUpdate(this)">
-                                                            Отмена
-                                                        </button>
-                                                    </span>
-                                                </form>
-                                            @endif
-                                        </td>
-
-                                        <td>
-                                            @if(member.role() == TeamMemberRole.MEMBER && !member.userId().equals(currentUserId))
-                                                <details>
-                                                    <summary>Удалить</summary>
-
-                                                    <form
-                                                        method="post"
-                                                        action="/teams/${team.getId()}/members/${member.userId().toString()}/remove"
-                                                        style="display: inline;"
-                                                    >
-                                                        <input
-                                                            type="hidden"
-                                                            name="${_csrf.getParameterName()}"
-                                                            value="${_csrf.getToken()}"
-                                                        >
-
-                                                        <span>Удалить участника из команды?</span>
-
-                                                        <button type="submit">
-                                                            Да
-                                                        </button>
-
-                                                        <button
-                                                            type="button"
-                                                            onclick="this.closest('details').removeAttribute('open')"
-                                                        >
-                                                            Нет
-                                                        </button>
-                                                    </form>
-                                                </details>
-                                            @endif
-                                        </td>
-                                    @endif
-                                </tr>
-                            @endfor
-                        </tbody>
-                    </table>
-                    </div>
-            @endif
+                            <footer class="settings-dialog-footer">
+                                <button class="button button-secondary" type="button" data-team-member-remove-cancel>
+                                    Отмена
+                                </button>
+                                <button class="button button-danger" type="submit" data-loading-text="Обработка...">
+                                    Удалить
+                                </button>
+                            </footer>
+                        </form>
+                    </dialog>
+                @endif
+            </div>
         </section>
     `
 )

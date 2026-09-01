@@ -1,12 +1,14 @@
 package dev.gushchin.taskmanager.service;
 
 import static dev.gushchin.taskmanager.jooq.Tables.COMMENTS;
+import static dev.gushchin.taskmanager.jooq.Tables.NOTIFICATION_EVENTS;
 import static dev.gushchin.taskmanager.jooq.Tables.TASKS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAMS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAM_INVITATIONS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAM_MEMBERS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAM_TAGS;
 import static dev.gushchin.taskmanager.jooq.Tables.USERS;
+import static dev.gushchin.taskmanager.jooq.Tables.USER_NOTIFICATIONS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -98,6 +100,8 @@ class TeamTagServiceIntegrationTest extends IntegrationTestBase {
     }
 
     private void cleanDatabase() {
+        dsl.deleteFrom(USER_NOTIFICATIONS).execute();
+        dsl.deleteFrom(NOTIFICATION_EVENTS).execute();
         dsl.deleteFrom(COMMENTS).execute();
         dsl.deleteFrom(TASKS).execute();
         dsl.deleteFrom(TEAM_INVITATIONS).execute();

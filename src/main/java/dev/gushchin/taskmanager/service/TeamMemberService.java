@@ -13,6 +13,7 @@ import java.util.UUID;
 import java.util.function.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +21,7 @@ public class TeamMemberService {
     private final TeamMemberRepository teamMemberRepository;
     private final TeamService teamService;
     private final UserService userService;
+    private final NotificationPublisher notificationPublisher;
 
     public List<TeamMember> findByTeamId(Long teamId) {
         teamService.findById(teamId);
@@ -71,6 +73,7 @@ public class TeamMemberService {
         return teamMemberRepository.save(teamMember);
     }
 
+    @Transactional
     public TeamMember updateTaskVisibility(
             Long teamId, UUID userId, TeamTaskVisibility taskVisibility, UUID currentUserId) {
         TeamMember currentMember = findById(teamId, currentUserId);
@@ -85,9 +88,17 @@ public class TeamMemberService {
             throw new AccessDeniedForTaskException();
         }
 
-        return teamMemberRepository.updateTaskVisibility(teamId, userId, taskVisibility);
+        if (targetMember.getTaskVisibility() == taskVisibility) {
+            return targetMember;
+        }
+
+        TeamMember updatedMember = teamMemberRepository.updateTaskVisibility(teamId, userId, taskVisibility);
+        notificationPublisher.taskVisibilityChanged(targetMember, updatedMember, currentUserId);
+
+        return updatedMember;
     }
 
+    @Transactional
     public TeamMember removeMember(Long teamId, UUID userId, UUID currentUserId) {
         TeamMember currentMember = findById(teamId, currentUserId);
 
@@ -105,6 +116,23 @@ public class TeamMemberService {
             throw new AccessDeniedForTaskException();
         }
 
-        return teamMemberRepository.softDelete(teamId, userId);
+        TeamMember removedMember = teamMemberRepository.softDelete(teamId, userId);
+        notificationPublisher.teamMemberRemoved(removedMember, currentUserId);
+
+        return removedMember;
+    }
+
+    @Transactional
+    public TeamMember leaveTeam(Long teamId, UUID currentUserId) {
+        TeamMember currentMember = findById(teamId, currentUserId);
+
+        if (currentMember.getRole() == TeamMemberRole.OWNER) {
+            throw new AccessDeniedForTaskException();
+        }
+
+        TeamMember removedMember = teamMemberRepository.softDelete(teamId, currentUserId);
+        notificationPublisher.teamMemberLeft(removedMember);
+
+        return removedMember;
     }
 }

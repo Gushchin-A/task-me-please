@@ -18,5 +18,6 @@ public class AccountToken {
     private String tokenHash;
     private Instant expiresAt;
     private Instant usedAt;
+    private Instant invalidatedAt;
     private Instant createdAt;
 }

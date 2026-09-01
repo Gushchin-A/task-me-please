@@ -13,12 +13,14 @@
 @param List<Team> navigationTeams
 @param CsrfToken _csrf
 @param UserAvatarView currentUser
+@param String successMessage
 
 @template.layout.page(
     title = page.team().getName(),
     _csrf = _csrf,
     currentUser = currentUser,
     activeSection = "teams",
+    successMessage = successMessage,
     headerContext = @`
         @template.components.teamSwitcher(team = page.team(), navigationTeams = navigationTeams)
     `,
@@ -31,6 +33,8 @@
         <section class="workspace-page team-details-page">
             @if(!page.hasNoTasks())
                 <div class="task-toolbar">
+                <span class="task-count">Задачи (${page.totalTasksCount()})</span>
+
                 <div class="toolbar-popover task-filter-popover" data-toolbar-select>
                     <button
                         class="primer-select-trigger task-toolbar-trigger"
@@ -233,48 +237,24 @@
                             </button>
                         </div>
                         <div class="primer-select-options" role="menu">
-                            <a
-                                class="primer-select-option"
-                                href="${page.sortUrl(TaskSort.DEADLINE)}"
-                                role="menuitem"
-                                aria-current="${page.selectedSort() == TaskSort.DEADLINE ? "true" : null}"
-                            >
-                                <span class="primer-select-check" aria-hidden="true">
-                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                                        <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 1 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
-                                    </svg>
-                                </span>
-                                <span>По дедлайну</span>
-                            </a>
-
-                            <a
-                                class="primer-select-option"
-                                href="${page.sortUrl(TaskSort.TAG)}"
-                                role="menuitem"
-                                aria-current="${page.selectedSort() == TaskSort.TAG ? "true" : null}"
-                            >
-                                <span class="primer-select-check" aria-hidden="true">
-                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                                        <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 1 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
-                                    </svg>
-                                </span>
-                                <span>По тегу</span>
-                            </a>
-
-                            <a
-                                class="primer-select-option"
-                                href="${page.defaultSortUrl()}"
-                                role="menuitem"
-                                aria-current="${page.selectedSort() == null ? "true" : null}"
-                                data-tooltip="Сначала новые задачи, затем старые"
-                            >
-                                <span class="primer-select-check" aria-hidden="true">
-                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                                        <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 1 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
-                                    </svg>
-                                </span>
-                                <span>По умолчанию</span>
-                            </a>
+                            @for(TaskSort taskSort : TaskSort.values())
+                                <a
+                                    class="primer-select-option"
+                                    href="${page.sortUrl(taskSort)}"
+                                    role="menuitem"
+                                    aria-current="${page.selectedSort() == taskSort
+                                        || page.selectedSort() == null && taskSort == TaskSort.NEWEST
+                                        ? "true"
+                                        : null}"
+                                >
+                                    <span class="primer-select-check" aria-hidden="true">
+                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                            <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 1 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+                                        </svg>
+                                    </span>
+                                    <span>${taskSort.getDisplayName()}</span>
+                                </a>
+                            @endfor
                         </div>
                     </div>
                 </div>
@@ -343,8 +323,13 @@
                             <path d="m14 17 1.75 1.75 3.25-4.5"></path>
                         </svg>
 
-                        <h2>В команде пока нет задач</h2>
-                        <p>Создайте первую задачу и назначьте ответственного.</p>
+                        @if(page.limitedTaskVisibility())
+                            <h2>В этой команде у вас пока нет задач</h2>
+                            <p>Дождитесь, пока вам поставят задачу, или создайте свою и назначьте ответственного.</p>
+                        @else
+                            <h2>В команде пока нет задач</h2>
+                            <p>Создайте первую задачу и назначьте ответственного.</p>
+                        @endif
                     </div>
                 @elseif(page.totalTasksCount() > 0 && page.hasSelectedFilters())
                     <div class="empty-state">
@@ -372,8 +357,13 @@
                             <path d="m14 17 1.75 1.75 3.25-4.5"></path>
                         </svg>
 
-                        <h2>В команде пока нет задач</h2>
-                        <p>Создайте первую задачу и назначьте ответственного.</p>
+                        @if(page.limitedTaskVisibility())
+                            <h2>В этой команде у вас пока нет задач</h2>
+                            <p>Дождитесь, пока вам поставят задачу, или создайте свою и назначьте ответственного.</p>
+                        @else
+                            <h2>В команде пока нет задач</h2>
+                            <p>Создайте первую задачу и назначьте ответственного.</p>
+                        @endif
                     </div>
                 @endif
             @else

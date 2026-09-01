@@ -16,12 +16,14 @@
 @param List<CommentView> comments
 @param CsrfToken _csrf
 @param UserAvatarView currentUser
+@param String successMessage
 
 @template.layout.page(
     title = task.title(),
     _csrf = _csrf,
     currentUser = currentUser,
     activeSection = "tasks",
+    successMessage = successMessage,
     headerContext = @`
         @template.components.teamSwitcher(team = team, navigationTeams = navigationTeams)
     `,
@@ -33,7 +35,7 @@
 
         <div class="task-detail-layout" data-task-detail>
         <section class="task-detail-main">
-            <a class="team-create-back-link" href="/teams/${team.getId()}">
+            <a class="back-link team-create-back-link" href="/teams/${team.getId()}" data-history-back>
                 <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                     <path d="M7.78 12.53a.75.75 0 0 1-1.06 0l-4-4a.75.75 0 0 1 0-1.06l4-4a.75.75 0 0 1 1.06 1.06L5.06 7.25h7.69a.75.75 0 0 1 0 1.5H5.06l2.72 2.72a.75.75 0 0 1 0 1.06Z"></path>
                 </svg>
@@ -43,7 +45,7 @@
             <div class="task-title-row">
                 <h1>${task.title()}</h1>
 
-                @if(task.canUpdateTask())
+                @if(task.canUpdateTask() && !task.archived())
                     <button
                         class="task-detail-icon-button"
                         type="button"
@@ -58,7 +60,7 @@
                 @endif
             </div>
 
-            @if(task.canUpdateTask())
+            @if(task.canUpdateTask() && !task.archived())
                 <form
                     class="task-title-edit-form"
                     method="post"
@@ -84,6 +86,8 @@
                         value="${task.assigneeId().toString()}"
                     >
 
+                    <input type="hidden" name="returnTo" value="task">
+
                     @if(task.deadlineAt() != null)
                         <input
                             type="hidden"
@@ -97,24 +101,47 @@
                         style="display: none;"
                     >@if(task.description() != null)${task.description()}@endif</textarea>
 
-                    <label for="task-detail-title-${task.id()}">Название задачи</label>
-                    <input id="task-detail-title-${task.id()}" type="text" name="title" value="${task.title()}" maxlength="100" required>
-
-                    <div class="task-detail-edit-actions">
-                        <button class="button button-secondary" type="button" data-task-title-edit-cancel>Отменить</button>
-                        <button class="button button-primary" type="submit">Сохранить</button>
-                    </div>
+                    <input
+                        id="task-detail-title-${task.id()}"
+                        type="text"
+                        name="title"
+                        value="${task.title()}"
+                        maxlength="100"
+                        aria-label="Название задачи"
+                        aria-describedby="task-detail-title-count"
+                        data-original-value="${task.title()}"
+                        required
+                    >
+                    <button class="button button-secondary" type="button" data-task-title-edit-cancel>Отменить</button>
+                    <span class="team-settings-action-tooltip" data-tooltip="Начните редактировать название">
+                        <button class="button button-primary" type="submit" disabled data-task-title-edit-submit>Сохранить</button>
+                    </span>
+                    <p class="form-help task-title-count" id="task-detail-title-count">
+                        <span data-task-detail-title-length>${task.title().length()}</span> / 100 символов
+                    </p>
                 </form>
             @endif
 
             <div class="task-detail-summary">
-                <span class="task-detail-status task-detail-status-${task.statusCssClass()}">${task.statusText()}</span>
-                <span><strong>${task.authorName()}</strong> создал задачу ${task.createdAtText()}</span>
+                <span class="task-detail-summary-statuses">
+                    @if(task.archived())
+                        <span class="task-detail-status task-detail-status-archive">Архив</span>
+                        @if(task.status() == TaskStatus.DONE)
+                            <span
+                                class="task-detail-status task-detail-archive-outcome-resolved"
+                                data-tooltip="Задача решена и перенесена в архив"
+                            >Решена</span>
+                        @else
+                            <span class="task-detail-status task-detail-archive-outcome-deleted">Удалена</span>
+                        @endif
+                    @else
+                        <span class="task-detail-status task-detail-status-${task.statusCssClass()}">${task.statusText()}</span>
+                    @endif
+                </span>
+                <span>
+                    <strong>${task.authorName()}</strong> создал задачу ${task.createdAtText()}
+                </span>
             </div>
-
-            @if(task.archived())
-                <span class="task-detail-archive-label">Архив</span>
-            @endif
         </section>
 
         <aside class="task-parameters-panel" aria-label="Параметры задачи" data-task-parameters>
@@ -130,7 +157,12 @@
                         </button>
                     @endif
                 </div>
-                <span class="task-parameter-value task-detail-status task-detail-status-${task.statusCssClass()}" data-task-parameter-value>${task.statusText()}</span>
+                <span class="task-parameter-value task-parameter-statuses" data-task-parameter-value>
+                    @if(task.archived())
+                        <span class="task-detail-status task-detail-status-archive">Архив</span>
+                    @endif
+                    <span class="task-detail-status task-detail-status-${task.archived() ? "archived-original" : task.statusCssClass()}">${task.statusText()}</span>
+                </span>
                 <form method="post" action="/tasks/${task.id()}/status" hidden data-task-parameter-form>
                     <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
                     <input type="hidden" name="returnTo" value="task">
@@ -142,7 +174,12 @@
                 </form>
             </div>
 
-            <div class="task-parameter-row ${!task.canUpdateTask() ? "task-parameter-read-only" : ""}">
+            <div
+                class="task-parameter-row ${!task.canUpdateTask() ? "task-parameter-read-only" : ""}"
+                data-tooltip="${!task.canUpdateTask() ? "Редактирование доступно только автору задачи" : null}"
+                data-tooltip-disabled="${!task.canUpdateTask() ? true : null}"
+                data-task-read-only-tooltip="${!task.canUpdateTask() ? true : null}"
+            >
                 <span class="task-parameter-heading">Дедлайн</span>
                 <span class="task-parameter-value" data-task-parameter-value>${task.deadlineText()}</span>
                 <form method="post" action="/tasks/${task.id()}/deadline" hidden data-task-parameter-form>
@@ -152,7 +189,19 @@
                 </form>
             </div>
 
-            <div class="task-parameter-row ${!task.canUpdateTask() ? "task-parameter-read-only" : ""}">
+            <div class="task-parameter-row task-parameter-team-row">
+                <span class="task-parameter-heading">Команда</span>
+                <a class="task-parameter-value task-parameter-team" href="/teams/${team.getId()}">
+                    ${team.getName()}
+                </a>
+            </div>
+
+            <div
+                class="task-parameter-row ${!task.canUpdateTask() ? "task-parameter-read-only" : ""}"
+                data-tooltip="${!task.canUpdateTask() ? "Редактирование доступно только автору задачи" : null}"
+                data-tooltip-disabled="${!task.canUpdateTask() ? true : null}"
+                data-task-read-only-tooltip="${!task.canUpdateTask() ? true : null}"
+            >
                 <span class="task-parameter-heading">Автор</span>
                 <span class="task-parameter-value task-parameter-person ${task.authorRemovedFromTeam() ? "task-card-former-member" : ""}" title="${task.participants().author().removedFromTeamTitle()}" data-task-parameter-value>
                     <span class="task-parameter-avatar" aria-hidden="true">${task.participants().author().initial()}</span>
@@ -161,7 +210,21 @@
                 <form method="post" action="/tasks/${task.id()}/author" hidden data-task-parameter-form>
                     <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
                     <input type="hidden" name="returnTo" value="task">
-                    <select name="authorId" data-original-value="${task.authorId().toString()}" disabled="${!task.canUpdateTask()}">
+                    <select
+                        name="authorId"
+                        data-original-value="${task.authorId().toString()}"
+                        data-participant-select
+                        data-tooltip="${task.authorChangeWarningText()}"
+                        data-author-change-warning="${task.showAuthorChangeWarning() ? true : null}"
+                        data-current-author-id="${task.showAuthorChangeWarning() ? task.authorId().toString() : null}"
+                        data-access-warning="${task.showAuthorChangeWarning()
+                            ? "После смены автора вы потеряете доступ к этой задаче"
+                            : null}"
+                        data-edit-warning="${task.showAuthorChangeWarning()
+                            ? "После смены автора вы не сможете редактировать задачу"
+                            : null}"
+                        disabled="${!task.canUpdateTask()}"
+                    >
                         <option value="${task.authorId().toString()}" selected>${task.authorName()}</option>
                         @for(TaskParticipantView member : members)
                             @if(!member.id().equals(task.authorId()))
@@ -172,7 +235,12 @@
                 </form>
             </div>
 
-            <div class="task-parameter-row ${!task.canUpdateTask() ? "task-parameter-read-only" : ""}">
+            <div
+                class="task-parameter-row ${!task.canUpdateTask() ? "task-parameter-read-only" : ""}"
+                data-tooltip="${!task.canUpdateTask() ? "Редактирование доступно только автору задачи" : null}"
+                data-tooltip-disabled="${!task.canUpdateTask() ? true : null}"
+                data-task-read-only-tooltip="${!task.canUpdateTask() ? true : null}"
+            >
                 <span class="task-parameter-heading">Исполнитель</span>
                 <span class="task-parameter-value task-parameter-person ${task.assigneeRemovedFromTeam() ? "task-card-former-member" : ""}" title="${task.participants().assignee().removedFromTeamTitle()}" data-task-parameter-value>
                     <span class="task-parameter-avatar" aria-hidden="true">${task.participants().assignee().initial()}</span>
@@ -181,7 +249,7 @@
                 <form method="post" action="/tasks/${task.id()}/assignee" hidden data-task-parameter-form>
                     <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
                     <input type="hidden" name="returnTo" value="task">
-                    <select name="assigneeId" data-original-value="${task.assigneeId().toString()}" disabled="${!task.canUpdateTask()}">
+                    <select name="assigneeId" data-original-value="${task.assigneeId().toString()}" data-participant-select disabled="${!task.canUpdateTask()}">
                         <option value="${task.assigneeId().toString()}" selected>${task.assigneeName()}</option>
                         @for(TaskParticipantView member : members)
                             @if(!member.id().equals(task.assigneeId()))
@@ -192,7 +260,12 @@
                 </form>
             </div>
 
-            <div class="task-parameter-row ${!task.canUpdateTask() ? "task-parameter-read-only" : ""}">
+            <div
+                class="task-parameter-row ${!task.canUpdateTask() ? "task-parameter-read-only" : ""}"
+                data-tooltip="${!task.canUpdateTask() ? "Редактирование доступно только автору задачи" : null}"
+                data-tooltip-disabled="${!task.canUpdateTask() ? true : null}"
+                data-task-read-only-tooltip="${!task.canUpdateTask() ? true : null}"
+            >
                 <span class="task-parameter-heading">Тег</span>
                 <span class="task-parameter-value task-detail-tag" data-task-parameter-value>${task.tagName()}</span>
                 <form method="post" action="/tasks/${task.id()}/tag" hidden data-task-parameter-form>
@@ -216,47 +289,53 @@
                     <form class="task-parameters-state-action" method="post" action="/tasks/${task.id()}/restore">
                         <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
                         <input type="hidden" name="returnTo" value="task">
-                        <button class="button button-secondary" type="submit">Вернуть из архива</button>
+                        <button class="task-parameters-state-link" type="submit">Вернуть из архива</button>
                     </form>
                 @endif
-            @else
-                @if(task.canArchive())
-                    <form class="task-parameters-state-action" method="post" action="/tasks/${task.id()}/archive">
-                        <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
-                        <input type="hidden" name="returnTo" value="task">
-                        <button class="button button-secondary" type="submit">Перенести в архив</button>
-                    </form>
-                @endif
+            @elseif(task.canArchive())
+                <form class="task-parameters-state-action" method="post" action="/tasks/${task.id()}/archive" data-task-parameters-state-action>
+                    <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
+                    <input type="hidden" name="returnTo" value="team">
+
+                    @if(task.status() == TaskStatus.DONE)
+                        <button class="task-parameters-state-link" type="submit">Перенести в архив</button>
+                    @else
+                        <button class="task-parameters-state-link task-parameters-state-link-danger" type="submit">Удалить задачу</button>
+                    @endif
+                </form>
             @endif
         </aside>
 
         <section class="task-conversation" aria-label="Обсуждение задачи">
-            <article class="comment-item task-description-item">
+            <div class="task-conversation-thread ${comments.isEmpty() ? "task-conversation-thread-single" : ""}">
+            <article id="task-description" class="comment-item task-description-item task-description-status-${task.archived() ? "not-relevant" : task.statusCssClass()}">
                 <span class="comment-avatar" aria-hidden="true">${task.participants().author().initial()}</span>
 
                 <div class="comment-card">
                     <header class="comment-header">
-                        <div>
-                            <strong>${task.authorName()}</strong>
-                            <small>добавил описание задачи · ${task.updatedAtText()}</small>
+                        <div class="comment-header-copy">
+                            <strong data-tooltip="${task.participants().author().commentDisplayNameTooltip()}">${task.participants().author().commentDisplayName()}</strong>
+                            <span class="comment-header-meta">добавил описание задачи · ${task.updatedAtText()}</span>
                         </div>
 
-                        @if(task.canUpdateTask())
-                            <button class="comment-header-action" type="button" aria-label="Изменить описание" data-tooltip="Изменить описание" data-description-edit-open>
-                                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                                    <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.5 8.5a.75.75 0 0 1-.33.194l-3.5 1a.75.75 0 0 1-.927-.927l1-3.5a.75.75 0 0 1 .194-.33Zm1.414 1.06a.25.25 0 0 0-.354 0L3.7 10.86l-.62 2.17 2.17-.62 8.373-8.373a.25.25 0 0 0 0-.354Z"></path>
+                        <details class="task-card-actions comment-actions">
+                            <summary class="task-card-menu" aria-label="Действия с описанием">
+                                <svg aria-hidden="true" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
+                                    <path d="M2 7a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm6 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm6 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z"></path>
                                 </svg>
-                            </button>
-                        @endif
+                            </summary>
+                            <div class="task-card-actions-panel">
+                                <button class="task-card-action-option" type="button" data-task-anchor-copy="task-description">Скопировать ссылку</button>
+
+                                @if(task.canUpdateTask())
+                                    <div class="task-card-actions-divider"></div>
+                                    <button class="task-card-action-option" type="button" data-description-edit-open>Изменить</button>
+                                @endif
+                            </div>
+                        </details>
                     </header>
 
-                    <div class="comment-body" data-description-view>
-                        @if(task.description() == null || task.description().isBlank())
-                            Описание пока не добавлено.
-                        @else
-                            ${task.description()}
-                        @endif
-                    </div>
+                    <div class="comment-body" data-description-view>${task.description() == null || task.description().isBlank() ? "Описание пока не добавлено." : task.description()}</div>
 
                     @if(task.canUpdateTask())
                         <form class="comment-edit-form task-description-edit-form" method="post" action="/tasks/${task.id()}/edit" hidden data-description-edit-form>
@@ -269,10 +348,36 @@
                                 <input type="hidden" name="deadlineDate" value="${task.deadlineAt().toString().substring(0, 10)}">
                             @endif
 
-                            <textarea name="description" required>@if(task.description() != null)${task.description()}@endif</textarea>
+                            <div class="task-description-editor task-comment-editor">
+                                <div class="task-editor-toolbar">
+                                    <div class="task-editor-tabs" role="tablist" aria-label="Режим описания">
+                                        <button class="task-editor-tab task-editor-tab-active" type="button" role="tab" aria-selected="true" aria-controls="task-description-edit-${task.id()}" tabindex="0" data-editor-mode="write">Ввод</button>
+                                        <button class="task-editor-tab" type="button" role="tab" aria-selected="false" aria-controls="task-description-edit-preview-${task.id()}" tabindex="-1" data-editor-mode="preview">Предпросмотр</button>
+                                    </div>
+
+                                    <div class="task-editor-actions" role="toolbar" aria-label="Форматирование">
+                                        <button type="button" data-format="bold" aria-label="Жирный"><strong>B</strong></button>
+                                        <button type="button" data-format="italic" aria-label="Курсив"><em>I</em></button>
+                                        <button type="button" data-format="quote" aria-label="Цитата">
+                                            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                                <path d="M1.75 2.5h10.5a.75.75 0 0 1 0 1.5H1.75a.75.75 0 0 1 0-1.5Zm4 5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5Zm0 5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5ZM2.5 7.75v6a.75.75 0 0 1-1.5 0v-6a.75.75 0 0 1 1.5 0Z"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <textarea id="task-description-edit-${task.id()}" name="description" rows="8" data-original-value="@if(task.description() != null)${task.description()}@endif" required>@if(task.description() != null)${task.description()}@endif</textarea>
+                                <div id="task-description-edit-preview-${task.id()}" class="task-description-preview" data-description-preview hidden></div>
+                            </div>
+                            <button class="task-file-placeholder" type="button" aria-disabled="true" title="Еще не реализовано :(">
+                                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                    <path d="M12.212 3.02a1.753 1.753 0 0 0-2.478.003l-5.83 5.83a3.007 3.007 0 0 0-.88 2.127c0 .795.315 1.551.88 2.116.567.567 1.333.89 2.126.89.79 0 1.548-.321 2.116-.89l5.48-5.48a.75.75 0 0 1 1.061 1.06l-5.48 5.48a4.492 4.492 0 0 1-3.177 1.33c-1.2 0-2.345-.487-3.187-1.33a4.483 4.483 0 0 1-1.32-3.177c0-1.195.475-2.341 1.32-3.186l5.83-5.83a3.25 3.25 0 0 1 5.553 2.297c0 .863-.343 1.691-.953 2.301L7.439 12.39c-.375.377-.884.59-1.416.593a1.998 1.998 0 0 1-1.412-.593 1.992 1.992 0 0 1 0-2.828l5.48-5.48a.75.75 0 0 1 1.06 1.06l-5.48 5.48a.492.492 0 0 0 0 .707.499.499 0 0 0 .352.154.51.51 0 0 0 .356-.154l5.833-5.827a1.755 1.755 0 0 0 0-2.481Z"></path>
+                                </svg>
+                                <span>Добавить файлы</span>
+                            </button>
                             <div class="comment-edit-actions">
                                 <button class="button button-secondary" type="button" data-description-edit-cancel>Отменить</button>
-                                <button class="button button-primary" type="submit">Сохранить</button>
+                                <button class="button button-primary" type="submit" disabled data-changed-value-submit>Сохранить</button>
                             </div>
                         </form>
                     @endif
@@ -280,62 +385,125 @@
             </article>
 
             @for(CommentView comment : comments)
-                <article class="comment-item">
+                <article id="comment-${comment.id()}" class="comment-item">
                     <span class="comment-avatar" aria-hidden="true">${comment.author().initial()}</span>
 
                     <div class="comment-card">
                         <header class="comment-header">
-                            <div>
-                                <strong>${comment.author().displayName()}</strong>
-                                <small>прокомментировал · ${comment.createdAtText()}</small>
+                            <div class="comment-header-copy">
+                                <strong data-tooltip="${comment.author().commentDisplayNameTooltip()}">${comment.author().commentDisplayName()}</strong>
+                                <span class="comment-header-meta">прокомментировал · ${comment.createdAtText()}</span>
 
                                 @if(comment.edited())
                                     <span class="comment-edited">Отредактировано</span>
                                 @endif
                             </div>
 
-                            @if(comment.canEdit())
-                                <details class="comment-menu">
-                                    <summary aria-label="Действия с комментарием">•••</summary>
+                            <details class="task-card-actions comment-actions">
+                                <summary class="task-card-menu" aria-label="Действия с комментарием">
+                                    <svg aria-hidden="true" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
+                                        <path d="M2 7a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm6 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm6 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z"></path>
+                                    </svg>
+                                </summary>
 
-                                    <div class="comment-menu-panel">
-                                        <button type="button" onclick="document.getElementById('comment-edit-form-${comment.id()}').style.display = 'block'; this.closest('details').open = false;">Редактировать</button>
+                                <div class="task-card-actions-panel">
+                                    <button class="task-card-action-option" type="button" data-task-anchor-copy="comment-${comment.id()}">Скопировать ссылку</button>
+
+                                    @if(comment.canEdit())
+                                        <div class="task-card-actions-divider"></div>
+                                        <button class="task-card-action-option" type="button" data-comment-edit-open>Редактировать</button>
 
                                         <form method="post" action="/tasks/${task.id()}/comments/${comment.id()}/delete">
                                             <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
-                                            <button class="comment-delete-action" type="submit">Удалить</button>
+                                            <button class="task-card-action-option task-card-delete-action" type="submit">Удалить</button>
                                         </form>
-                                    </div>
-                                </details>
-                            @endif
+                                    @endif
+                                </div>
+                            </details>
                         </header>
 
-                        <div class="comment-body">${comment.message()}</div>
+                        <div class="comment-body" data-comment-view>${comment.message()}</div>
 
                         @if(comment.canEdit())
-                            <form id="comment-edit-form-${comment.id()}" class="comment-edit-form" method="post" action="/tasks/${task.id()}/comments/${comment.id()}/edit" style="display: none;">
+                            <form class="comment-edit-form" method="post" action="/tasks/${task.id()}/comments/${comment.id()}/edit" hidden data-comment-edit-form>
                                 <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
-                                <textarea name="message" required>${comment.message()}</textarea>
+                                <div class="task-description-editor task-comment-editor">
+                                    <div class="task-editor-toolbar">
+                                        <div class="task-editor-tabs" role="tablist" aria-label="Режим комментария">
+                                            <button class="task-editor-tab task-editor-tab-active" type="button" role="tab" aria-selected="true" aria-controls="comment-edit-${comment.id()}" tabindex="0" data-editor-mode="write">Ввод</button>
+                                            <button class="task-editor-tab" type="button" role="tab" aria-selected="false" aria-controls="comment-edit-preview-${comment.id()}" tabindex="-1" data-editor-mode="preview">Предпросмотр</button>
+                                        </div>
+
+                                        <div class="task-editor-actions" role="toolbar" aria-label="Форматирование">
+                                            <button type="button" data-format="bold" aria-label="Жирный"><strong>B</strong></button>
+                                            <button type="button" data-format="italic" aria-label="Курсив"><em>I</em></button>
+                                            <button type="button" data-format="quote" aria-label="Цитата">
+                                                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                                    <path d="M1.75 2.5h10.5a.75.75 0 0 1 0 1.5H1.75a.75.75 0 0 1 0-1.5Zm4 5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5Zm0 5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5ZM2.5 7.75v6a.75.75 0 0 1-1.5 0v-6a.75.75 0 0 1 1.5 0Z"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <textarea id="comment-edit-${comment.id()}" name="message" rows="8" data-original-value="${comment.message()}" required>${comment.message()}</textarea>
+                                    <div id="comment-edit-preview-${comment.id()}" class="task-description-preview" data-description-preview hidden></div>
+                                </div>
+                                <button class="task-file-placeholder" type="button" aria-disabled="true" title="Еще не реализовано :(">
+                                    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                        <path d="M12.212 3.02a1.753 1.753 0 0 0-2.478.003l-5.83 5.83a3.007 3.007 0 0 0-.88 2.127c0 .795.315 1.551.88 2.116.567.567 1.333.89 2.126.89.79 0 1.548-.321 2.116-.89l5.48-5.48a.75.75 0 0 1 1.061 1.06l-5.48 5.48a4.492 4.492 0 0 1-3.177 1.33c-1.2 0-2.345-.487-3.187-1.33a4.483 4.483 0 0 1-1.32-3.177c0-1.195.475-2.341 1.32-3.186l5.83-5.83a3.25 3.25 0 0 1 5.553 2.297c0 .863-.343 1.691-.953 2.301L7.439 12.39c-.375.377-.884.59-1.416.593a1.998 1.998 0 0 1-1.412-.593 1.992 1.992 0 0 1 0-2.828l5.48-5.48a.75.75 0 0 1 1.06 1.06l-5.48 5.48a.492.492 0 0 0 0 .707.499.499 0 0 0 .352.154.51.51 0 0 0 .356-.154l5.833-5.827a1.755 1.755 0 0 0 0-2.481Z"></path>
+                                    </svg>
+                                    <span>Добавить файлы</span>
+                                </button>
                                 <div class="comment-edit-actions">
-                                    <button class="button button-secondary" type="button" onclick="document.getElementById('comment-edit-form-${comment.id()}').style.display = 'none';">Отменить</button>
-                                    <button class="button button-primary" type="submit">Сохранить</button>
+                                    <button class="button button-secondary" type="button" data-comment-edit-cancel>Отменить</button>
+                                    <button class="button button-primary" type="submit" disabled data-changed-value-submit>Сохранить</button>
                                 </div>
                             </form>
                         @endif
                     </div>
                 </article>
             @endfor
+            </div>
 
+            @if(!task.archived())
             <form class="comment-create-form" method="post" action="/tasks/${task.id()}/comments" data-submit-loading>
+                <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
                 <span class="comment-avatar" aria-hidden="true">${currentUser.initial()}</span>
                 <div class="comment-create-content">
                     <label for="new-comment-${task.id()}">Добавить комментарий</label>
-                    <textarea id="new-comment-${task.id()}" name="message" placeholder="Оставьте комментарий" required></textarea>
+                    <div class="task-description-editor task-comment-editor">
+                        <div class="task-editor-toolbar">
+                            <div class="task-editor-tabs" role="tablist" aria-label="Режим комментария">
+                                <button class="task-editor-tab task-editor-tab-active" type="button" role="tab" aria-selected="true" aria-controls="new-comment-${task.id()}" tabindex="0" data-editor-mode="write">Ввод</button>
+                                <button class="task-editor-tab" type="button" role="tab" aria-selected="false" aria-controls="new-comment-preview-${task.id()}" tabindex="-1" data-editor-mode="preview">Предпросмотр</button>
+                            </div>
+
+                            <div class="task-editor-actions" role="toolbar" aria-label="Форматирование">
+                                <button type="button" data-format="bold" aria-label="Жирный"><strong>B</strong></button>
+                                <button type="button" data-format="italic" aria-label="Курсив"><em>I</em></button>
+                                <button type="button" data-format="quote" aria-label="Цитата">
+                                    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                        <path d="M1.75 2.5h10.5a.75.75 0 0 1 0 1.5H1.75a.75.75 0 0 1 0-1.5Zm4 5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5Zm0 5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5ZM2.5 7.75v6a.75.75 0 0 1-1.5 0v-6a.75.75 0 0 1 1.5 0Z"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <textarea id="new-comment-${task.id()}" name="message" rows="8" placeholder="Оставьте комментарий" required></textarea>
+                        <div id="new-comment-preview-${task.id()}" class="task-description-preview" data-description-preview hidden></div>
+                    </div>
+                    <button class="task-file-placeholder" type="button" aria-disabled="true" title="Еще не реализовано :(">
+                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M12.212 3.02a1.753 1.753 0 0 0-2.478.003l-5.83 5.83a3.007 3.007 0 0 0-.88 2.127c0 .795.315 1.551.88 2.116.567.567 1.333.89 2.126.89.79 0 1.548-.321 2.116-.89l5.48-5.48a.75.75 0 0 1 1.061 1.06l-5.48 5.48a4.492 4.492 0 0 1-3.177 1.33c-1.2 0-2.345-.487-3.187-1.33a4.483 4.483 0 0 1-1.32-3.177c0-1.195.475-2.341 1.32-3.186l5.83-5.83a3.25 3.25 0 0 1 5.553 2.297c0 .863-.343 1.691-.953 2.301L7.439 12.39c-.375.377-.884.59-1.416.593a1.998 1.998 0 0 1-1.412-.593 1.992 1.992 0 0 1 0-2.828l5.48-5.48a.75.75 0 0 1 1.06 1.06l-5.48 5.48a.492.492 0 0 0 0 .707.499.499 0 0 0 .352.154.51.51 0 0 0 .356-.154l5.833-5.827a1.755 1.755 0 0 0 0-2.481Z"></path>
+                        </svg>
+                        <span>Добавить файлы</span>
+                    </button>
                     <div class="comment-create-actions">
-                        <button class="button button-primary" type="submit" data-loading-text="Добавление...">Добавить комментарий</button>
+                        <button class="button button-primary" type="submit" disabled data-new-comment-submit data-loading-text="Добавление...">Добавить комментарий</button>
                     </div>
                 </div>
             </form>
+            @endif
         </section>
 
         </div>

@@ -18,12 +18,19 @@ import org.springframework.security.web.authentication.RememberMeServices;
 import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenBasedRememberMeServices;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
+import org.springframework.security.web.authentication.session.ChangeSessionIdAuthenticationStrategy;
+import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
+import org.springframework.security.web.context.DelegatingSecurityContextRepository;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
 
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfig {
     private static final int REMEMBER_ME_VALIDITY_SECONDS = 30 * 24 * 60 * 60;
     private static final String FORGOT_PASSWORD_PATH = "/forgot-password";
+    private static final String ERROR_PATH = "/error";
     private static final String LOGIN_PATH = "/login";
     private static final String REGISTRATION_PATH = "/registration";
     private static final String RESEND_VERIFICATION_PATH = "/resend-verification";
@@ -36,7 +43,11 @@ public class SecurityConfig {
     private final SafeRedirectAuthenticationSuccessHandler authenticationSuccessHandler;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, RememberMeServices rememberMeServices)
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            RememberMeServices rememberMeServices,
+            SecurityContextRepository securityContextRepository,
+            SessionAuthenticationStrategy sessionAuthenticationStrategy)
             throws Exception {
         return http.authorizeHttpRequests(auth -> auth.requestMatchers(
                                 "/",
@@ -49,7 +60,7 @@ public class SecurityConfig {
                                 "/images/**",
                                 "/js/**",
                                 "/reset-password/*",
-                                "/error")
+                                ERROR_PATH)
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/invitations/*", "/verify-email/*")
                         .permitAll()
@@ -61,9 +72,23 @@ public class SecurityConfig {
                         .successHandler(authenticationSuccessHandler)
                         .failureHandler(authenticationFailureHandler)
                         .permitAll())
+                .exceptionHandling(exception -> exception.accessDeniedPage(ERROR_PATH))
+                .securityContext(context -> context.securityContextRepository(securityContextRepository))
+                .sessionManagement(session -> session.sessionAuthenticationStrategy(sessionAuthenticationStrategy))
                 .rememberMe(rememberMe -> rememberMe.rememberMeServices(rememberMeServices))
                 .logout(logout -> logout.logoutSuccessUrl(LOGIN_PATH).permitAll())
                 .build();
+    }
+
+    @Bean
+    public SecurityContextRepository securityContextRepository() {
+        return new DelegatingSecurityContextRepository(
+                new RequestAttributeSecurityContextRepository(), new HttpSessionSecurityContextRepository());
+    }
+
+    @Bean
+    public SessionAuthenticationStrategy sessionAuthenticationStrategy() {
+        return new ChangeSessionIdAuthenticationStrategy();
     }
 
     @Bean

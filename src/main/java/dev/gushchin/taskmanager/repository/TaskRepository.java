@@ -120,6 +120,7 @@ public class TaskRepository {
                                 : task.getDeadlineAt().atOffset(ZoneOffset.UTC))
                 .set(TASKS.STATUS, task.getStatus().name())
                 .set(TASKS.TAG_ID, task.getTagId())
+                .set(TASKS.AUTHOR_ID, task.getAuthorId())
                 .set(TASKS.ASSIGNEE_ID, task.getAssigneeId())
                 .set(TASKS.UPDATED_AT, updatedAt.atOffset(ZoneOffset.UTC))
                 .where(TASKS.ID.eq(task.getId()))

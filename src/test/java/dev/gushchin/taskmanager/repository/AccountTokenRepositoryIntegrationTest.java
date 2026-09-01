@@ -52,6 +52,7 @@ class AccountTokenRepositoryIntegrationTest extends IntegrationTestBase {
                 "b5f9d8478b5ca92dace306bb66912d75c81a480c25f016aae5582e6e7f89bc1d",
                 expiresAt,
                 null,
+                null,
                 createdAt);
 
         AccountToken savedToken = accountTokenRepository.save(accountToken);
@@ -63,6 +64,7 @@ class AccountTokenRepositoryIntegrationTest extends IntegrationTestBase {
         assertEquals(accountToken.getTokenHash(), foundToken.getTokenHash());
         assertEquals(expiresAt, foundToken.getExpiresAt());
         assertNull(foundToken.getUsedAt());
+        assertNull(foundToken.getInvalidatedAt());
         assertEquals(createdAt, foundToken.getCreatedAt());
     }
 

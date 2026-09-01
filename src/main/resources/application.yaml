@@ -25,6 +25,9 @@ app:
 
 server:
   port: ${PORT:8181}
+  servlet:
+    session:
+      persistent: false
 
 logging:
   level:

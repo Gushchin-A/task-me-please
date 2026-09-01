@@ -4,5 +4,6 @@ public enum TeamInvitationStatus {
     PENDING,
     ACCEPTED,
     DECLINED,
-    CANCELED
+    CANCELED,
+    EXPIRED
 }

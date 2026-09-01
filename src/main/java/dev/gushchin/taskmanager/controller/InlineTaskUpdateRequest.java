@@ -12,6 +12,7 @@ public class InlineTaskUpdateRequest {
     private LocalDate deadlineDate;
     private TaskStatus status;
     private Long tagId;
+    private UUID authorId;
     private UUID assigneeId;
     private TaskStatus selectedStatus;
     private TaskSort selectedSort;
@@ -56,6 +57,14 @@ public class InlineTaskUpdateRequest {
 
     public void setTagId(Long tagId) {
         this.tagId = tagId;
+    }
+
+    public UUID getAuthorId() {
+        return authorId;
+    }
+
+    public void setAuthorId(UUID authorId) {
+        this.authorId = authorId;
     }
 
     public UUID getAssigneeId() {

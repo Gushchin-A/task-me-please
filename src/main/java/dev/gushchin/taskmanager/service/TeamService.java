@@ -26,7 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class TeamService {
-    private static final int MAX_TEAM_NAME_LENGTH = 255;
+    private static final int MAX_TEAM_NAME_LENGTH = 100;
     private static final int MAX_TAGS_PER_TEAM = 20;
     private static final int MAX_TAG_NAME_LENGTH = 30;
 
@@ -34,6 +34,7 @@ public class TeamService {
     private final UserService userService;
     private final TeamMemberRepository teamMemberRepository;
     private final TeamTagRepository teamTagRepository;
+    private final NotificationPublisher notificationPublisher;
 
     public Team findById(Long id) {
         Team team = teamRepository.findById(id);
@@ -58,6 +59,12 @@ public class TeamService {
                 .toList();
     }
 
+    public List<Team> findOwnedByUserId(UUID userId) {
+        return teamRepository.findByCreatedBy(userId).stream()
+                .filter(Predicate.not(Team::isDeleted))
+                .toList();
+    }
+
     @Transactional
     public Team create(String name, UUID createdBy) {
         return create(name, createdBy, List.of());
@@ -65,10 +72,11 @@ public class TeamService {
 
     @Transactional
     public Team create(String name, UUID createdBy, List<String> tagNames) {
+        String preparedName = prepareName(name);
         User creator = userService.findById(createdBy);
         Instant now = Instant.now();
 
-        Team team = new Team(null, name, creator.getId(), now, now, false);
+        Team team = new Team(null, preparedName, creator.getId(), now, now, false);
 
         Team savedTeam = teamRepository.save(team);
 
@@ -82,6 +90,8 @@ public class TeamService {
                 .toList();
 
         teamTags.forEach(teamTagRepository::save);
+
+        notificationPublisher.teamCreated(savedTeam, createdBy);
 
         return savedTeam;
     }
@@ -119,6 +129,7 @@ public class TeamService {
         return preparedNames;
     }
 
+    @Transactional
     public void delete(Long id, UUID currentUserId) {
         Team team = findById(id);
         TeamMember currentMember = teamMemberRepository.findByTeamIdAndUserId(id, currentUserId);
@@ -130,8 +141,10 @@ public class TeamService {
         team.setDeleted(true);
         team.setUpdatedAt(Instant.now());
         teamRepository.update(team);
+        notificationPublisher.teamDeleted(team, currentUserId);
     }
 
+    @Transactional
     public Team rename(Long id, String name, UUID currentUserId) {
         final Team team = findById(id);
         TeamMember currentMember = teamMemberRepository.findByTeamIdAndUserId(id, currentUserId);
@@ -140,6 +153,24 @@ public class TeamService {
             throw new AccessDeniedForTaskException();
         }
 
+        String preparedName = prepareName(name);
+
+        if (preparedName.equals(team.getName())) {
+            throw new InvalidTeamNameException(Reason.UNCHANGED);
+        }
+
+        Team before = new Team(
+                team.getId(), team.getName(), team.getCreatedBy(), team.getCreatedAt(), team.getUpdatedAt(), false);
+        team.setName(preparedName);
+        team.setUpdatedAt(Instant.now());
+
+        Team renamedTeam = teamRepository.update(team);
+        notificationPublisher.teamRenamed(before, renamedTeam, currentUserId);
+
+        return renamedTeam;
+    }
+
+    private String prepareName(String name) {
         if (name == null || name.isBlank()) {
             throw new InvalidTeamNameException(Reason.BLANK);
         }
@@ -150,14 +181,7 @@ public class TeamService {
             throw new InvalidTeamNameException(Reason.TOO_LONG);
         }
 
-        if (preparedName.equals(team.getName())) {
-            throw new InvalidTeamNameException(Reason.UNCHANGED);
-        }
-
-        team.setName(preparedName);
-        team.setUpdatedAt(Instant.now());
-
-        return teamRepository.update(team);
+        return preparedName;
     }
 
     private TeamTag createTeamTag(Long teamId, String tagName, Instant now) {

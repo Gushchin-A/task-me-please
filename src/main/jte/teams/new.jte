@@ -3,16 +3,18 @@
 
 @param CsrfToken _csrf
 @param UserAvatarView currentUser
+@param String errorMessage
 
 @template.layout.page(
     title = "Создать команду",
     _csrf = _csrf,
     currentUser = currentUser,
     activeSection = "teams",
+    errorMessage = errorMessage,
     headerContext = null,
     content = @`
         <section class="workspace-page form-page team-create-page">
-            <a class="back-link team-create-back-link" href="/teams">
+            <a class="back-link team-create-back-link" href="/teams" data-history-back>
                 <svg
                     aria-hidden="true"
                     width="16"
@@ -57,8 +59,14 @@
                         id="team-name"
                         type="text"
                         name="name"
+                        maxlength="100"
                         required
+                        aria-describedby="team-name-count"
                     >
+
+                    <p class="form-help task-title-count" id="team-name-count">
+                        <span data-length-output>0</span> / 100 символов
+                    </p>
                 </div>
 
                 <div class="form-field">
@@ -99,6 +107,12 @@
 
         <script>
             const teamTags = [];
+            const teamNameInput = document.getElementById('team-name');
+            const teamNameLength = document.querySelector('[data-length-output]');
+
+            teamNameInput.addEventListener('input', function () {
+                teamNameLength.textContent = teamNameInput.value.length;
+            });
 
             function addTeamTag() {
                 const input = document.getElementById('tag-name');
@@ -114,13 +128,13 @@
                 });
 
                 if (duplicate) {
-                    showFlashMessage('Такой тег уже добавлен.');
+                    showFlashMessage('Такой тег уже добавлен');
                     return;
                 }
 
                 if (teamTags.length >= 20) {
                     showFlashMessage(
-                        'В команде может быть не больше 20 тегов.'
+                        'В команде может быть не больше 20 тегов'
                     );
                     return;
                 }

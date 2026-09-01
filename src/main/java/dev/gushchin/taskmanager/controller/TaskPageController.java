@@ -1,5 +1,7 @@
 package dev.gushchin.taskmanager.controller;
 
+import dev.gushchin.taskmanager.exception.TeamInvitationNotFoundException;
+import dev.gushchin.taskmanager.exception.TeamInvitationNotPendingException;
 import dev.gushchin.taskmanager.model.Comment;
 import dev.gushchin.taskmanager.model.Task;
 import dev.gushchin.taskmanager.model.TaskDetailsUpdate;
@@ -8,16 +10,19 @@ import dev.gushchin.taskmanager.model.TaskRoleFilter;
 import dev.gushchin.taskmanager.model.TaskSort;
 import dev.gushchin.taskmanager.model.TaskStatus;
 import dev.gushchin.taskmanager.model.Team;
+import dev.gushchin.taskmanager.model.TeamInvitation;
 import dev.gushchin.taskmanager.model.TeamTag;
 import dev.gushchin.taskmanager.model.User;
 import dev.gushchin.taskmanager.security.AuthUser;
 import dev.gushchin.taskmanager.service.CommentService;
 import dev.gushchin.taskmanager.service.TaskService;
+import dev.gushchin.taskmanager.service.TeamInvitationService;
 import dev.gushchin.taskmanager.service.TeamMemberService;
 import dev.gushchin.taskmanager.service.TeamService;
 import dev.gushchin.taskmanager.service.TeamTagService;
 import dev.gushchin.taskmanager.service.UserService;
 import dev.gushchin.taskmanager.view.CommentView;
+import dev.gushchin.taskmanager.view.InvitationDecisionView;
 import dev.gushchin.taskmanager.view.MyTasksFilterRequest;
 import dev.gushchin.taskmanager.view.MyTasksPageView;
 import dev.gushchin.taskmanager.view.MyTasksPageView.MyTasksPageFilters;
@@ -64,6 +69,7 @@ public class TaskPageController {
     private static final String PAGE_ATTRIBUTE = "page";
     private static final String TASKS_INDEX_VIEW = "tasks/index";
     private static final String SUCCESS_MESSAGE_ATTRIBUTE = "successMessage";
+    private static final String INVITATION_DECISION_ATTRIBUTE = "invitationDecision";
 
     private final TeamService teamService;
     private final TaskService taskService;
@@ -71,11 +77,13 @@ public class TaskPageController {
     private final UserService userService;
     private final CommentService commentService;
     private final TeamTagService teamTagService;
+    private final TeamInvitationService teamInvitationService;
 
     @GetMapping("/tasks")
     public String tasksPage(
             @AuthenticationPrincipal AuthUser authUser,
             @ModelAttribute MyTasksFilterRequest filters,
+            @RequestParam(required = false) String invitation,
             Model model,
             CsrfToken csrfToken) {
         TaskStatus status = filters.getStatus();
@@ -126,6 +134,10 @@ public class TaskPageController {
 
         model.addAttribute(PAGE_ATTRIBUTE, page);
         model.addAttribute(CSRF_ATTRIBUTE, csrfToken);
+        InvitationDecisionView invitationDecision = buildInvitationDecision(invitation, authUser.getId());
+        if (invitationDecision != null) {
+            model.addAttribute(INVITATION_DECISION_ATTRIBUTE, invitationDecision);
+        }
 
         return TASKS_INDEX_VIEW;
     }
@@ -282,18 +294,21 @@ public class TaskPageController {
         Task task = taskService.findById(id);
         String updatedDescription = request.getDescription() == null ? task.getDescription() : request.getDescription();
         TaskStatus updatedStatus = request.getStatus() == null ? task.getStatus() : request.getStatus();
-        TaskDetailsUpdate update = new TaskDetailsUpdate(
+        UUID updatedAuthorId = request.getAuthorId() == null ? task.getAuthorId() : request.getAuthorId();
+        final TaskDetailsUpdate update = new TaskDetailsUpdate(
                 request.getTitle(),
                 updatedDescription,
                 request.getDeadlineDate(),
                 updatedStatus,
                 request.getTagId(),
+                updatedAuthorId,
                 request.getAssigneeId());
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
+        teamMemberService.findById(task.getTeamId(), updatedAuthorId);
         teamMemberService.findById(task.getTeamId(), request.getAssigneeId());
         taskService.updateDetails(id, update, authUser.getId());
-        redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Задача изменена.");
+        redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Задача успешно изменена");
 
         return buildRedirectAfterInlineUpdate(task, request, returnTo);
     }
@@ -443,7 +458,10 @@ public class TaskPageController {
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
         taskService.archive(id, authUser.getId());
-        redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Задача перемещена в архив.");
+        String successMessage = task.getStatus() == TaskStatus.DONE
+                ? "Задача была перенесена в архив"
+                : "Задача удалена и перенесена в архив";
+        redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, successMessage);
 
         return buildRedirectAfterInlineUpdate(task, request, returnTo);
     }
@@ -459,7 +477,7 @@ public class TaskPageController {
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
         taskService.restoreFromArchive(id, authUser.getId());
-        redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Задача возвращена из архива.");
+        redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Задача восстановлена из архива");
 
         return buildRedirectAfterInlineUpdate(task, request, returnTo);
     }
@@ -494,6 +512,27 @@ public class TaskPageController {
         return teamMemberService.findByTeamId(teamId).stream()
                 .map(teamMember -> toTaskParticipant(teamId, teamMember.getUserId()))
                 .toList();
+    }
+
+    private InvitationDecisionView buildInvitationDecision(String token, UUID currentUserId) {
+        if (token == null || token.isBlank()) {
+            return null;
+        }
+
+        try {
+            TeamInvitation invitation = teamInvitationService.findPendingByToken(token);
+            if (teamMemberService.isActiveMember(invitation.getTeamId(), currentUserId)) {
+                return null;
+            }
+
+            Team team = teamService.findById(invitation.getTeamId());
+            String invitedByEmail =
+                    userService.findById(invitation.getInvitedBy()).getEmail();
+
+            return new InvitationDecisionView(token, team.getName(), invitedByEmail);
+        } catch (TeamInvitationNotFoundException | TeamInvitationNotPendingException ex) {
+            return null;
+        }
     }
 
     private TaskParticipantView toTaskParticipant(Long teamId, UUID userId) {

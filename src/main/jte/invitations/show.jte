@@ -1,43 +1,46 @@
-@import dev.gushchin.taskmanager.model.Team
-@import dev.gushchin.taskmanager.model.TeamInvitation
-@import dev.gushchin.taskmanager.view.UserAvatarView
+@import dev.gushchin.taskmanager.view.InvitationDecisionView
 @import org.springframework.security.web.csrf.CsrfToken
 
-@param TeamInvitation invitation
-@param Team team
-@param String invitedByEmail
+@param InvitationDecisionView invitation
 @param CsrfToken _csrf
-@param UserAvatarView currentUser
+@param String returnTo = null
 
-@template.layout.page(
-    title = "Приглашение в команду",
-    _csrf = _csrf,
-    currentUser = currentUser,
-    activeSection = null,
-    headerContext = null,
-    content = @`
-        <section>
-            <h1>Приглашение в команду</h1>
+<dialog
+    class="settings-dialog invitation-decision-dialog"
+    aria-labelledby="invitation-decision-title"
+    data-invitation-decision-dialog
+>
+    <div class="settings-dialog-form">
+        <header class="settings-dialog-header">
+            <h2 id="invitation-decision-title" tabindex="-1" data-invitation-decision-title>
+                Приглашение в команду
+            </h2>
+            <button type="button" aria-label="Закрыть" data-invitation-decision-close>×</button>
+        </header>
 
+        <div class="settings-dialog-body">
             <p>
-                Вас пригласил ${invitedByEmail} в команду «${team.getName()}».
+                ${invitation.invitedByEmail()} пригласил вас в команду «${invitation.teamName()}».
             </p>
+        </div>
 
-            <form method="post" action="/invitations/${invitation.getToken()}/accept">
+        <footer class="settings-dialog-footer invitation-decision-actions">
+            <form method="post" action="/invitations/${invitation.token()}/decline" data-submit-loading>
                 <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
-
-                <button type="submit">
-                    Принять приглашение
+                @if(returnTo != null)
+                    <input type="hidden" name="returnTo" value="${returnTo}">
+                @endif
+                <button class="button button-secondary" type="submit" data-loading-text="Обработка...">
+                    Отклонить
                 </button>
             </form>
 
-            <form method="post" action="/invitations/${invitation.getToken()}/decline">
+            <form method="post" action="/invitations/${invitation.token()}/accept" data-submit-loading>
                 <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
-
-                <button type="submit">
-                    Отклонить приглашение
+                <button class="button button-primary" type="submit" data-loading-text="Обработка...">
+                    Принять
                 </button>
             </form>
-        </section>
-    `
-)
+        </footer>
+    </div>
+</dialog>

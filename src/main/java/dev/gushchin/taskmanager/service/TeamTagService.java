@@ -1,14 +1,17 @@
 package dev.gushchin.taskmanager.service;
 
+import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
 import dev.gushchin.taskmanager.exception.InvalidTeamTagException;
 import dev.gushchin.taskmanager.exception.TeamTagAlreadyExistsException;
 import dev.gushchin.taskmanager.exception.TeamTagNotFoundException;
+import dev.gushchin.taskmanager.model.TeamMemberRole;
 import dev.gushchin.taskmanager.model.TeamTag;
 import dev.gushchin.taskmanager.repository.TeamTagRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,6 +25,8 @@ public class TeamTagService {
 
     private final TeamTagRepository teamTagRepository;
     private final TeamService teamService;
+    private final NotificationPublisher notificationPublisher;
+    private final TeamMemberService teamMemberService;
 
     public TeamTag findById(Long id) {
         TeamTag teamTag = teamTagRepository.findById(id);
@@ -47,7 +52,13 @@ public class TeamTagService {
 
     @Transactional
     public TeamTag create(Long teamId, String name) {
+        return create(teamId, name, null);
+    }
+
+    @Transactional
+    public TeamTag create(Long teamId, String name, UUID actorUserId) {
         teamService.findById(teamId);
+        validateOwner(teamId, actorUserId);
 
         String preparedName = prepareName(name);
         String normalizedName = normalizeName(preparedName);
@@ -65,7 +76,12 @@ public class TeamTagService {
         Instant now = Instant.now();
         TeamTag teamTag = new TeamTag(teamId, preparedName, normalizedName, now, now, false);
 
-        return teamTagRepository.save(teamTag);
+        TeamTag savedTag = teamTagRepository.save(teamTag);
+        if (actorUserId != null) {
+            notificationPublisher.teamTagCreated(savedTag, actorUserId);
+        }
+
+        return savedTag;
     }
 
     private List<TeamTag> findActiveByTeamId(Long teamId) {
@@ -106,7 +122,21 @@ public class TeamTagService {
 
     @Transactional
     public TeamTag rename(Long tagId, Long teamId, String name) {
+        return rename(tagId, teamId, name, null);
+    }
+
+    @Transactional
+    public TeamTag rename(Long tagId, Long teamId, String name, UUID actorUserId) {
+        validateOwner(teamId, actorUserId);
         TeamTag teamTag = findByIdForTeam(tagId, teamId);
+        final TeamTag before = new TeamTag(
+                teamTag.getId(),
+                teamTag.getTeamId(),
+                teamTag.getName(),
+                teamTag.getNormalizedName(),
+                teamTag.getCreatedAt(),
+                teamTag.getUpdatedAt(),
+                teamTag.isDeleted());
         String preparedName = prepareName(name);
         String normalizedName = normalizeName(preparedName);
         TeamTag existingTag = teamTagRepository.findActiveByTeamIdAndNormalizedName(teamId, normalizedName);
@@ -119,11 +149,22 @@ public class TeamTagService {
         teamTag.setNormalizedName(normalizedName);
         teamTag.setUpdatedAt(Instant.now());
 
-        return teamTagRepository.update(teamTag);
+        TeamTag renamedTag = teamTagRepository.update(teamTag);
+        if (actorUserId != null) {
+            notificationPublisher.teamTagRenamed(before, renamedTag, actorUserId);
+        }
+
+        return renamedTag;
     }
 
     @Transactional
     public void delete(Long tagId, Long teamId) {
+        delete(tagId, teamId, null);
+    }
+
+    @Transactional
+    public void delete(Long tagId, Long teamId, UUID actorUserId) {
+        validateOwner(teamId, actorUserId);
         TeamTag teamTag = findByIdForTeam(tagId, teamId);
 
         if (teamTagRepository.isUsed(tagId)) {
@@ -133,5 +174,15 @@ public class TeamTagService {
         teamTag.setDeleted(true);
         teamTag.setUpdatedAt(Instant.now());
         teamTagRepository.update(teamTag);
+        if (actorUserId != null) {
+            notificationPublisher.teamTagDeleted(teamTag, actorUserId);
+        }
+    }
+
+    private void validateOwner(Long teamId, UUID actorUserId) {
+        if (actorUserId != null
+                && teamMemberService.findById(teamId, actorUserId).getRole() != TeamMemberRole.OWNER) {
+            throw new AccessDeniedForTaskException();
+        }
     }
 }

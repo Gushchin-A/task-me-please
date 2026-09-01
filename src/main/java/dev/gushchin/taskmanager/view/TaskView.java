@@ -134,6 +134,18 @@ public record TaskView(
         return state.showAuthorChangeWarning();
     }
 
+    public String authorChangeWarningText() {
+        if (!showAuthorChangeWarning()) {
+            return null;
+        }
+
+        if (authorId().equals(assigneeId())) {
+            return "После смены автора вы не сможете редактировать задачу";
+        }
+
+        return "После смены автора вы потеряете доступ к этой задаче";
+    }
+
     public String deadlineText() {
         String deadlineText;
 
@@ -170,12 +182,7 @@ public record TaskView(
     }
 
     public static String statusText(TaskStatus status) {
-        return switch (status) {
-            case OPEN -> "Открыто";
-            case IN_PROGRESS -> "В работе";
-            case DONE -> "Готово";
-            case NOT_RELEVANT -> "Неактуально";
-        };
+        return status.getDisplayName();
     }
 
     public String statusCssClass() {

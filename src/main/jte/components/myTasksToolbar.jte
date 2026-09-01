@@ -1,5 +1,6 @@
 @import dev.gushchin.taskmanager.model.TaskSort
 @import dev.gushchin.taskmanager.model.TaskStatus
+@import dev.gushchin.taskmanager.model.TaskRoleFilter
 @import dev.gushchin.taskmanager.model.Team
 @import dev.gushchin.taskmanager.model.TeamTag
 @import dev.gushchin.taskmanager.view.MyTasksPageView
@@ -116,6 +117,26 @@
                     </div>
                 </div>
 
+                <div class="task-filter-row">
+                    <span>Моя роль</span>
+                    <div class="primer-select task-filter-select" data-filter-select>
+                        <button class="primer-select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+                            <span class="primer-select-value">
+                                @if(page.selectedRole() == TaskRoleFilter.AUTHOR)
+                                    Автор
+                                @elseif(page.selectedRole() == TaskRoleFilter.ASSIGNEE)
+                                    Исполнитель
+                                @endif
+                            </span>
+                            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="m4.427 6.427 3.396 3.396a.25.25 0 0 0 .354 0l3.396-3.396A.25.25 0 0 0 11.396 6H4.604a.25.25 0 0 0-.177.427Z"></path></svg>
+                        </button>
+                        <div class="primer-select-panel" role="listbox" hidden><div class="primer-select-options">
+                            <a class="primer-select-option" href="${page.roleUrl(TaskRoleFilter.AUTHOR)}" role="option" aria-selected="${page.selectedRole() == TaskRoleFilter.AUTHOR}">Автор</a>
+                            <a class="primer-select-option" href="${page.roleUrl(TaskRoleFilter.ASSIGNEE)}" role="option" aria-selected="${page.selectedRole() == TaskRoleFilter.ASSIGNEE}">Исполнитель</a>
+                        </div></div>
+                    </div>
+                </div>
+
                 <div class="task-filter-space" aria-hidden="true"></div>
                 <div class="task-filter-actions"><a class="button button-secondary task-filter-reset" href="${page.clearFiltersUrl()}">Сбросить</a></div>
             </div>
@@ -136,23 +157,11 @@
             </div>
             <div class="primer-select-options" role="menu">
                 @for(TaskSort taskSort : TaskSort.values())
-                    <a class="primer-select-option" href="${page.sortUrl(taskSort)}" role="menuitem" aria-current="${page.selectedSort() == taskSort ? "true" : null}">
+                    <a class="primer-select-option" href="${page.sortUrl(taskSort)}" role="menuitem" aria-current="${page.selectedSort() == taskSort || page.selectedSort() == null && taskSort == TaskSort.NEWEST ? "true" : null}">
                         <span class="primer-select-check" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 1 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path></svg></span>
-                        <span>
-                            @if(taskSort == TaskSort.DEADLINE)
-                                По дедлайну
-                            @elseif(taskSort == TaskSort.TAG)
-                                По тегу
-                            @else
-                                По команде
-                            @endif
-                        </span>
+                        <span>${taskSort.getDisplayName()}</span>
                     </a>
                 @endfor
-                <a class="primer-select-option" href="${page.defaultSortUrl()}" role="menuitem" aria-current="${page.selectedSort() == null ? "true" : null}" data-tooltip="Сначала новые задачи, затем старые">
-                    <span class="primer-select-check" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 1 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path></svg></span>
-                    <span>По умолчанию</span>
-                </a>
             </div>
         </div>
     </div>

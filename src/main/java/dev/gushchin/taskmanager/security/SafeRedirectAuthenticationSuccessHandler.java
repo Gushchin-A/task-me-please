@@ -5,6 +5,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.DefaultRedirectStrategy;
 import org.springframework.security.web.RedirectStrategy;
@@ -15,6 +19,7 @@ import org.springframework.security.web.savedrequest.RequestCache;
 import org.springframework.security.web.savedrequest.SavedRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriUtils;
 
 @Component
 public class SafeRedirectAuthenticationSuccessHandler implements AuthenticationSuccessHandler {
@@ -35,7 +40,28 @@ public class SafeRedirectAuthenticationSuccessHandler implements AuthenticationS
     }
 
     public static boolean isSafeRedirect(String redirect) {
-        return StringUtils.hasText(redirect) && redirect.startsWith("/") && !redirect.startsWith("//");
+        if (!StringUtils.hasText(redirect)) {
+            return false;
+        }
+
+        try {
+            String decodedRedirect = UriUtils.decode(redirect, StandardCharsets.UTF_8);
+            URI redirectUri = new URI(decodedRedirect);
+            String lowerCaseRedirect = decodedRedirect.toLowerCase(Locale.ROOT);
+
+            return decodedRedirect.startsWith("/")
+                    && !decodedRedirect.startsWith("//")
+                    && !decodedRedirect.contains("\\")
+                    && !lowerCaseRedirect.contains("%2f")
+                    && !lowerCaseRedirect.contains("%5c")
+                    && !lowerCaseRedirect.contains("%25")
+                    && decodedRedirect.chars().noneMatch(Character::isISOControl)
+                    && !redirectUri.isAbsolute()
+                    && redirectUri.getRawAuthority() == null
+                    && redirectUri.getRawFragment() == null;
+        } catch (IllegalArgumentException | URISyntaxException ex) {
+            return false;
+        }
     }
 
     private String getTargetUrl(HttpServletRequest request, HttpServletResponse response) {

@@ -1,12 +1,14 @@
 package dev.gushchin.taskmanager.controller;
 
 import static dev.gushchin.taskmanager.jooq.Tables.COMMENTS;
+import static dev.gushchin.taskmanager.jooq.Tables.NOTIFICATION_EVENTS;
 import static dev.gushchin.taskmanager.jooq.Tables.TASKS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAMS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAM_INVITATIONS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAM_MEMBERS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAM_TAGS;
 import static dev.gushchin.taskmanager.jooq.Tables.USERS;
+import static dev.gushchin.taskmanager.jooq.Tables.USER_NOTIFICATIONS;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -18,6 +20,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -120,15 +123,25 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
         Comment comment = new Comment(
                 null, task.getId(), owner.getId(), "Initial comment", COMMENT_CREATED_AT, COMMENT_CREATED_AT, false);
 
-        commentRepository.save(comment);
+        Comment savedComment = commentRepository.save(comment);
 
         // when
-        mockMvc.perform(get("/tasks/" + task.getId()).with(user(new AuthUser(owner))))
+        mockMvc.perform(get("/tasks/" + task.getId())
+                        .with(user(new AuthUser(owner)))
+                        .flashAttr("successMessage", "Задача восстановлена из архива"))
                 // then
                 .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-flash-message")))
+                .andExpect(content().string(containsString("Задача восстановлена из архива")))
                 .andExpect(content().string(containsString("Important task")))
+                .andExpect(content().string(containsString("data-history-back")))
                 .andExpect(content().string(containsString("Task description")))
-                .andExpect(content().string(containsString("Архив")))
+                .andExpect(content().string(containsString("task-detail-status-archive\">Архив")))
+                .andExpect(content().string(containsString("task-detail-archive-outcome-resolved")))
+                .andExpect(content().string(containsString("Задача решена и перенесена в архив")))
+                .andExpect(content().string(containsString(">Решена</span>")))
+                .andExpect(content().string(containsString("task-detail-status-archived-original\">Готово")))
+                .andExpect(content().string(not(containsString("Задача была выполнена и перенесена в архив"))))
                 .andExpect(content().string(containsString("Вернуть из архива")))
                 .andExpect(content().string(containsString("20 января 2035")))
                 .andExpect(content().string(containsString("Кинопоиск")))
@@ -137,10 +150,34 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("class=\"task-parameters-panel\"")))
                 .andExpect(content().string(containsString("class=\"task-conversation\"")))
                 .andExpect(content().string(containsString("class=\"comment-avatar\"")))
-                .andExpect(content().string(containsString("Добавить комментарий")))
-                .andExpect(content().string(containsString("placeholder=\"Оставьте комментарий\"")))
+                .andExpect(content().string(containsString("id=\"task-description\"")))
+                .andExpect(content().string(containsString("task-description-status-not-relevant")))
+                .andExpect(content().string(containsString("id=\"comment-" + savedComment.getId() + "\"")))
+                .andExpect(content().string(containsString("data-task-anchor-copy=\"task-description\"")))
+                .andExpect(content()
+                        .string(containsString("data-task-anchor-copy=\"comment-" + savedComment.getId() + "\"")))
+                .andExpect(content().string(not(containsString("data-task-title-edit-open"))))
+                .andExpect(content().string(containsString("data-comment-edit-form")))
+                .andExpect(content().string(containsString("disabled data-changed-value-submit")))
+                .andExpect(content().string(not(containsString("class=\"comment-create-form\""))))
+                .andExpect(content().string(not(containsString("placeholder=\"Оставьте комментарий\""))))
                 .andExpect(content().string(containsString(">O</span>")))
                 .andExpect(content().string(containsString("15 июня 2026 18:17")));
+    }
+
+    @Test
+    void archivedOpenTaskShouldShowDeletedSummaryAndHideRestoreActionFromAssignee() throws Exception {
+        taskService.archive(task.getId(), owner.getId());
+
+        mockMvc.perform(get("/tasks/" + task.getId()).with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("task-detail-status-archive\">Архив")))
+                .andExpect(content().string(containsString("task-detail-archive-outcome-deleted\">Удалена")))
+                .andExpect(content().string(containsString("task-detail-status-archived-original\">Открыто")))
+                .andExpect(content().string(not(containsString("Задача была удалена"))))
+                .andExpect(content().string(not(containsString("Вернуть из архива"))))
+                .andExpect(content().string(not(containsString("data-task-title-edit-open"))))
+                .andExpect(content().string(not(containsString("class=\"comment-create-form\""))));
     }
 
     @Test
@@ -153,7 +190,31 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("name=\"deadlineDate\"")))
                 .andExpect(content().string(containsString("name=\"authorId\"")))
                 .andExpect(content().string(containsString("name=\"assigneeId\"")))
-                .andExpect(content().string(containsString("name=\"tagId\"")));
+                .andExpect(content().string(containsString("name=\"tagId\"")))
+                .andExpect(content().string(not(containsString("data-task-parameters-state-action"))))
+                .andExpect(content().string(not(containsString("Удалить задачу"))))
+                .andExpect(content().string(not(containsString("Перенести в архив"))));
+    }
+
+    @Test
+    void taskPageShouldShowArchiveActionForDoneTaskAndDeleteActionForOtherStatuses() throws Exception {
+        mockMvc.perform(get("/tasks/" + task.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Удалить задачу")))
+                .andExpect(content().string(containsString("data-task-parameters-state-action")))
+                .andExpect(content().string(containsString("name=\"returnTo\" value=\"team\"")))
+                .andExpect(content().string(containsString(">Команда</span>")))
+                .andExpect(content()
+                        .string(containsString(
+                                "class=\"task-parameter-value task-parameter-team\" href=\"/teams/" + team.getId())))
+                .andExpect(content().string(not(containsString("Перенести в архив"))));
+
+        taskService.updateStatus(task.getId(), TaskStatus.DONE, owner.getId());
+
+        mockMvc.perform(get("/tasks/" + task.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Перенести в архив")))
+                .andExpect(content().string(not(containsString("Удалить задачу"))));
     }
 
     @Test
@@ -279,10 +340,11 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(post("/tasks/" + taskId + "/archive")
                         .with(csrf())
                         .with(user(new AuthUser(owner)))
-                        .param("returnTo", "task"))
+                        .param("returnTo", "team"))
                 // then
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/tasks/" + taskId));
+                .andExpect(redirectedUrl("/teams/" + team.getId()))
+                .andExpect(flash().attribute("successMessage", "Задача была перенесена в архив"));
 
         // when
         mockMvc.perform(get("/tasks/" + taskId).with(user(new AuthUser(owner))))
@@ -298,13 +360,25 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                         .param("returnTo", "task"))
                 // then
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/tasks/" + taskId));
+                .andExpect(redirectedUrl("/tasks/" + taskId))
+                .andExpect(flash().attribute("successMessage", "Задача восстановлена из архива"));
 
         // when
         mockMvc.perform(get("/tasks/" + taskId).with(user(new AuthUser(owner))))
                 // then
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Перенести в архив")));
+    }
+
+    @Test
+    void archivingUnfinishedTaskShouldShowDeletedMessage() throws Exception {
+        mockMvc.perform(post("/tasks/" + task.getId() + "/archive")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("returnTo", "team"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId()))
+                .andExpect(flash().attribute("successMessage", "Задача удалена и перенесена в архив"));
     }
 
     @Test
@@ -335,6 +409,7 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                         .with(user(new AuthUser(owner)))
                         .param("title", "Updated title")
                         .param("status", TaskStatus.IN_PROGRESS.name())
+                        .param("authorId", secondUser.getId().toString())
                         .param("assigneeId", owner.getId().toString())
                         .param("deadlineDate", LocalDate.of(2035, 2, 10).toString())
                         .param("tagId", plusTag.getId().toString())
@@ -347,8 +422,152 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
         assertEquals("Updated title", updatedTask.getTitle());
         assertEquals("Task description", updatedTask.getDescription());
         assertEquals(TaskStatus.IN_PROGRESS, updatedTask.getStatus());
+        assertEquals(secondUser.getId(), updatedTask.getAuthorId());
         assertEquals(owner.getId(), updatedTask.getAssigneeId());
         assertEquals(plusTag.getId(), updatedTask.getTagId());
+    }
+
+    @Test
+    void taskAuthorShouldAtomicallyChangeAuthorAndAssigneeFromCardEndpoints() throws Exception {
+        Task myTasksTask = taskService.create(
+                team.getId(),
+                secondUser.getId(),
+                owner.getId(),
+                "My tasks card",
+                "Task description",
+                DEADLINE_DATE,
+                kinopoiskTag.getId());
+
+        mockMvc.perform(post("/tasks/" + myTasksTask.getId() + "/edit")
+                        .with(csrf())
+                        .with(user(new AuthUser(secondUser)))
+                        .param("title", myTasksTask.getTitle())
+                        .param("status", TaskStatus.IN_PROGRESS.name())
+                        .param("authorId", owner.getId().toString())
+                        .param("assigneeId", secondUser.getId().toString())
+                        .param("deadlineDate", DEADLINE_DATE.toString())
+                        .param("tagId", kinopoiskTag.getId().toString())
+                        .param("returnTo", "tasks"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks"));
+
+        Task updatedMyTasksTask = taskService.findById(myTasksTask.getId());
+
+        assertEquals(owner.getId(), updatedMyTasksTask.getAuthorId());
+        assertEquals(secondUser.getId(), updatedMyTasksTask.getAssigneeId());
+
+        Task teamTask = taskService.create(
+                team.getId(),
+                secondUser.getId(),
+                secondUser.getId(),
+                "Team card",
+                "Task description",
+                DEADLINE_DATE,
+                kinopoiskTag.getId());
+
+        mockMvc.perform(post("/tasks/" + teamTask.getId() + "/edit")
+                        .with(csrf())
+                        .with(user(new AuthUser(secondUser)))
+                        .param("title", teamTask.getTitle())
+                        .param("status", TaskStatus.DONE.name())
+                        .param("authorId", owner.getId().toString())
+                        .param("assigneeId", owner.getId().toString())
+                        .param("deadlineDate", DEADLINE_DATE.toString())
+                        .param("tagId", kinopoiskTag.getId().toString())
+                        .param("returnTo", "team"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/teams/" + team.getId()));
+
+        Task updatedTeamTask = taskService.findById(teamTask.getId());
+
+        assertEquals(owner.getId(), updatedTeamTask.getAuthorId());
+        assertEquals(owner.getId(), updatedTeamTask.getAssigneeId());
+        assertEquals(TaskStatus.DONE, updatedTeamTask.getStatus());
+    }
+
+    @Test
+    void taskAuthorShouldSeeAuthorFieldAndAccessWarningInCardEditForm() throws Exception {
+        Task authoredTask = taskService.create(
+                team.getId(),
+                secondUser.getId(),
+                owner.getId(),
+                "Authored task",
+                "Task description",
+                DEADLINE_DATE,
+                kinopoiskTag.getId());
+
+        mockMvc.perform(get("/tasks").with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("id=\"task-author-" + authoredTask.getId() + "\"")))
+                .andExpect(content().string(containsString("name=\"authorId\"")))
+                .andExpect(content().string(containsString("Выберите автора")))
+                .andExpect(content().string(containsString("После смены автора вы потеряете доступ к этой задаче")));
+
+        mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("После смены автора вы потеряете доступ к этой задаче")));
+
+        mockMvc.perform(get("/tasks/" + authoredTask.getId()).with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("name=\"authorId\"")))
+                .andExpect(content().string(containsString("После смены автора вы потеряете доступ к этой задаче")));
+    }
+
+    @Test
+    void taskAuthorShouldSeeEditWarningWhenAlsoAssignedToTask() throws Exception {
+        Task authoredTask = taskService.create(
+                team.getId(),
+                secondUser.getId(),
+                secondUser.getId(),
+                "Self-assigned task",
+                "Task description",
+                DEADLINE_DATE,
+                kinopoiskTag.getId());
+
+        mockMvc.perform(get("/tasks/" + authoredTask.getId()).with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content()
+                        .string(containsString(
+                                "data-tooltip=\"После смены автора вы не сможете редактировать задачу\"")));
+    }
+
+    @Test
+    void taskAssigneeShouldSeeStatusOnlyCardEditorAndReadOnlyParameterTooltips() throws Exception {
+        mockMvc.perform(get("/tasks").with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-task-edit-open")))
+                .andExpect(content().string(containsString("action=\"/tasks/" + task.getId() + "/status\"")))
+                .andExpect(content().string(containsString("name=\"status\"")))
+                .andExpect(content().string(not(containsString("name=\"authorId\""))))
+                .andExpect(content().string(not(containsString("name=\"assigneeId\""))));
+
+        mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-task-edit-open")))
+                .andExpect(content().string(containsString("action=\"/tasks/" + task.getId() + "/status\"")));
+
+        mockMvc.perform(get("/tasks/" + task.getId()).with(user(new AuthUser(secondUser))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Редактирование доступно только автору задачи")));
+    }
+
+    @Test
+    void taskPageTitleEditShouldRedirectBackToTask() throws Exception {
+        mockMvc.perform(post("/tasks/" + task.getId() + "/edit")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("title", "Task page title")
+                        .param("status", TaskStatus.IN_PROGRESS.name())
+                        .param("assigneeId", owner.getId().toString())
+                        .param("deadlineDate", LocalDate.of(2035, 2, 10).toString())
+                        .param("tagId", plusTag.getId().toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks/" + task.getId()));
+
+        Task updatedTask = taskService.findById(task.getId());
+
+        assertEquals("Task page title", updatedTask.getTitle());
     }
 
     @Test
@@ -371,12 +590,17 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
         teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
 
         mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(secondUser))))
-                .andExpect(status().isOk())
+                .andExpect(status().isNotFound())
+                .andExpect(content().string(not(containsString("class=\"error-page-code\""))))
                 .andExpect(content().string(containsString("Такая страница не найдена")))
                 .andExpect(content().string(not(containsString("Important task"))));
 
         mockMvc.perform(get("/tasks/" + task.getId()).with(user(new AuthUser(secondUser))))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(content().string(containsString("class=\"error-page\"")))
+                .andExpect(content().string(not(containsString("class=\"error-page-code\""))))
+                .andExpect(content().string(containsString("Такая страница не найдена")))
+                .andExpect(content().string(not(containsString("Important task"))));
     }
 
     @Test
@@ -641,6 +865,8 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     private void cleanDatabase() {
+        dsl.deleteFrom(USER_NOTIFICATIONS).execute();
+        dsl.deleteFrom(NOTIFICATION_EVENTS).execute();
         dsl.deleteFrom(COMMENTS).execute();
         dsl.deleteFrom(TASKS).execute();
         dsl.deleteFrom(TEAM_INVITATIONS).execute();

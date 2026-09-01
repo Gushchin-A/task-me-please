@@ -30,21 +30,34 @@ public class AccountTokenService {
         Instant now = Instant.now();
         String token = generateToken();
         AccountToken accountToken =
-                new AccountToken(null, userId, type, hashToken(token), now.plus(lifetime), null, now);
+                new AccountToken(null, userId, type, hashToken(token), now.plus(lifetime), null, null, now);
 
-        accountTokenRepository.invalidateActiveByUserIdAndType(userId, type, now);
+        if (type == AccountTokenType.EMAIL_VERIFICATION) {
+            accountTokenRepository.invalidateReplacedByUserIdAndType(userId, type, now);
+        } else {
+            accountTokenRepository.invalidateActiveByUserIdAndType(userId, type, now);
+        }
         accountTokenRepository.save(accountToken);
 
         return token;
     }
 
     public AccountToken findValid(String token, AccountTokenType type) {
-        AccountToken accountToken = accountTokenRepository.findByTokenHash(hashToken(token));
+        AccountToken accountToken = find(token, type);
         if (accountToken == null
-                || accountToken.getType() != type
                 || accountToken.getUsedAt() != null
+                || accountToken.getInvalidatedAt() != null
                 || !accountToken.getExpiresAt().isAfter(Instant.now())) {
             throw new InvalidAccountTokenException();
+        }
+
+        return accountToken;
+    }
+
+    public AccountToken find(String token, AccountTokenType type) {
+        AccountToken accountToken = accountTokenRepository.findByTokenHash(hashToken(token));
+        if (accountToken == null || accountToken.getType() != type) {
+            return null;
         }
 
         return accountToken;
@@ -59,6 +72,19 @@ public class AccountTokenService {
         }
 
         return usedToken;
+    }
+
+    @Transactional
+    public AccountToken consumeIfActive(String token, AccountTokenType type) {
+        AccountToken accountToken = find(token, type);
+        if (accountToken == null
+                || accountToken.getUsedAt() != null
+                || accountToken.getInvalidatedAt() != null
+                || !accountToken.getExpiresAt().isAfter(Instant.now())) {
+            return null;
+        }
+
+        return accountTokenRepository.markUsedIfActive(accountToken.getId(), Instant.now());
     }
 
     private String generateToken() {

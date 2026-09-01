@@ -139,6 +139,18 @@ class AccountTokenServiceIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void consumeIfActiveShouldReturnNullAfterTokenWasConsumed() {
+        String token =
+                accountTokenService.create(user.getId(), AccountTokenType.EMAIL_VERIFICATION, Duration.ofHours(24));
+
+        AccountToken consumedToken = accountTokenService.consumeIfActive(token, AccountTokenType.EMAIL_VERIFICATION);
+        AccountToken repeatedResult = accountTokenService.consumeIfActive(token, AccountTokenType.EMAIL_VERIFICATION);
+
+        assertNotNull(consumedToken);
+        assertNull(repeatedResult);
+    }
+
+    @Test
     void invalidTokenExceptionShouldNotExposeToken() {
         String token = "secret-account-token";
 
