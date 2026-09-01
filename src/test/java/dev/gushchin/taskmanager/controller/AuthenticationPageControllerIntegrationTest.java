@@ -879,7 +879,8 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("Мои задачи")))
                 .andExpect(content().string(containsString("href=\"/teams\" data-profile-focus")))
                 .andExpect(content().string(containsString("Мои команды")))
-                .andExpect(content().string(containsString("Настройки пока не реализованы")))
+                .andExpect(content().string(containsString("href=\"/settings\" data-profile-focus")))
+                .andExpect(content().string(containsString("Настройки")))
                 .andExpect(content().string(containsString("action=\"/logout\"")))
                 .andExpect(content().string(containsString("Выйти из профиля")));
     }

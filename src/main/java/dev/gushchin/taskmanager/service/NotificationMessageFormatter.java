@@ -23,12 +23,15 @@ public class NotificationMessageFormatter {
             DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.forLanguageTag("ru"));
     private static final String ARROW = " → ";
     private static final String CHANGE_SEPARATOR = "»: ";
+    private static final String COMPLETED_STATUS = "DONE";
+    private static final String COMPLETED_STATUS_DISPLAY_NAME = "Готово";
     private static final String IN_TEAM_PREFIX = " в команду «";
     private static final String WITHIN_TEAM_PREFIX = " в команде «";
     private static final String NEW_NAME_PREFIX = "». Новое название «";
     private static final String RESTORED_SUFFIX = "» из архива";
     private static final String TASK_ASSIGNEE_PREFIX = "Вас назначили исполнителем задачи «";
     private static final String TASK_PREFIX = "В задаче «";
+    private static final String TASK_SUBJECT_PREFIX = "Задача «";
     private static final String TEAM_PREFIX = "Команда «";
     private static final String TEAM_REMOVAL_PREFIX = "Из команды «";
     private static final String USER_PREFIX = "Пользователь ";
@@ -224,7 +227,7 @@ public class NotificationMessageFormatter {
         return switch (status) {
             case "OPEN" -> "Открыто";
             case "IN_PROGRESS" -> "В работе";
-            case "DONE" -> "Готово";
+            case COMPLETED_STATUS -> COMPLETED_STATUS_DISPLAY_NAME;
             case "NOT_RELEVANT" -> "Неактуально";
             default -> status;
         };
@@ -253,16 +256,17 @@ public class NotificationMessageFormatter {
         if (isCompletedStatus(payload.previousValue())) {
             return isActor(event, recipientUserId)
                     ? "Вы перенесли в архив задачу «" + payload.taskTitle() + "»"
-                    : "Задача «" + payload.taskTitle() + "» перенесена в архив пользователем " + payload.actorName();
+                    : TASK_SUBJECT_PREFIX + payload.taskTitle() + "» перенесена в архив пользователем "
+                            + payload.actorName();
         }
 
         return isActor(event, recipientUserId)
                 ? "Вы удалили задачу «" + payload.taskTitle() + "»"
-                : "Задача «" + payload.taskTitle() + "» удалена пользователем " + payload.actorName();
+                : TASK_SUBJECT_PREFIX + payload.taskTitle() + "» удалена пользователем " + payload.actorName();
     }
 
     private boolean isCompletedStatus(String status) {
-        return "DONE".equals(status) || "Готово".equals(status);
+        return COMPLETED_STATUS.equals(status) || COMPLETED_STATUS_DISPLAY_NAME.equals(status);
     }
 
     private String formatTaskRestored(NotificationEvent event, UUID recipientUserId, TaskNotificationPayload payload) {

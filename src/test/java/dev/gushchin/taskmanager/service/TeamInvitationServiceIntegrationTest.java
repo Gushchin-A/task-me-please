@@ -201,7 +201,7 @@ class TeamInvitationServiceIntegrationTest extends IntegrationTestBase {
         int ownerNotifications = notificationService.getCounts(owner.getId()).all();
         int invitedUserNotifications =
                 notificationService.getCounts(invitedUser.getId()).all();
-        int otherMemberNotifications =
+        final int otherMemberNotifications =
                 notificationService.getCounts(otherMember.getId()).all();
 
         teamInvitationService.accept(invitation.getToken(), invitedUser.getId());

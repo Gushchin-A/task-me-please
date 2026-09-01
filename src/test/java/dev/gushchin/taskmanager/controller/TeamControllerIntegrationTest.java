@@ -1,5 +1,14 @@
 package dev.gushchin.taskmanager.controller;
 
+import static dev.gushchin.taskmanager.jooq.Tables.COMMENTS;
+import static dev.gushchin.taskmanager.jooq.Tables.NOTIFICATION_EVENTS;
+import static dev.gushchin.taskmanager.jooq.Tables.TASKS;
+import static dev.gushchin.taskmanager.jooq.Tables.TEAMS;
+import static dev.gushchin.taskmanager.jooq.Tables.TEAM_INVITATIONS;
+import static dev.gushchin.taskmanager.jooq.Tables.TEAM_MEMBERS;
+import static dev.gushchin.taskmanager.jooq.Tables.TEAM_TAGS;
+import static dev.gushchin.taskmanager.jooq.Tables.USERS;
+import static dev.gushchin.taskmanager.jooq.Tables.USER_NOTIFICATIONS;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -9,10 +18,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import dev.gushchin.taskmanager.IntegrationTestBase;
-import dev.gushchin.taskmanager.repository.TeamMemberRepository;
-import dev.gushchin.taskmanager.repository.TeamRepository;
-import dev.gushchin.taskmanager.repository.UserRepository;
 import java.util.UUID;
+import org.jooq.DSLContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,19 +39,19 @@ class TeamControllerIntegrationTest extends IntegrationTestBase {
     private static final String NULL_CREATED_BY = "request-json/create-team/create-team-null-created-by.json";
 
     @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private TeamRepository teamRepository;
-
-    @Autowired
-    private TeamMemberRepository teamMemberRepository;
+    private DSLContext dsl;
 
     @BeforeEach
     void setUp() {
-        teamMemberRepository.deleteAll();
-        teamRepository.deleteAll();
-        userRepository.deleteAll();
+        dsl.deleteFrom(USER_NOTIFICATIONS).execute();
+        dsl.deleteFrom(NOTIFICATION_EVENTS).execute();
+        dsl.deleteFrom(COMMENTS).execute();
+        dsl.deleteFrom(TASKS).execute();
+        dsl.deleteFrom(TEAM_INVITATIONS).execute();
+        dsl.deleteFrom(TEAM_TAGS).execute();
+        dsl.deleteFrom(TEAM_MEMBERS).execute();
+        dsl.deleteFrom(TEAMS).execute();
+        dsl.deleteFrom(USERS).execute();
     }
 
     @Test

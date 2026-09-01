@@ -1,8 +1,10 @@
 package dev.gushchin.taskmanager.service;
 
+import static dev.gushchin.taskmanager.jooq.Tables.NOTIFICATION_EVENTS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAMS;
 import static dev.gushchin.taskmanager.jooq.Tables.TEAM_MEMBERS;
 import static dev.gushchin.taskmanager.jooq.Tables.USERS;
+import static dev.gushchin.taskmanager.jooq.Tables.USER_NOTIFICATIONS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.gushchin.taskmanager.IntegrationTestBase;
@@ -102,6 +104,8 @@ class NotificationRecipientPolicyIntegrationTest extends IntegrationTestBase {
     }
 
     private void cleanDatabase() {
+        dsl.deleteFrom(USER_NOTIFICATIONS).execute();
+        dsl.deleteFrom(NOTIFICATION_EVENTS).execute();
         dsl.deleteFrom(TEAM_MEMBERS).execute();
         dsl.deleteFrom(TEAMS).execute();
         dsl.deleteFrom(USERS).execute();
