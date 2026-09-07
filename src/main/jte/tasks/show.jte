@@ -233,7 +233,12 @@
                             : null}"
                         disabled="${!task.canUpdateTask()}"
                     >
-                        <option value="${task.authorId().toString()}" selected>${task.authorName()}</option>
+                        <option
+                            value="${task.authorId().toString()}"
+                            class="${task.authorRemovedFromTeam() ? "task-participant-former" : ""}"
+                            title="${task.participants().author().removedFromTeamTitle()}"
+                            selected
+                        >${task.authorName()}</option>
                         @for(TaskParticipantView member : members)
                             @if(!member.id().equals(task.authorId()))
                                 <option value="${member.id().toString()}">${member.name()}</option>
@@ -258,7 +263,12 @@
                     <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
                     <input type="hidden" name="returnTo" value="task">
                     <select name="assigneeId" data-original-value="${task.assigneeId().toString()}" data-participant-select disabled="${!task.canUpdateTask()}">
-                        <option value="${task.assigneeId().toString()}" selected>${task.assigneeName()}</option>
+                        <option
+                            value="${task.assigneeId().toString()}"
+                            class="${task.assigneeRemovedFromTeam() ? "task-participant-former" : ""}"
+                            title="${task.participants().assignee().removedFromTeamTitle()}"
+                            selected
+                        >${task.assigneeName()}</option>
                         @for(TaskParticipantView member : members)
                             @if(!member.id().equals(task.assigneeId()))
                                 <option value="${member.id().toString()}">${member.name()}</option>

@@ -90,7 +90,7 @@ public class TeamPageController {
     private static final String REDIRECT_TEAMS_PREFIX = "redirect:/teams/";
     private static final String REDIRECT_TEAMS = "redirect:/teams";
     private static final String REMOVE_MEMBER_ERROR_MESSAGE = "Участника не удалось удалить";
-    private static final String REMOVE_MEMBER_SUCCESS_MESSAGE = "Участник удалён из команды";
+    private static final String REMOVE_MEMBER_SUCCESS_MESSAGE = "Участник удален из команды";
     private static final String SUCCESS_MESSAGE_ATTRIBUTE = "successMessage";
     private static final String TEAM_ATTRIBUTE = "team";
     private static final String PAGE_ATTRIBUTE = "page";

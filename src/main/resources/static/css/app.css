@@ -59,6 +59,30 @@ textarea::placeholder {
     opacity: 1;
 }
 
+input:autofill,
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+select:autofill,
+select:-webkit-autofill,
+textarea:autofill,
+textarea:-webkit-autofill {
+    box-shadow: inset 0 0 0 1000px var(--bgColor-default) !important;
+    caret-color: var(--fgColor-default);
+    color: var(--fgColor-default);
+    -webkit-text-fill-color: var(--fgColor-default);
+}
+
+input:autofill:focus,
+input:-webkit-autofill:focus,
+select:autofill:focus,
+select:-webkit-autofill:focus,
+textarea:autofill:focus,
+textarea:-webkit-autofill:focus {
+    box-shadow:
+        inset 0 0 0 1px var(--borderColor-accent-emphasis),
+        inset 0 0 0 1000px var(--bgColor-default) !important;
+}
+
 a {
     color: var(--fgColor-link);
 }
@@ -1176,6 +1200,30 @@ a {
     width: 100%;
 }
 
+.team-page-content {
+    display: flex;
+    min-height: calc(100vh - 172px);
+    flex-direction: column;
+}
+
+.team-page-footer {
+    margin: auto auto -20px;
+    color: var(--fgColor-muted);
+    font-size: 12px;
+    line-height: 18px;
+    text-align: center;
+}
+
+.team-page-footer a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.team-page-footer a:hover {
+    color: var(--fgColor-link);
+    text-decoration: underline;
+}
+
 .page-header {
     display: flex;
     align-items: flex-start;
@@ -2232,6 +2280,30 @@ a {
 .task-edit-dialog-body .primer-select-options {
     max-height: 132px;
     overscroll-behavior: contain;
+    scrollbar-color: var(--borderColor-muted) var(--overlay-bgColor);
+    scrollbar-width: thin;
+}
+
+.task-edit-dialog-body .primer-select-options::-webkit-scrollbar,
+.task-parameter-row .primer-select-options::-webkit-scrollbar {
+    width: 10px;
+}
+
+.task-edit-dialog-body .primer-select-options::-webkit-scrollbar-track,
+.task-parameter-row .primer-select-options::-webkit-scrollbar-track {
+    background: var(--overlay-bgColor);
+}
+
+.task-edit-dialog-body .primer-select-options::-webkit-scrollbar-thumb,
+.task-parameter-row .primer-select-options::-webkit-scrollbar-thumb {
+    border: 3px solid var(--overlay-bgColor);
+    border-radius: var(--borderRadius-full);
+    background: var(--borderColor-muted);
+}
+
+.task-edit-dialog-body .primer-select-options::-webkit-scrollbar-thumb:hover,
+.task-parameter-row .primer-select-options::-webkit-scrollbar-thumb:hover {
+    background: var(--fgColor-muted);
 }
 
 .task-edit-dialog-body .task-status-select-options {
@@ -2387,6 +2459,12 @@ a {
 
 .task-card-people .task-card-former-member,
 .task-parameter-person.task-card-former-member {
+    color: var(--fgColor-danger);
+}
+
+.primer-select-value.task-participant-former,
+.primer-select-option.task-participant-former .primer-select-option-copy,
+option.task-participant-former {
     color: var(--fgColor-danger);
 }
 
@@ -2687,6 +2765,7 @@ input[type="date"] {
 }
 
 .primer-select-value {
+    flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -3240,6 +3319,18 @@ input[type="date"] {
     display: none;
 }
 
+.task-parameter-person {
+    display: flex;
+    gap: var(--base-size-8);
+}
+
+.task-parameter-person > span:last-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .task-parameter-team {
     display: block;
     width: fit-content;
@@ -3318,7 +3409,23 @@ input[type="date"] {
 }
 
 .task-parameter-row form {
+    min-width: 0;
     margin: 0;
+}
+
+.task-parameter-select,
+.task-parameter-select .primer-select-trigger,
+.task-edit-dialog-body .primer-select,
+.task-edit-dialog-body .primer-select-trigger {
+    min-width: 0;
+}
+
+.task-parameter-select .primer-select-value,
+.task-edit-dialog-body .primer-select-value {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .task-parameter-row form[hidden],
@@ -3917,29 +4024,6 @@ input[type="date"] {
     margin-top: var(--base-size-24);
 }
 
-.auth-inline-error {
-    position: relative;
-    margin-bottom: var(--base-size-16);
-    padding: var(--base-size-16) var(--base-size-40) var(--base-size-16) var(--base-size-16);
-    border: var(--border-danger-muted);
-    border-radius: var(--borderRadius-medium);
-    background: var(--bgColor-danger-muted);
-    color: var(--fgColor-default);
-    font-size: var(--text-body-size-medium);
-    line-height: 21px;
-    text-align: center;
-}
-
-.auth-inline-error-icon {
-    position: absolute;
-    top: var(--base-size-16);
-    right: var(--base-size-16);
-    color: var(--fgColor-danger);
-    font-size: var(--base-size-20);
-    font-weight: var(--base-text-weight-semibold);
-    line-height: 21px;
-}
-
 .auth-field {
     display: grid;
     gap: var(--base-size-8);
@@ -3986,24 +4070,6 @@ input[type="date"] {
     border-color: var(--borderColor-accent-emphasis);
     outline: none;
     box-shadow: inset 0 0 0 1px var(--borderColor-accent-emphasis);
-}
-
-.auth-field input:autofill,
-.auth-field input:-webkit-autofill,
-.auth-field input:-webkit-autofill:hover {
-    background-color: var(--bgColor-default);
-    box-shadow: inset 0 0 0 1000px var(--bgColor-default);
-    caret-color: var(--fgColor-default);
-    color: var(--fgColor-default);
-    -webkit-text-fill-color: var(--fgColor-default);
-}
-
-.auth-field input:autofill:focus,
-.auth-field input:-webkit-autofill:focus {
-    border-color: var(--borderColor-accent-emphasis);
-    box-shadow:
-        inset 0 0 0 1px var(--borderColor-accent-emphasis),
-        inset 0 0 0 1000px var(--bgColor-default);
 }
 
 .auth-checkbox {
@@ -4469,6 +4535,10 @@ input[type="date"] {
 
     .app-content {
         padding: 20px 16px;
+    }
+
+    .team-page-footer {
+        margin-bottom: 28px;
     }
 
     .team-tabs {

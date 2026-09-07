@@ -768,6 +768,18 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void updateDeadlineShouldRejectEmptyValue() throws Exception {
+        Instant deadlineBefore = taskService.findById(task.getId()).getDeadlineAt();
+
+        mockMvc.perform(post("/tasks/" + task.getId() + "/deadline")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner))))
+                .andExpect(status().isBadRequest());
+
+        assertEquals(deadlineBefore, taskService.findById(task.getId()).getDeadlineAt());
+    }
+
+    @Test
     void removedMemberShouldNotOpenTeamOrTask() throws Exception {
         teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
 
@@ -976,7 +988,7 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Second")))
                 .andExpect(content().string(containsString("task-card-former-member")))
-                .andExpect(content().string(containsString("Пользователь был удалён из команды")));
+                .andExpect(content().string(containsString("Пользователь больше не состоит в команде")));
 
         mockMvc.perform(get("/tasks/new?teamId=" + team.getId()).with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
@@ -1036,6 +1048,327 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void updateTaskShouldKeepFormerAssigneeWhenOnlyTagChanges() throws Exception {
+        teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
+
+        mockMvc.perform(post("/tasks/" + task.getId() + "/edit")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("title", task.getTitle())
+                        .param("status", task.getStatus().name())
+                        .param("authorId", owner.getId().toString())
+                        .param("assigneeId", secondUser.getId().toString())
+                        .param("deadlineDate", DEADLINE_DATE.toString())
+                        .param("tagId", plusTag.getId().toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks/" + task.getId()));
+
+        Task updatedTask = taskService.findById(task.getId());
+
+        assertEquals(plusTag.getId(), updatedTask.getTagId());
+        assertEquals(secondUser.getId(), updatedTask.getAssigneeId());
+    }
+
+    @Test
+    void updateTaskShouldKeepFormerAuthorWhenOnlyTagChanges() throws Exception {
+        Task authorTask = taskService.create(
+                team.getId(),
+                secondUser.getId(),
+                owner.getId(),
+                "Former author task",
+                "Description",
+                DEADLINE_DATE,
+                kinopoiskTag.getId());
+
+        teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
+
+        mockMvc.perform(post("/tasks/" + authorTask.getId() + "/edit")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("title", authorTask.getTitle())
+                        .param("status", authorTask.getStatus().name())
+                        .param("authorId", secondUser.getId().toString())
+                        .param("assigneeId", owner.getId().toString())
+                        .param("deadlineDate", DEADLINE_DATE.toString())
+                        .param("tagId", plusTag.getId().toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks/" + authorTask.getId()));
+
+        Task updatedTask = taskService.findById(authorTask.getId());
+
+        assertEquals(plusTag.getId(), updatedTask.getTagId());
+        assertEquals(secondUser.getId(), updatedTask.getAuthorId());
+    }
+
+    @Test
+    void updateTaskShouldKeepFormerAuthorAndFormerAssigneeTogether() throws Exception {
+        User formerAuthor = userService.create("former-author@test.com", "Former author", "qwerty");
+        User formerAssignee = userService.create("former-assignee@test.com", "Former assignee", "qwerty");
+        teamMemberService.addMember(team.getId(), formerAuthor.getId());
+        teamMemberService.addMember(team.getId(), formerAssignee.getId());
+
+        Task abandonedTask = taskService.create(
+                team.getId(),
+                formerAuthor.getId(),
+                formerAssignee.getId(),
+                "Abandoned task",
+                "Description",
+                DEADLINE_DATE,
+                kinopoiskTag.getId());
+
+        teamMemberService.removeMember(team.getId(), formerAuthor.getId(), owner.getId());
+        teamMemberService.removeMember(team.getId(), formerAssignee.getId(), owner.getId());
+
+        mockMvc.perform(post("/tasks/" + abandonedTask.getId() + "/edit")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("title", abandonedTask.getTitle())
+                        .param("status", abandonedTask.getStatus().name())
+                        .param("authorId", formerAuthor.getId().toString())
+                        .param("assigneeId", formerAssignee.getId().toString())
+                        .param("deadlineDate", DEADLINE_DATE.toString())
+                        .param("tagId", plusTag.getId().toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks/" + abandonedTask.getId()));
+
+        Task updatedTask = taskService.findById(abandonedTask.getId());
+
+        assertEquals(plusTag.getId(), updatedTask.getTagId());
+        assertEquals(formerAuthor.getId(), updatedTask.getAuthorId());
+        assertEquals(formerAssignee.getId(), updatedTask.getAssigneeId());
+    }
+
+    @Test
+    void updateTaskShouldExplainWhyFormerMemberCannotBecomeNewAssignee() throws Exception {
+        teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
+
+        Task ownTask = taskService.create(
+                team.getId(),
+                owner.getId(),
+                owner.getId(),
+                "Owner only task",
+                "Description",
+                DEADLINE_DATE,
+                kinopoiskTag.getId());
+
+        mockMvc.perform(post("/tasks/" + ownTask.getId() + "/edit")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("title", ownTask.getTitle())
+                        .param("status", ownTask.getStatus().name())
+                        .param("authorId", owner.getId().toString())
+                        .param("assigneeId", secondUser.getId().toString())
+                        .param("deadlineDate", DEADLINE_DATE.toString())
+                        .param("tagId", plusTag.getId().toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks/" + ownTask.getId()))
+                .andExpect(flash().attribute(
+                                "errorMessage", "Second больше не состоит в команде. Выберите другого исполнителя"));
+
+        Task unchangedTask = taskService.findById(ownTask.getId());
+
+        assertEquals(owner.getId(), unchangedTask.getAssigneeId());
+        assertEquals(kinopoiskTag.getId(), unchangedTask.getTagId());
+    }
+
+    @Test
+    void updateTaskShouldCombineMessageWhenBothRolesPointToFormerMembers() throws Exception {
+        User firstLeaver = userService.create("first-leaver@test.com", "First leaver", "qwerty");
+        User secondLeaver = userService.create("second-leaver@test.com", "Second leaver", "qwerty");
+        teamMemberService.addMember(team.getId(), firstLeaver.getId());
+        teamMemberService.addMember(team.getId(), secondLeaver.getId());
+        teamMemberService.removeMember(team.getId(), firstLeaver.getId(), owner.getId());
+        teamMemberService.removeMember(team.getId(), secondLeaver.getId(), owner.getId());
+
+        Task ownTask = taskService.create(
+                team.getId(),
+                owner.getId(),
+                owner.getId(),
+                "Owner only task",
+                "Description",
+                DEADLINE_DATE,
+                kinopoiskTag.getId());
+
+        mockMvc.perform(post("/tasks/" + ownTask.getId() + "/edit")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("title", ownTask.getTitle())
+                        .param("status", ownTask.getStatus().name())
+                        .param("authorId", firstLeaver.getId().toString())
+                        .param("assigneeId", secondLeaver.getId().toString())
+                        .param("deadlineDate", DEADLINE_DATE.toString())
+                        .param("tagId", plusTag.getId().toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attribute(
+                                "errorMessage",
+                                "First leaver и Second leaver больше не состоят в команде. "
+                                        + "Выберите другого автора и исполнителя"));
+
+        Task unchangedTask = taskService.findById(ownTask.getId());
+
+        assertEquals(owner.getId(), unchangedTask.getAuthorId());
+        assertEquals(owner.getId(), unchangedTask.getAssigneeId());
+    }
+
+    @Test
+    void updateTaskShouldUseSingleNameWhenSameFormerMemberIsAuthorAndAssignee() throws Exception {
+        teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
+
+        Task ownTask = taskService.create(
+                team.getId(),
+                owner.getId(),
+                owner.getId(),
+                "Owner only task",
+                "Description",
+                DEADLINE_DATE,
+                kinopoiskTag.getId());
+
+        mockMvc.perform(post("/tasks/" + ownTask.getId() + "/edit")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("title", ownTask.getTitle())
+                        .param("status", ownTask.getStatus().name())
+                        .param("authorId", secondUser.getId().toString())
+                        .param("assigneeId", secondUser.getId().toString())
+                        .param("deadlineDate", DEADLINE_DATE.toString())
+                        .param("tagId", plusTag.getId().toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attribute(
+                                "errorMessage",
+                                "Second больше не состоит в команде. Выберите другого автора и исполнителя"));
+    }
+
+    @Test
+    void updateTaskShouldExplainWhyFormerMemberCannotBecomeNewAuthor() throws Exception {
+        teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
+
+        Task ownTask = taskService.create(
+                team.getId(),
+                owner.getId(),
+                owner.getId(),
+                "Owner only task",
+                "Description",
+                DEADLINE_DATE,
+                kinopoiskTag.getId());
+
+        mockMvc.perform(post("/tasks/" + ownTask.getId() + "/edit")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("title", ownTask.getTitle())
+                        .param("status", ownTask.getStatus().name())
+                        .param("authorId", secondUser.getId().toString())
+                        .param("assigneeId", owner.getId().toString())
+                        .param("deadlineDate", DEADLINE_DATE.toString())
+                        .param("tagId", plusTag.getId().toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attribute(
+                                "errorMessage", "Second больше не состоит в команде. Выберите другого автора"));
+
+        assertEquals(owner.getId(), taskService.findById(ownTask.getId()).getAuthorId());
+    }
+
+    @Test
+    void assigneeEndpointShouldExplainFormerMemberInsteadOfNotFound() throws Exception {
+        teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
+
+        Task ownTask = taskService.create(
+                team.getId(),
+                owner.getId(),
+                owner.getId(),
+                "Owner only task",
+                "Description",
+                DEADLINE_DATE,
+                kinopoiskTag.getId());
+
+        mockMvc.perform(post("/tasks/" + ownTask.getId() + "/assignee")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("assigneeId", secondUser.getId().toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks/" + ownTask.getId()))
+                .andExpect(flash().attributeExists("errorMessage"));
+
+        assertEquals(owner.getId(), taskService.findById(ownTask.getId()).getAssigneeId());
+    }
+
+    @Test
+    void authorEndpointShouldKeepFormerAuthorWhenValueIsUnchanged() throws Exception {
+        Task authorTask = taskService.create(
+                team.getId(),
+                secondUser.getId(),
+                owner.getId(),
+                "Former author task",
+                "Description",
+                DEADLINE_DATE,
+                kinopoiskTag.getId());
+
+        teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
+
+        mockMvc.perform(post("/tasks/" + authorTask.getId() + "/author")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("authorId", secondUser.getId().toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks/" + authorTask.getId()));
+
+        assertEquals(
+                secondUser.getId(), taskService.findById(authorTask.getId()).getAuthorId());
+    }
+
+    @Test
+    void createTaskShouldExplainFormerMemberInsteadOfNotFound() throws Exception {
+        teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
+
+        mockMvc.perform(post("/tasks")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("teamId", team.getId().toString())
+                        .param("assigneeId", secondUser.getId().toString())
+                        .param("title", "Task for former member")
+                        .param("description", "Description")
+                        .param("deadlineDate", DEADLINE_DATE.toString())
+                        .param("tagId", kinopoiskTag.getId().toString()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks/new?teamId=" + team.getId()))
+                .andExpect(flash().attribute(
+                                "errorMessage", "Second больше не состоит в команде. Выберите другого исполнителя"));
+    }
+
+    @Test
+    void taskCardsShouldKeepFormerMemberSelectableAsCurrentValue() throws Exception {
+        teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
+
+        mockMvc.perform(get("/tasks").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("primer-select-option task-participant-former")))
+                .andExpect(content().string(containsString("primer-select-value task-participant-former")))
+                .andExpect(content().string(containsString("data-former-member")))
+                .andExpect(content().string(containsString("data-value=\"" + secondUser.getId() + "\"")));
+
+        mockMvc.perform(get("/teams/" + team.getId()).with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("primer-select-option task-participant-former")))
+                .andExpect(content().string(containsString("data-former-member")));
+    }
+
+    @Test
+    void taskCardsShouldNotMarkActiveMembersAsFormer() throws Exception {
+        mockMvc.perform(get("/tasks").with(user(new AuthUser(owner))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("task-participant-former"))))
+                .andExpect(content().string(not(containsString("data-former-member"))));
+    }
+
+    @Test
     void restoredMemberShouldNotBeMarkedAsFormer() throws Exception {
         teamMemberService.removeMember(team.getId(), secondUser.getId(), owner.getId());
         teamMemberService.addMember(team.getId(), secondUser.getId());
@@ -1043,7 +1376,7 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/tasks/" + task.getId()).with(user(new AuthUser(owner))))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Second")))
-                .andExpect(content().string(not(containsString("Пользователь был удалён из команды"))));
+                .andExpect(content().string(not(containsString("Пользователь больше не состоит в команде"))));
     }
 
     private void cleanDatabase() {

@@ -15,8 +15,13 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequiredArgsConstructor
 public class PasswordResetRequestController {
     private static final String EMAIL_ATTRIBUTE = "email";
+    private static final String ERROR_MESSAGE_ATTRIBUTE = "errorMessage";
     private static final String FORGOT_PASSWORD_PATH = "/forgot-password";
     private static final String REQUEST_RESULT_ATTRIBUTE = "requestResult";
+    private static final String DELIVERY_FAILED_MESSAGE =
+            "Не удалось отправить письмо. Проблема на нашей стороне, мы уже работаем над этим. Попробуйте позже";
+    private static final String INVALID_ACCOUNT_MESSAGE =
+            "Этот адрес электронной почты недействителен, не подтвержден или не привязан к учетной записи";
 
     private final PasswordResetRequestService passwordResetRequestService;
 
@@ -24,7 +29,7 @@ public class PasswordResetRequestController {
     public String forgotPassword(Model model, CsrfToken csrfToken) {
         model.addAttribute("_csrf", csrfToken);
         model.addAttribute(REQUEST_RESULT_ATTRIBUTE, getModelAttribute(model, REQUEST_RESULT_ATTRIBUTE));
-        model.addAttribute("errorMessage", null);
+        model.addAttribute(ERROR_MESSAGE_ATTRIBUTE, getModelAttribute(model, ERROR_MESSAGE_ATTRIBUTE));
         model.addAttribute("successMessage", null);
         model.addAttribute("loginUrl", "/login");
         model.addAttribute("registrationUrl", "/registration");
@@ -40,6 +45,12 @@ public class PasswordResetRequestController {
         redirectAttributes.addFlashAttribute(REQUEST_RESULT_ATTRIBUTE, result);
         if (result == PasswordResetRequestResult.INVALID_ACCOUNT) {
             redirectAttributes.addFlashAttribute(EMAIL_ATTRIBUTE, email);
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, INVALID_ACCOUNT_MESSAGE);
+        }
+
+        if (result == PasswordResetRequestResult.DELIVERY_FAILED) {
+            redirectAttributes.addFlashAttribute(EMAIL_ATTRIBUTE, email);
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, DELIVERY_FAILED_MESSAGE);
         }
 
         return "redirect:" + FORGOT_PASSWORD_PATH;

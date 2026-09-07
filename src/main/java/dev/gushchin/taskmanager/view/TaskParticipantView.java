@@ -10,7 +10,7 @@ public record TaskParticipantView(UUID id, String name, boolean removedFromTeam)
     private static final int TRUNCATED_COMMENT_DISPLAY_NAME_LENGTH = 37;
     private static final int MAX_FILTER_DISPLAY_NAME_LENGTH = 15;
     private static final String ELLIPSIS = "...";
-    private static final String REMOVED_FROM_TEAM_TITLE = "Пользователь был удалён из команды";
+    private static final String REMOVED_FROM_TEAM_TITLE = "Пользователь больше не состоит в команде";
     private static final String REMOVED_FROM_TEAM_STYLE = "color: red;";
 
     public String displayName() {

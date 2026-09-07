@@ -30,6 +30,7 @@
             activeTab = page.archiveMode() ? "archive" : "tasks"
         )
 
+        <div class="team-page-content">
         <section class="workspace-page team-details-page">
             @if(!page.hasNoTasks())
                 <div class="task-toolbar">
@@ -397,5 +398,11 @@
             @endif
 
         </section>
+
+        <footer class="team-page-footer">
+            <span>TaskMePlease. Учебный проект таск-трекер </span>
+            <a href="https://github.com/Gushchin-A" target="_blank" rel="noopener noreferrer">github.com/Gushchin-A</a>
+        </footer>
+        </div>
     `
 )

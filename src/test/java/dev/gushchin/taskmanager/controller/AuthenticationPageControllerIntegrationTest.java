@@ -143,7 +143,7 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("name=\"name\"")))
                 .andExpect(content().string(containsString("name=\"email\"")))
                 .andExpect(content().string(containsString("name=\"password\"")))
-                .andExpect(content().string(containsString("data-loading-text=\"Создаём аккаунт…\"")))
+                .andExpect(content().string(containsString("data-loading-text=\"Создаем аккаунт…\"")))
                 .andExpect(content().string(containsString("Создать аккаунт")))
                 .andExpect(content().string(containsString("Уже есть аккаунт?")));
     }
@@ -337,7 +337,7 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/verification-pending")
                         .session((MockHttpSession) result.getRequest().getSession()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Подтвердите email")))
+                .andExpect(content().string(containsString("Подтверждение почты")))
                 .andExpect(content().string(containsString("Отправили вам ссылку для подтверждения")))
                 .andExpect(content().string(containsString("проверьте папку «Спам»")))
                 .andExpect(content().string(not(containsString("Назад на страницу входа"))))
@@ -869,7 +869,8 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                         .param("password", PASSWORD))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/verification-pending"))
-                .andExpect(flash().attributeExists("errorMessage"));
+                .andExpect(flash().attributeExists("errorMessage"))
+                .andExpect(flash().attribute("deliveryFailed", true));
 
         User user = userRepository.findByEmail(EMAIL);
         AccountTokensRecord token = dsl.selectFrom(ACCOUNT_TOKENS)
@@ -879,6 +880,48 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
         assertNotNull(user);
         assertFalse(user.isEmailVerified());
         assertNull(token);
+    }
+
+    @Test
+    void verificationPendingShouldExplainDeliveryFailureInsteadOfDeliveryPromise() throws Exception {
+        MvcResult result = mockMvc.perform(post("/registration")
+                        .with(csrf())
+                        .param("email", EMAIL)
+                        .param("name", "Auth user")
+                        .param("password", PASSWORD))
+                .andExpect(redirectedUrl("/verification-pending"))
+                .andReturn();
+
+        mockMvc.perform(get("/verification-pending")
+                        .session((MockHttpSession) result.getRequest().getSession())
+                        .flashAttr("deliveryFailed", true))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Подтверждение почты")))
+                .andExpect(content().string(containsString("Мы не смогли отправить письмо по техническим причинам")))
+                .andExpect(content().string(not(containsString("Отправили вам ссылку для подтверждения"))))
+                .andExpect(content().string(containsString("Отправить письмо повторно")));
+    }
+
+    @Test
+    void resendShouldReportDeliveryFailureAgain() throws Exception {
+        doThrow(new TransactionalEmailSendingException(new RuntimeException()))
+                .when(emailSender)
+                .send(anyString(), anyString(), anyString(), anyString());
+
+        MvcResult result = mockMvc.perform(post("/registration")
+                        .with(csrf())
+                        .param("email", EMAIL)
+                        .param("name", "Auth user")
+                        .param("password", PASSWORD))
+                .andExpect(redirectedUrl("/verification-pending"))
+                .andReturn();
+
+        mockMvc.perform(post("/resend-verification").with(csrf()).session((MockHttpSession)
+                        result.getRequest().getSession()))
+                .andExpect(redirectedUrl("/verification-pending"))
+                .andExpect(flash().attributeExists("errorMessage"))
+                .andExpect(flash().attribute("deliveryFailed", true))
+                .andExpect(flash().attributeCount(2));
     }
 
     @Test

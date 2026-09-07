@@ -567,7 +567,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .with(user(new AuthUser(owner))))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/teams/" + team.getId() + "/members"))
-                .andExpect(flash().attribute("successMessage", "Участник удалён из команды"));
+                .andExpect(flash().attribute("successMessage", "Участник удален из команды"));
 
         TeamMember removedMember = teamMemberRepository.findByTeamIdAndUserId(team.getId(), member.getId());
 
@@ -1375,7 +1375,7 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("assigneeIds=" + member.getId())))
                 .andExpect(content().string(containsString("Member")))
                 .andExpect(content().string(containsString("color: red;")))
-                .andExpect(content().string(containsString("Пользователь был удалён из команды")));
+                .andExpect(content().string(containsString("Пользователь больше не состоит в команде")));
     }
 
     @Test

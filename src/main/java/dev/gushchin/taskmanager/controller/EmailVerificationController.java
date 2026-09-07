@@ -31,6 +31,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Controller
 @RequiredArgsConstructor
 public class EmailVerificationController {
+    private static final String DELIVERY_FAILED_ATTRIBUTE = "deliveryFailed";
     private static final String ERROR_MESSAGE_ATTRIBUTE = "errorMessage";
     private static final String INVITATIONS_PATH_PREFIX = "/invitations/";
     private static final String INVITE_PARAMETER = "invite";
@@ -77,6 +78,8 @@ public class EmailVerificationController {
         model.addAttribute("loginUrl", buildLoginUrl(redirect, invite));
         model.addAttribute("registrationUrl", "/registration");
         model.addAttribute("limitReached", resendState.remainingAttempts() == 0);
+        model.addAttribute(
+                DELIVERY_FAILED_ATTRIBUTE, Boolean.TRUE.equals(getModelAttribute(model, DELIVERY_FAILED_ATTRIBUTE)));
         model.addAttribute("_csrf", csrfToken);
         model.addAttribute(SafeRedirectAuthenticationSuccessHandler.REDIRECT_PARAMETER, redirect);
         model.addAttribute(INVITE_PARAMETER, invite);
@@ -110,6 +113,7 @@ public class EmailVerificationController {
     private void addResendFlash(EmailVerificationResendResult result, RedirectAttributes redirectAttributes) {
         if (result == EmailVerificationResendResult.DELIVERY_FAILED) {
             redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, VERIFICATION_EMAIL_FAILED_MESSAGE);
+            redirectAttributes.addFlashAttribute(DELIVERY_FAILED_ATTRIBUTE, true);
             return;
         }
         redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, NEUTRAL_RESEND_MESSAGE);

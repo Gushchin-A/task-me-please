@@ -32,6 +32,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class RegistrationController {
     private static final String CSRF_ATTRIBUTE = "_csrf";
     private static final String EMAIL_FORMAT_ERROR_MESSAGE = "Email имеет неправильный формат";
+    private static final String DELIVERY_FAILED_ATTRIBUTE = "deliveryFailed";
     private static final String ERROR_MESSAGE_ATTRIBUTE = "errorMessage";
     private static final String INVITE_PARAMETER = "invite";
     private static final String LOGIN_PATH = "/login";
@@ -115,6 +116,7 @@ public class RegistrationController {
 
         if (!emailDelivered) {
             redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, VERIFICATION_EMAIL_FAILED_MESSAGE);
+            redirectAttributes.addFlashAttribute(DELIVERY_FAILED_ATTRIBUTE, true);
         }
 
         saveVerificationContext(request.getSession(), email, redirect, invite);

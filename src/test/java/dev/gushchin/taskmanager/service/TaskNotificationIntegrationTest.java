@@ -88,7 +88,7 @@ class TaskNotificationIntegrationTest extends IntegrationTestBase {
                 firstAssignee.getId(),
                 "Notification task",
                 TASK_DESCRIPTION,
-                null,
+                LocalDate.of(2026, 9, 9),
                 tag.getId());
 
         assertLatestType(owner, NotificationEventType.TASK_CREATED);
@@ -129,7 +129,7 @@ class TaskNotificationIntegrationTest extends IntegrationTestBase {
                 assignee.getId(),
                 "Notification task",
                 TASK_DESCRIPTION,
-                null,
+                LocalDate.of(2026, 9, 9),
                 tag.getId());
         int eventsBeforeDeniedAction = dsl.fetchCount(NOTIFICATION_EVENTS);
 
@@ -171,7 +171,13 @@ class TaskNotificationIntegrationTest extends IntegrationTestBase {
         teamMemberService.addMember(team.getId(), member.getId());
         TeamTag tag = teamTagService.findByTeamId(team.getId()).getFirst();
         Task task = taskService.create(
-                team.getId(), member.getId(), member.getId(), "Completed task", TASK_DESCRIPTION, null, tag.getId());
+                team.getId(),
+                member.getId(),
+                member.getId(),
+                "Completed task",
+                TASK_DESCRIPTION,
+                LocalDate.of(2026, 9, 9),
+                tag.getId());
         taskService.updateStatus(task.getId(), TaskStatus.DONE, owner.getId());
 
         taskService.archive(task.getId(), owner.getId());

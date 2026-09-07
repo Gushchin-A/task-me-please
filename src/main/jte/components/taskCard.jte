@@ -220,7 +220,8 @@
                                 aria-haspopup="listbox"
                                 aria-expanded="false"
                                 aria-labelledby="task-author-label-${task.id()} task-author-value-${task.id()}"
-                                data-tooltip="${task.authorChangeWarningText()}"
+                                data-tooltip="${task.authorChangeWarningText() == null ? "" : task.authorChangeWarningText()}"
+                                data-former-member-tooltip="${task.participants().author().removedFromTeamTitle()}"
                                 data-author-change-warning="${task.showAuthorChangeWarning() ? true : null}"
                                 data-current-author-id="${task.showAuthorChangeWarning() ? task.authorId().toString() : null}"
                                 data-access-warning="${task.showAuthorChangeWarning()
@@ -234,7 +235,7 @@
                                     ${task.participants().author().initial()}
                                 </span>
                                 <span
-                                    class="primer-select-value"
+                                    class="primer-select-value ${task.authorRemovedFromTeam() ? "task-participant-former" : ""}"
                                     id="task-author-value-${task.id()}"
                                 >
                                     ${task.participants().author().shortDisplayName()}
@@ -247,6 +248,28 @@
                             <div class="primer-select-panel" hidden>
                                 <div class="primer-select-heading">Выберите автора</div>
                                 <div class="primer-select-options" role="listbox" aria-labelledby="task-author-label-${task.id()}">
+                            @if(task.authorRemovedFromTeam())
+                                    <button
+                                        class="primer-select-option task-participant-former"
+                                        type="button"
+                                        role="option"
+                                        aria-selected="true"
+                                        title="${task.participants().author().removedFromTeamTitle()}"
+                                        data-value="${task.authorId().toString()}"
+                                        data-label="${task.participants().author().shortDisplayName()}"
+                                        data-full-label="${task.participants().author().displayName()}"
+                                        data-avatar="${task.participants().author().initial()}"
+                                        data-former-member
+                                    >
+                                        <span class="primer-select-check" aria-hidden="true">
+                                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                                <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 1 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+                                            </svg>
+                                        </span>
+                                        <span class="participant-avatar">${task.participants().author().initial()}</span>
+                                        <span class="primer-select-option-copy">${task.participants().author().displayName()}</span>
+                                    </button>
+                            @endif
                             @for(TaskParticipantView member : members)
                                     <button
                                         class="primer-select-option"
@@ -283,12 +306,14 @@
                                 aria-haspopup="listbox"
                                 aria-expanded="false"
                                 aria-labelledby="task-assignee-label-${task.id()} task-assignee-value-${task.id()}"
+                                data-tooltip=""
+                                data-former-member-tooltip="${task.participants().assignee().removedFromTeamTitle()}"
                             >
                                 <span class="participant-avatar" data-selected-avatar>
                                     ${task.participants().assignee().initial()}
                                 </span>
                                 <span
-                                    class="primer-select-value"
+                                    class="primer-select-value ${task.assigneeRemovedFromTeam() ? "task-participant-former" : ""}"
                                     id="task-assignee-value-${task.id()}"
                                 >
                                     ${task.participants().assignee().shortDisplayName()}
@@ -301,6 +326,28 @@
                             <div class="primer-select-panel" hidden>
                                 <div class="primer-select-heading">Выберите исполнителя</div>
                                 <div class="primer-select-options" role="listbox" aria-labelledby="task-assignee-label-${task.id()}">
+                            @if(task.assigneeRemovedFromTeam())
+                                        <button
+                                            class="primer-select-option task-participant-former"
+                                            type="button"
+                                            role="option"
+                                            aria-selected="true"
+                                            title="${task.participants().assignee().removedFromTeamTitle()}"
+                                            data-value="${task.assigneeId().toString()}"
+                                            data-label="${task.participants().assignee().shortDisplayName()}"
+                                            data-full-label="${task.participants().assignee().displayName()}"
+                                            data-avatar="${task.participants().assignee().initial()}"
+                                            data-former-member
+                                        >
+                                            <span class="primer-select-check" aria-hidden="true">
+                                                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                                    <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 1 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+                                                </svg>
+                                            </span>
+                                            <span class="participant-avatar">${task.participants().assignee().initial()}</span>
+                                            <span class="primer-select-option-copy">${task.participants().assignee().displayName()}</span>
+                                        </button>
+                            @endif
                             @for(TaskParticipantView member : members)
                                         <button
                                             class="primer-select-option"

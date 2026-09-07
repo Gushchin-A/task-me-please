@@ -19,6 +19,7 @@ public class CommentService {
 
     private final CommentRepository commentRepository;
     private final NotificationPublisher notificationPublisher;
+    private final TaskEmailService taskEmailService;
     private final TaskService taskService;
     private final UserService userService;
 
@@ -52,6 +53,7 @@ public class CommentService {
 
         Comment savedComment = commentRepository.save(comment);
         notificationPublisher.commentCreated(savedComment, task, userId);
+        taskEmailService.sendCommentCreated(task, userId, savedComment.getId());
 
         return savedComment;
     }

@@ -2,6 +2,7 @@ package dev.gushchin.taskmanager.service;
 
 import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
 import dev.gushchin.taskmanager.exception.BlankTaskDescriptionException;
+import dev.gushchin.taskmanager.exception.MissingTaskDeadlineException;
 import dev.gushchin.taskmanager.exception.TaskNotFoundException;
 import dev.gushchin.taskmanager.exception.TaskTitleAlreadyExistsException;
 import dev.gushchin.taskmanager.model.Task;
@@ -18,6 +19,7 @@ import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Predicate;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,7 @@ public class TaskService {
     private final TeamTagService teamTagService;
     private final TeamMemberService teamMemberService;
     private final NotificationPublisher notificationPublisher;
+    private final TaskEmailService taskEmailService;
 
     public List<Task> findByTeamId(Long teamId) {
         return taskRepository.findByTeamId(teamId).stream()
@@ -85,8 +88,7 @@ public class TaskService {
 
         Instant now = Instant.now();
 
-        Instant deadlineAt =
-                deadlineDate == null ? null : deadlineDate.atStartOfDay().toInstant(ZoneOffset.UTC);
+        Instant deadlineAt = requireDeadline(deadlineDate);
         String preparedDescription = prepareRequiredDescription(description);
 
         Task task = new Task(
@@ -107,6 +109,7 @@ public class TaskService {
 
         Task savedTask = taskRepository.save(task);
         notificationPublisher.taskCreated(savedTask, authorId);
+        taskEmailService.sendTaskCreated(savedTask, authorId);
 
         return savedTask;
     }
@@ -312,6 +315,7 @@ public class TaskService {
         Task updatedTask = taskRepository.updateStatus(task.getId(), status, Instant.now());
         if (task.getStatus() != updatedTask.getStatus()) {
             notificationPublisher.taskStatusChanged(task, updatedTask, userId);
+            taskEmailService.sendStatusChanged(updatedTask, userId);
         }
 
         return updatedTask;
@@ -337,11 +341,12 @@ public class TaskService {
         Task task = findByIdForUser(id, userId);
 
         checkCanUpdateTask(task, userId);
-        teamMemberService.findById(task.getTeamId(), authorId);
+        requireTeamMemberIfChanged(task.getTeamId(), task.getAuthorId(), authorId);
 
         Task updatedTask = taskRepository.updateAuthor(task.getId(), authorId, Instant.now());
         if (!task.getAuthorId().equals(updatedTask.getAuthorId())) {
             notificationPublisher.taskAuthorChanged(task, updatedTask, userId);
+            taskEmailService.sendAuthorChanged(task, updatedTask, userId);
         }
 
         return updatedTask;
@@ -352,11 +357,12 @@ public class TaskService {
         Task task = findByIdForUser(id, userId);
 
         checkCanUpdateTask(task, userId);
-        teamMemberService.findById(task.getTeamId(), assigneeId);
+        requireTeamMemberIfChanged(task.getTeamId(), task.getAssigneeId(), assigneeId);
 
         Task updatedTask = taskRepository.updateAssignee(task.getId(), assigneeId, Instant.now());
         if (!task.getAssigneeId().equals(updatedTask.getAssigneeId())) {
             notificationPublisher.taskAssigneeChanged(task, updatedTask, userId);
+            taskEmailService.sendAssigneeChanged(task, updatedTask, userId);
         }
 
         return updatedTask;
@@ -368,12 +374,12 @@ public class TaskService {
 
         checkCanUpdateTask(task, userId);
 
-        Instant deadlineAt =
-                deadlineDate == null ? null : deadlineDate.atStartOfDay().toInstant(ZoneOffset.UTC);
+        Instant deadlineAt = requireDeadline(deadlineDate);
 
         Task updatedTask = taskRepository.updateDeadline(task.getId(), deadlineAt, Instant.now());
-        if (!java.util.Objects.equals(task.getDeadlineAt(), updatedTask.getDeadlineAt())) {
+        if (!Objects.equals(task.getDeadlineAt(), updatedTask.getDeadlineAt())) {
             notificationPublisher.taskDeadlineChanged(task, updatedTask, userId);
+            taskEmailService.sendDeadlineChanged(updatedTask, userId);
         }
 
         return updatedTask;
@@ -385,15 +391,13 @@ public class TaskService {
         final Task before = copyTask(task);
 
         checkCanUpdateTask(task, userId);
-        teamMemberService.findById(task.getTeamId(), update.authorId());
-        teamMemberService.findById(task.getTeamId(), update.assigneeId());
+        requireTeamMemberIfChanged(task.getTeamId(), task.getAuthorId(), update.authorId());
+        requireTeamMemberIfChanged(task.getTeamId(), task.getAssigneeId(), update.assigneeId());
         teamTagService.findByIdForTeam(update.tagId(), task.getTeamId());
 
         String preparedTitle = prepareTitle(task.getTeamId(), update.title(), task.getId());
 
-        Instant deadlineAt = update.deadlineDate() == null
-                ? null
-                : update.deadlineDate().atStartOfDay().toInstant(ZoneOffset.UTC);
+        Instant deadlineAt = requireDeadline(update.deadlineDate());
 
         task.setTitle(preparedTitle);
         task.setDescription(prepareDescription(update.description()));
@@ -419,6 +423,7 @@ public class TaskService {
 
         Task updatedTask = taskRepository.archive(task.getId(), userId, Instant.now());
         notificationPublisher.taskArchived(task, updatedTask, userId);
+        taskEmailService.sendTaskArchived(task, updatedTask, userId);
 
         return updatedTask;
     }
@@ -433,8 +438,15 @@ public class TaskService {
 
         Task updatedTask = taskRepository.restoreFromArchive(task.getId(), Instant.now());
         notificationPublisher.taskRestored(task, updatedTask, userId);
+        taskEmailService.sendTaskRestored(updatedTask, userId);
 
         return updatedTask;
+    }
+
+    private void requireTeamMemberIfChanged(Long teamId, UUID currentUserId, UUID newUserId) {
+        if (!Objects.equals(newUserId, currentUserId)) {
+            teamMemberService.findById(teamId, newUserId);
+        }
     }
 
     private void checkCanUpdateTask(Task task, UUID userId) {
@@ -467,6 +479,14 @@ public class TaskService {
 
     public boolean isTeamOwner(Task task, UUID userId) {
         return taskPermissionService.isTeamOwner(task, userId);
+    }
+
+    private Instant requireDeadline(LocalDate deadlineDate) {
+        if (deadlineDate == null) {
+            throw new MissingTaskDeadlineException();
+        }
+
+        return deadlineDate.atStartOfDay().toInstant(ZoneOffset.UTC);
     }
 
     private String prepareDescription(String description) {
@@ -509,12 +529,15 @@ public class TaskService {
     private void publishDetailsChanges(Task before, Task after, UUID userId) {
         if (before.getStatus() != after.getStatus()) {
             notificationPublisher.taskStatusChanged(before, after, userId);
+            taskEmailService.sendStatusChanged(after, userId);
         }
         if (!before.getAuthorId().equals(after.getAuthorId())) {
             notificationPublisher.taskAuthorChanged(before, after, userId);
+            taskEmailService.sendAuthorChanged(before, after, userId);
         }
         if (!before.getAssigneeId().equals(after.getAssigneeId())) {
             notificationPublisher.taskAssigneeChanged(before, after, userId);
+            taskEmailService.sendAssigneeChanged(before, after, userId);
         }
         if (!java.util.Objects.equals(before.getTitle(), after.getTitle())) {
             notificationPublisher.taskTitleChanged(before, after, userId);
@@ -524,6 +547,7 @@ public class TaskService {
         }
         if (!java.util.Objects.equals(before.getDeadlineAt(), after.getDeadlineAt())) {
             notificationPublisher.taskDeadlineChanged(before, after, userId);
+            taskEmailService.sendDeadlineChanged(after, userId);
         }
         if (!java.util.Objects.equals(before.getTagId(), after.getTagId())) {
             notificationPublisher.taskTagChanged(before, after, userId);
