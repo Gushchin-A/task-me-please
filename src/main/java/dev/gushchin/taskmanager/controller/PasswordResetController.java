@@ -19,7 +19,7 @@ public class PasswordResetController {
     private static final String ERROR_MESSAGE_ATTRIBUTE = "errorMessage";
     private static final String PASSWORD_RESET_INVALID_VIEW = "reset-password-invalid";
     private static final String PASSWORD_RESET_PATH_PREFIX = "/reset-password/";
-    private static final String PASSWORD_RESET_SUCCESS_MESSAGE = "Password изменён. Войдите с новым password";
+    private static final String PASSWORD_RESET_SUCCESS_MESSAGE = "Пароль изменен. Войдите с новым паролем";
     private static final String SUCCESS_MESSAGE_ATTRIBUTE = "successMessage";
 
     private final PasswordResetService passwordResetService;

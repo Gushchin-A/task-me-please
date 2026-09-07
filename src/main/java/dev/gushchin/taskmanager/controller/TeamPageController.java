@@ -62,6 +62,8 @@ public class TeamPageController {
     private static final String CSRF_ATTRIBUTE = "_csrf";
     private static final String ERROR_MESSAGE_ATTRIBUTE = "errorMessage";
     private static final int INVITATION_EMAIL_MAX_LENGTH = 255;
+    private static final String INVITATION_EMAIL_FAILED_MESSAGE =
+            "Не удалось отправить письмо. Скопируйте ссылку вручную из таблицы приглашений";
     private static final Pattern INVITATION_EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
     private static final String INVITE_PATH_SUFFIX = "/invite";
     private static final String DELETE_TEAM_CONFIRMATION_TEXT = "я хочу удалить команду";
@@ -628,8 +630,11 @@ public class TeamPageController {
             @PathVariable Long invitationId,
             RedirectAttributes redirectAttributes) {
         try {
-            teamInvitationService.resend(invitationId, teamId, authUser.getId());
-            redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, RESEND_INVITATION_SUCCESS_MESSAGE);
+            if (teamInvitationService.resend(invitationId, teamId, authUser.getId())) {
+                redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, RESEND_INVITATION_SUCCESS_MESSAGE);
+            } else {
+                redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, INVITATION_EMAIL_FAILED_MESSAGE);
+            }
         } catch (AccessDeniedForTaskException ex) {
             redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, OWNER_INVITE_REQUIRED_MESSAGE);
         } catch (TeamInvitationNotFoundException ex) {
@@ -693,8 +698,11 @@ public class TeamPageController {
         }
 
         try {
-            teamInvitationService.createAndSend(teamId, email, currentUserId);
-            redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Приглашение успешно создано");
+            if (teamInvitationService.createAndSend(teamId, email, currentUserId)) {
+                redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Приглашение успешно создано");
+            } else {
+                redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, INVITATION_EMAIL_FAILED_MESSAGE);
+            }
         } catch (TeamMemberAlreadyExistsException ex) {
             redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, "Пользователь уже состоит в команде");
         } catch (TeamInvitationAlreadyPendingException ex) {

@@ -4,6 +4,7 @@ import dev.gushchin.taskmanager.exception.InvalidAccountTokenException;
 import dev.gushchin.taskmanager.exception.TransactionalEmailSendingException;
 import dev.gushchin.taskmanager.model.AccountToken;
 import dev.gushchin.taskmanager.model.AccountTokenType;
+import dev.gushchin.taskmanager.model.EmailVerificationResendResult;
 import dev.gushchin.taskmanager.model.EmailVerificationResendState;
 import dev.gushchin.taskmanager.model.EmailVerificationResult;
 import dev.gushchin.taskmanager.model.User;
@@ -34,23 +35,30 @@ public class EmailVerificationService {
     private final VerificationEmailService verificationEmailService;
 
     @Transactional
-    public User register(String email, String name, String password, String invite) {
+    public boolean register(String email, String name, String password, String invite) {
         User user = userService.create(email, name, password);
 
-        createAndSend(user, invite);
-
-        return user;
+        return createAndSend(user, invite);
     }
 
     @Transactional
-    public void resend(String email, String invite) {
+    public EmailVerificationResendResult resend(String email, String invite) {
         User user = userRepository.findByEmailForUpdate(email);
-        if (user != null && !user.isDeleted() && !user.isEmailVerified()) {
-            EmailVerificationResendState resendState = getResendState(user, Instant.now());
-            if (resendState.available()) {
-                createAndSend(user, invite);
-            }
+        if (user == null || user.isDeleted() || user.isEmailVerified()) {
+            return EmailVerificationResendResult.NOT_APPLICABLE;
         }
+
+        EmailVerificationResendState resendState = getResendState(user, Instant.now());
+        if (resendState.remainingAttempts() == 0) {
+            return EmailVerificationResendResult.LIMIT_REACHED;
+        }
+        if (resendState.cooldownSeconds() > 0) {
+            return EmailVerificationResendResult.COOLDOWN;
+        }
+
+        return createAndSend(user, invite)
+                ? EmailVerificationResendResult.SENT
+                : EmailVerificationResendResult.DELIVERY_FAILED;
     }
 
     public EmailVerificationResendState getResendState(String email) {
@@ -114,15 +122,20 @@ public class EmailVerificationService {
         return new EmailVerificationResult(verifiedUser, false);
     }
 
-    private void createAndSend(User user, String invite) {
+    private boolean createAndSend(User user, String invite) {
         String token = accountTokenService.create(user.getId(), AccountTokenType.EMAIL_VERIFICATION, TOKEN_LIFETIME);
 
         try {
             verificationEmailService.sendVerification(user, token, TOKEN_LIFETIME, invite);
+
+            return true;
         } catch (TransactionalEmailSendingException ex) {
             if (log.isWarnEnabled()) {
                 log.warn("Verification email could not be sent for user {}", user.getId());
             }
+            accountTokenService.discard(token);
+
+            return false;
         }
     }
 

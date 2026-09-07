@@ -42,6 +42,10 @@ public class AccountTokenService {
         return token;
     }
 
+    public void discard(String token) {
+        accountTokenRepository.deleteByTokenHash(hashToken(token));
+    }
+
     public AccountToken findValid(String token, AccountTokenType type) {
         AccountToken accountToken = find(token, type);
         if (accountToken == null

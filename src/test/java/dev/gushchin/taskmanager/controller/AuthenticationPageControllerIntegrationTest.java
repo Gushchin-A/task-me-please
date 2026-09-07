@@ -330,7 +330,8 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
         verify(emailSender)
                 .send(
                         org.mockito.ArgumentMatchers.eq(EMAIL),
-                        org.mockito.ArgumentMatchers.eq("Подтвердите email в Task Me Please"),
+                        org.mockito.ArgumentMatchers.eq("Подтверждение регистрации в TaskMePlease"),
+                        anyString(),
                         anyString());
 
         mockMvc.perform(get("/verification-pending")
@@ -340,7 +341,7 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("Отправили вам ссылку для подтверждения")))
                 .andExpect(content().string(containsString("проверьте папку «Спам»")))
                 .andExpect(content().string(not(containsString("Назад на страницу входа"))))
-                .andExpect(content().string(not(containsString("Отправить письмо повторно"))))
+                .andExpect(content().string(containsString("Отправить письмо повторно")))
                 .andExpect(content().string(not(containsString("Повторных попыток осталось:"))));
     }
 
@@ -718,14 +719,15 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
 
     @Test
     void resendShouldInvalidatePreviousTokenAfterCooldown() throws Exception {
-        registerUser(EMAIL);
+        MockHttpSession session =
+                (MockHttpSession) registerUser(EMAIL).getRequest().getSession();
         final String previousToken = captureVerificationToken();
         dsl.update(ACCOUNT_TOKENS)
                 .set(ACCOUNT_TOKENS.CREATED_AT, OffsetDateTime.now().minusMinutes(2))
                 .execute();
         reset(emailSender);
 
-        mockMvc.perform(post("/resend-verification").with(csrf()).param("email", EMAIL))
+        mockMvc.perform(post("/resend-verification").with(csrf()).session(session))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/verification-pending"))
                 .andExpect(flash().attribute("successMessage", "Отправили вам новое письмо с подтверждением почты"));
@@ -762,7 +764,7 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(flash().attribute("successMessage", "Отправили вам новое письмо с подтверждением почты"));
 
         assertEquals(1, dsl.fetchCount(ACCOUNT_TOKENS));
-        verify(emailSender, org.mockito.Mockito.never()).send(anyString(), anyString(), anyString());
+        verify(emailSender, org.mockito.Mockito.never()).send(anyString(), anyString(), anyString(), anyString());
     }
 
     @Test
@@ -811,6 +813,28 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void resendShouldIgnoreSubmittedEmailAndUseSessionOwner() throws Exception {
+        userService.create("stranger@test.com", "Stranger", PASSWORD);
+        MockHttpSession session =
+                (MockHttpSession) registerUser(EMAIL).getRequest().getSession();
+        dsl.update(ACCOUNT_TOKENS)
+                .set(ACCOUNT_TOKENS.CREATED_AT, OffsetDateTime.now().minusMinutes(2))
+                .execute();
+        reset(emailSender);
+
+        mockMvc.perform(post("/resend-verification")
+                        .with(csrf())
+                        .session(session)
+                        .param("email", "stranger@test.com"))
+                .andExpect(status().isFound())
+                .andExpect(redirectedUrl("/verification-pending"));
+
+        verify(emailSender).send(org.mockito.ArgumentMatchers.eq(EMAIL), anyString(), anyString(), anyString());
+        verify(emailSender, org.mockito.Mockito.never())
+                .send(org.mockito.ArgumentMatchers.eq("stranger@test.com"), anyString(), anyString(), anyString());
+    }
+
+    @Test
     void resendShouldBeNeutralForUnknownAndVerifiedEmails() throws Exception {
         createVerifiedUser(EMAIL);
 
@@ -824,7 +848,7 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(redirectedUrl("/verification-pending"))
                 .andExpect(flash().attribute("successMessage", "Отправили вам новое письмо с подтверждением почты"));
 
-        verify(emailSender, org.mockito.Mockito.never()).send(anyString(), anyString(), anyString());
+        verify(emailSender, org.mockito.Mockito.never()).send(anyString(), anyString(), anyString(), anyString());
     }
 
     @Test
@@ -833,10 +857,10 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    void smtpFailureShouldKeepRegisteredUserAndVerificationToken() throws Exception {
+    void smtpFailureShouldKeepRegisteredUserAndDiscardVerificationToken() throws Exception {
         doThrow(new TransactionalEmailSendingException(new RuntimeException()))
                 .when(emailSender)
-                .send(anyString(), anyString(), anyString());
+                .send(anyString(), anyString(), anyString(), anyString());
 
         mockMvc.perform(post("/registration")
                         .with(csrf())
@@ -844,7 +868,8 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
                         .param("name", "Auth user")
                         .param("password", PASSWORD))
                 .andExpect(status().isFound())
-                .andExpect(redirectedUrl("/verification-pending"));
+                .andExpect(redirectedUrl("/verification-pending"))
+                .andExpect(flash().attributeExists("errorMessage"));
 
         User user = userRepository.findByEmail(EMAIL);
         AccountTokensRecord token = dsl.selectFrom(ACCOUNT_TOKENS)
@@ -853,7 +878,7 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
 
         assertNotNull(user);
         assertFalse(user.isEmailVerified());
-        assertNotNull(token);
+        assertNull(token);
     }
 
     @Test
@@ -961,7 +986,7 @@ class AuthenticationPageControllerIntegrationTest extends IntegrationTestBase {
 
     private String captureVerificationToken() {
         ArgumentCaptor<String> textCaptor = ArgumentCaptor.forClass(String.class);
-        verify(emailSender).send(anyString(), anyString(), textCaptor.capture());
+        verify(emailSender).send(anyString(), anyString(), anyString(), textCaptor.capture());
         String text = textCaptor.getValue();
         String pathPrefix = "/verify-email/";
         int tokenStart = text.indexOf(pathPrefix) + pathPrefix.length();

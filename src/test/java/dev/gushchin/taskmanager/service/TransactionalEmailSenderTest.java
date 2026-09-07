@@ -60,12 +60,13 @@ class TransactionalEmailSenderTest {
                           "sender": {"email": "no-reply@test.com"},
                           "to": [{"email": "user@test.com"}],
                           "subject": "Subject",
+                          "htmlContent": "<p>Message html</p>",
                           "textContent": "Message text"
                         }
                         """))
                 .andRespond(withSuccess("{\"messageId\":\"message-id\"}", MediaType.APPLICATION_JSON));
 
-        emailSender.send("user@test.com", "Subject", "Message text");
+        emailSender.send("user@test.com", "Subject", "<p>Message html</p>", "Message text");
 
         server.verify();
     }
@@ -76,7 +77,7 @@ class TransactionalEmailSenderTest {
 
         assertThrows(
                 TransactionalEmailSendingException.class,
-                () -> emailSender.send("user@test.com", "Subject", "Message text"));
+                () -> emailSender.send("user@test.com", "Subject", "<p>Message html</p>", "Message text"));
 
         assertTrue(output.getAll().contains("Brevo API delivery failed"));
         assertTrue(output.getAll().contains("status=400"));
@@ -90,7 +91,7 @@ class TransactionalEmailSenderTest {
 
         assertThrows(
                 TransactionalEmailSendingException.class,
-                () -> emailSender.send("user@test.com", "Subject", "Message text"));
+                () -> emailSender.send("user@test.com", "Subject", "<p>Message html</p>", "Message text"));
 
         assertTrue(output.getAll().contains("Brevo API delivery failed"));
         assertTrue(output.getAll().contains("status=503"));
@@ -104,7 +105,7 @@ class TransactionalEmailSenderTest {
 
         assertThrows(
                 TransactionalEmailSendingException.class,
-                () -> emailSender.send("user@test.com", "Subject", "Message text"));
+                () -> emailSender.send("user@test.com", "Subject", "<p>Message html</p>", "Message text"));
 
         assertTrue(output.getAll().contains("Brevo API delivery failed"));
         assertTrue(output.getAll().contains("SocketTimeoutException"));
@@ -118,7 +119,7 @@ class TransactionalEmailSenderTest {
 
         assertThrows(
                 TransactionalEmailSendingException.class,
-                () -> emailSender.send("user@test.com", "Subject", "Message text"));
+                () -> emailSender.send("user@test.com", "Subject", "<p>Message html</p>", "Message text"));
 
         assertTrue(output.getAll().contains("Brevo API delivery failed"));
         assertTrue(output.getAll().contains("ConnectException"));
@@ -133,7 +134,7 @@ class TransactionalEmailSenderTest {
 
         assertThrows(
                 TransactionalEmailSendingException.class,
-                () -> emailSender.send("user@test.com", "Subject", "Message text"));
+                () -> emailSender.send("user@test.com", "Subject", "<p>Message html</p>", "Message text"));
 
         assertTrue(output.getAll().contains("Brevo API returned an invalid success response"));
         assertSafeDiagnostics(output);
@@ -146,7 +147,7 @@ class TransactionalEmailSenderTest {
 
         assertThrows(
                 TransactionalEmailSendingException.class,
-                () -> emailSender.send("user@test.com", "Subject", "Message text"));
+                () -> emailSender.send("user@test.com", "Subject", "<p>Message html</p>", "Message text"));
 
         assertTrue(output.getAll().contains("Brevo API delivery failed"));
         assertSafeDiagnostics(output);

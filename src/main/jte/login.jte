@@ -58,7 +58,6 @@
         @if(unverifiedEmail != null)
             <form method="post" action="/resend-verification" data-submit-loading>
                 <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
-                <input type="hidden" name="email" value="${unverifiedEmail}">
 
                 @if(redirect != null)
                     <input type="hidden" name="redirect" value="${redirect}">

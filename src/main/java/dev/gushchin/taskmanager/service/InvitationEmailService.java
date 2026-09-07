@@ -1,11 +1,12 @@
 package dev.gushchin.taskmanager.service;
 
-import dev.gushchin.taskmanager.config.AppProperties;
 import dev.gushchin.taskmanager.exception.InvitationEmailSendingException;
 import dev.gushchin.taskmanager.exception.TransactionalEmailSendingException;
 import dev.gushchin.taskmanager.model.Team;
 import dev.gushchin.taskmanager.model.TeamInvitation;
 import dev.gushchin.taskmanager.model.User;
+import dev.gushchin.taskmanager.view.EmailActionView;
+import dev.gushchin.taskmanager.view.EmailContentView;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -13,38 +14,27 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class InvitationEmailService {
     private static final String INVITATION_PATH_PREFIX = "/invitations/";
+    private static final String HEADING = "Новое приглашение в команду";
 
-    private final TransactionalEmailSender emailSender;
-    private final AppProperties appProperties;
+    private final EmailMessageSender messageSender;
+    private final EmailLifetimeFormatter lifetimeFormatter;
 
     public void sendInvitation(TeamInvitation invitation, Team team, User invitedBy) {
+        EmailContentView content = EmailContentView.builder()
+                .heading(HEADING)
+                .bodyParagraph(invitedBy.getEmail() + " пригласил вас в команду «" + team.getName()
+                        + "» в сервисе TaskMePlease.")
+                .action(new EmailActionView(
+                        "Открыть приглашение",
+                        messageSender.baseUrl() + INVITATION_PATH_PREFIX + invitation.getToken()))
+                .note("Ссылка действует " + lifetimeFormatter.formatDays(TeamInvitationService.EXPIRATION_DAYS) + ".")
+                .build();
+
         try {
-            emailSender.send(
-                    invitation.getInvitedEmail(),
-                    "Приглашение в команду " + team.getName(),
-                    buildText(invitation, team, invitedBy));
+            messageSender.send(
+                    invitation.getInvitedEmail(), "Вас пригласили в команду «" + team.getName() + "»", content);
         } catch (TransactionalEmailSendingException ex) {
             throw new InvitationEmailSendingException(ex);
         }
-    }
-
-    private String buildText(TeamInvitation invitation, Team team, User invitedBy) {
-        return "Вас пригласили в команду «" + team.getName() + "».\n\n"
-                + "Пригласил: " + invitedBy.getEmail() + "\n"
-                + "Ссылка действует " + TeamInvitationService.EXPIRATION_DAYS + " дней.\n\n"
-                + "Перейти к приглашению: " + buildInvitationUrl(invitation);
-    }
-
-    private String buildInvitationUrl(TeamInvitation invitation) {
-        return getBaseUrl() + INVITATION_PATH_PREFIX + invitation.getToken();
-    }
-
-    private String getBaseUrl() {
-        String baseUrl = appProperties.getBaseUrl();
-        if (baseUrl.endsWith("/")) {
-            return baseUrl.substring(0, baseUrl.length() - 1);
-        }
-
-        return baseUrl;
     }
 }

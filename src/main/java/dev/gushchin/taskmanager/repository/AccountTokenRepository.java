@@ -94,6 +94,12 @@ public class AccountTokenRepository {
         return AccountTokenMapper.toModel(record);
     }
 
+    public void deleteByTokenHash(String tokenHash) {
+        dsl.deleteFrom(ACCOUNT_TOKENS)
+                .where(ACCOUNT_TOKENS.TOKEN_HASH.eq(tokenHash))
+                .execute();
+    }
+
     public void deleteAll() {
         dsl.deleteFrom(ACCOUNT_TOKENS).execute();
     }

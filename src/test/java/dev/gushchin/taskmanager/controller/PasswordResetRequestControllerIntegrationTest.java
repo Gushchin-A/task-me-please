@@ -105,7 +105,8 @@ class PasswordResetRequestControllerIntegrationTest extends IntegrationTestBase 
         verify(emailSender)
                 .send(
                         org.mockito.ArgumentMatchers.eq(EMAIL),
-                        org.mockito.ArgumentMatchers.eq("Восстановление password в Task Me Please"),
+                        org.mockito.ArgumentMatchers.eq("Восстановление пароля в TaskMePlease"),
+                        anyString(),
                         textCaptor.capture());
 
         assertNotNull(token);
@@ -157,7 +158,7 @@ class PasswordResetRequestControllerIntegrationTest extends IntegrationTestBase 
                 .andExpect(content().string(containsString("auth-inline-error")));
 
         assertEquals(0, dsl.fetchCount(ACCOUNT_TOKENS));
-        verify(emailSender, never()).send(anyString(), anyString(), anyString());
+        verify(emailSender, never()).send(anyString(), anyString(), anyString(), anyString());
     }
 
     @Test
@@ -169,7 +170,7 @@ class PasswordResetRequestControllerIntegrationTest extends IntegrationTestBase 
         requestPasswordReset(EMAIL);
 
         assertEquals(1, dsl.fetchCount(ACCOUNT_TOKENS));
-        verify(emailSender, never()).send(anyString(), anyString(), anyString());
+        verify(emailSender, never()).send(anyString(), anyString(), anyString(), anyString());
 
         dsl.update(ACCOUNT_TOKENS)
                 .set(ACCOUNT_TOKENS.CREATED_AT, OffsetDateTime.now().minusMinutes(2))
@@ -185,7 +186,8 @@ class PasswordResetRequestControllerIntegrationTest extends IntegrationTestBase 
         verify(emailSender)
                 .send(
                         org.mockito.ArgumentMatchers.eq(EMAIL),
-                        org.mockito.ArgumentMatchers.eq("Восстановление password в Task Me Please"),
+                        org.mockito.ArgumentMatchers.eq("Восстановление пароля в TaskMePlease"),
+                        anyString(),
                         anyString());
     }
 
@@ -215,19 +217,19 @@ class PasswordResetRequestControllerIntegrationTest extends IntegrationTestBase 
     }
 
     @Test
-    void smtpFailureShouldKeepTokenAndNeutralResponse() throws Exception {
+    void smtpFailureShouldDiscardTokenAndReportDeliveryFailure() throws Exception {
         User user = createVerifiedUser(EMAIL);
         doThrow(new TransactionalEmailSendingException(new RuntimeException()))
                 .when(emailSender)
-                .send(anyString(), anyString(), anyString());
+                .send(anyString(), anyString(), anyString(), anyString());
 
-        requestPasswordReset(EMAIL);
+        requestPasswordReset(EMAIL, PasswordResetRequestResult.DELIVERY_FAILED);
 
         AccountTokensRecord token = dsl.selectFrom(ACCOUNT_TOKENS)
                 .where(ACCOUNT_TOKENS.USER_ID.eq(user.getId()))
                 .fetchOne();
 
-        assertNotNull(token);
+        assertNull(token);
     }
 
     @Test

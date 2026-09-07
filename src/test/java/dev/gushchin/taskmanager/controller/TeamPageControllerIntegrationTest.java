@@ -881,7 +881,9 @@ class TeamPageControllerIntegrationTest extends IntegrationTestBase {
                         .param("email", invitedEmail))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/teams/" + team.getId() + "/invite"))
-                .andExpect(flash().attribute("successMessage", "Приглашение успешно создано"));
+                .andExpect(flash().attribute(
+                                "errorMessage",
+                                "Не удалось отправить письмо. Скопируйте ссылку вручную из таблицы приглашений"));
 
         List<TeamInvitation> invitations = teamInvitationRepository.findByTeamId(team.getId());
 

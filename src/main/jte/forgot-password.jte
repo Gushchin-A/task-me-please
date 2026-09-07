@@ -45,6 +45,14 @@
                     </span>
                     <span class="auth-inline-error-icon" aria-hidden="true">×</span>
                 </div>
+            @elseif(requestResult == PasswordResetRequestResult.DELIVERY_FAILED)
+                <div class="auth-inline-error" role="alert">
+                    <span>
+                        Не удалось отправить письмо. Проблема на нашей стороне, мы уже работаем над этим.
+                        Попробуйте позже.
+                    </span>
+                    <span class="auth-inline-error-icon" aria-hidden="true">×</span>
+                </div>
             @endif
 
             <form method="post" action="/forgot-password" data-submit-loading>

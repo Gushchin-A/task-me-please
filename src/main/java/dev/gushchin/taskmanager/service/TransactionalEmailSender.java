@@ -22,13 +22,14 @@ public class TransactionalEmailSender {
     private final RestClient brevoRestClient;
     private final AppProperties appProperties;
 
-    public void send(String recipient, String subject, String text) {
+    public void send(String recipient, String subject, String htmlContent, String textContent) {
         validateApiKey();
         BrevoEmailRequest request = new BrevoEmailRequest(
                 new EmailAddress(appProperties.getMail().getFrom()),
                 List.of(new EmailAddress(recipient)),
                 subject,
-                text);
+                htmlContent,
+                textContent);
         BrevoEmailResponse response;
 
         try {
@@ -90,7 +91,8 @@ public class TransactionalEmailSender {
         return rootCause;
     }
 
-    private record BrevoEmailRequest(EmailAddress sender, List<EmailAddress> to, String subject, String textContent) {}
+    private record BrevoEmailRequest(
+            EmailAddress sender, List<EmailAddress> to, String subject, String htmlContent, String textContent) {}
 
     private record BrevoEmailResponse(String messageId) {}
 

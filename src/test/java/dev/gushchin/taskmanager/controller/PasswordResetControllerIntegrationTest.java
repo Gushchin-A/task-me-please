@@ -145,7 +145,7 @@ class PasswordResetControllerIntegrationTest extends IntegrationTestBase {
                         .param("passwordConfirmation", NEW_PASSWORD))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/login"))
-                .andExpect(flash().attribute("successMessage", "Password изменён. Войдите с новым password"));
+                .andExpect(flash().attribute("successMessage", "Пароль изменен. Войдите с новым паролем"));
 
         User updatedUser = userRepository.findById(user.getId());
         AccountTokensRecord usedToken = dsl.selectFrom(ACCOUNT_TOKENS)

@@ -42,6 +42,7 @@ public class TeamInvitationService {
     private final TeamService teamService;
     private final UserService userService;
     private final NotificationPublisher notificationPublisher;
+    private final TeamEmailService teamEmailService;
 
     @Transactional
     public List<TeamInvitation> findByTeamId(Long teamId, UUID currentUserId) {
@@ -94,23 +95,23 @@ public class TeamInvitationService {
     }
 
     @Transactional
-    public TeamInvitation createAndSend(Long teamId, String invitedEmail, UUID currentUserId) {
+    public boolean createAndSend(Long teamId, String invitedEmail, UUID currentUserId) {
         TeamInvitation invitation = create(teamId, invitedEmail, currentUserId);
 
-        sendInvitation(invitation);
-
-        return invitation;
+        return sendInvitation(invitation);
     }
 
     @Transactional
-    public void resend(Long id, Long teamId, UUID currentUserId) {
+    public boolean resend(Long id, Long teamId, UUID currentUserId) {
         TeamInvitation invitation = findPendingById(id, teamId, currentUserId);
         Instant now = Instant.now();
         TeamInvitation updatedInvitation = teamInvitationRepository.updateDelivery(
                 invitation.getId(), generateToken(), now.plus(Duration.ofDays(EXPIRATION_DAYS)), now);
 
-        sendInvitation(updatedInvitation);
+        boolean emailDelivered = sendInvitation(updatedInvitation);
         notificationPublisher.teamInvitationResent(updatedInvitation, currentUserId);
+
+        return emailDelivered;
     }
 
     @Transactional
@@ -134,6 +135,8 @@ public class TeamInvitationService {
                 teamInvitationRepository.updateStatus(invitation.getId(), TeamInvitationStatus.ACCEPTED, Instant.now());
         notificationPublisher.teamMemberJoinedAfterInvitation(member, currentUserId, invitation.getInvitedBy());
         notificationPublisher.teamInvitationAccepted(acceptedInvitation, currentUserId);
+        teamEmailService.sendInvitationAccepted(
+                invitation.getInvitedEmail(), teamService.findById(invitation.getTeamId()), invitation.getInvitedBy());
 
         return acceptedInvitation;
     }
@@ -147,6 +150,8 @@ public class TeamInvitationService {
         TeamInvitation declinedInvitation =
                 teamInvitationRepository.updateStatus(invitation.getId(), TeamInvitationStatus.DECLINED, Instant.now());
         notificationPublisher.teamInvitationDeclined(declinedInvitation, currentUserId);
+        teamEmailService.sendInvitationDeclined(
+                invitation.getInvitedEmail(), teamService.findById(invitation.getTeamId()), invitation.getInvitedBy());
 
         return declinedInvitation;
     }
@@ -201,16 +206,20 @@ public class TeamInvitationService {
         return invitation;
     }
 
-    private void sendInvitation(TeamInvitation invitation) {
+    private boolean sendInvitation(TeamInvitation invitation) {
         try {
             invitationEmailService.sendInvitation(
                     invitation,
                     teamService.findById(invitation.getTeamId()),
                     userService.findById(invitation.getInvitedBy()));
+
+            return true;
         } catch (InvitationEmailSendingException ex) {
             if (log.isWarnEnabled()) {
                 log.warn("Invitation email could not be sent for invitation {}", invitation.getId(), ex);
             }
+
+            return false;
         }
     }
 

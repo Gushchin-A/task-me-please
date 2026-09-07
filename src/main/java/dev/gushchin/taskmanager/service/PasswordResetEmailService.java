@@ -1,7 +1,8 @@
 package dev.gushchin.taskmanager.service;
 
-import dev.gushchin.taskmanager.config.AppProperties;
 import dev.gushchin.taskmanager.model.User;
+import dev.gushchin.taskmanager.view.EmailActionView;
+import dev.gushchin.taskmanager.view.EmailContentView;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -10,32 +11,24 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class PasswordResetEmailService {
     private static final String PASSWORD_RESET_PATH_PREFIX = "/reset-password/";
+    private static final String SUBJECT = "Восстановление пароля в TaskMePlease";
+    private static final String HEADING = "Восстановление пароля";
 
-    private final TransactionalEmailSender emailSender;
-    private final AppProperties appProperties;
+    private final EmailMessageSender messageSender;
+    private final EmailLifetimeFormatter lifetimeFormatter;
+    private final EmailGreetingFormatter greetingFormatter;
 
     public void sendPasswordReset(User user, String token, Duration lifetime) {
-        emailSender.send(user.getEmail(), "Восстановление password в Task Me Please", buildText(token, lifetime));
-    }
+        EmailContentView content = EmailContentView.builder()
+                .heading(HEADING)
+                .bodyParagraph(greetingFormatter.format(user))
+                .bodyParagraph("Мы получили запрос на изменение пароля вашего аккаунта.")
+                .action(new EmailActionView(
+                        "Установить новый пароль", messageSender.baseUrl() + PASSWORD_RESET_PATH_PREFIX + token))
+                .note("Ссылка действует " + lifetimeFormatter.formatMinutes(lifetime) + ".")
+                .note("Если вы не запрашивали изменение пароля, просто проигнорируйте это письмо.")
+                .build();
 
-    private String buildText(String token, Duration lifetime) {
-        return "Мы получили запрос на изменение password в Task Me Please.\n\n"
-                + "Установить новый password:\n"
-                + buildUrl(token) + "\n\n"
-                + "Ссылка действует " + lifetime.toMinutes() + " минут.\n"
-                + "Если вы не запрашивали изменение password, проигнорируйте это письмо.";
-    }
-
-    private String buildUrl(String token) {
-        return getBaseUrl() + PASSWORD_RESET_PATH_PREFIX + token;
-    }
-
-    private String getBaseUrl() {
-        String baseUrl = appProperties.getBaseUrl();
-        if (baseUrl.endsWith("/")) {
-            return baseUrl.substring(0, baseUrl.length() - 1);
-        }
-
-        return baseUrl;
+        messageSender.send(user.getEmail(), SUBJECT, content);
     }
 }
