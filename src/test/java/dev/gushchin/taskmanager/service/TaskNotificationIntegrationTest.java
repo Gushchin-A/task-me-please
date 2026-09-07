@@ -32,6 +32,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 class TaskNotificationIntegrationTest extends IntegrationTestBase {
     private static final String PASSWORD = "qwerty";
+    private static final String TASK_DESCRIPTION = "Notification description";
 
     @Autowired
     private CommentService commentService;
@@ -82,7 +83,13 @@ class TaskNotificationIntegrationTest extends IntegrationTestBase {
         TeamTag tag = teamTagService.findByTeamId(team.getId()).getFirst();
 
         final Task task = taskService.create(
-                team.getId(), author.getId(), firstAssignee.getId(), "Notification task", null, null, tag.getId());
+                team.getId(),
+                author.getId(),
+                firstAssignee.getId(),
+                "Notification task",
+                TASK_DESCRIPTION,
+                null,
+                tag.getId());
 
         assertLatestType(owner, NotificationEventType.TASK_CREATED);
         assertLatestType(author, NotificationEventType.TASK_CREATED);
@@ -117,7 +124,13 @@ class TaskNotificationIntegrationTest extends IntegrationTestBase {
         teamMemberService.addMember(team.getId(), otherMember.getId());
         TeamTag tag = teamTagService.findByTeamId(team.getId()).getFirst();
         Task task = taskService.create(
-                team.getId(), author.getId(), assignee.getId(), "Notification task", null, null, tag.getId());
+                team.getId(),
+                author.getId(),
+                assignee.getId(),
+                "Notification task",
+                TASK_DESCRIPTION,
+                null,
+                tag.getId());
         int eventsBeforeDeniedAction = dsl.fetchCount(NOTIFICATION_EVENTS);
 
         assertThrows(
@@ -137,7 +150,7 @@ class TaskNotificationIntegrationTest extends IntegrationTestBase {
                 owner.getId(),
                 owner.getId(),
                 "Notification task",
-                null,
+                TASK_DESCRIPTION,
                 LocalDate.of(2026, 9, 8),
                 tag.getId());
 
@@ -158,7 +171,7 @@ class TaskNotificationIntegrationTest extends IntegrationTestBase {
         teamMemberService.addMember(team.getId(), member.getId());
         TeamTag tag = teamTagService.findByTeamId(team.getId()).getFirst();
         Task task = taskService.create(
-                team.getId(), member.getId(), member.getId(), "Completed task", null, null, tag.getId());
+                team.getId(), member.getId(), member.getId(), "Completed task", TASK_DESCRIPTION, null, tag.getId());
         taskService.updateStatus(task.getId(), TaskStatus.DONE, owner.getId());
 
         taskService.archive(task.getId(), owner.getId());

@@ -1,5 +1,7 @@
 package dev.gushchin.taskmanager.controller;
 
+import dev.gushchin.taskmanager.exception.BlankTaskDescriptionException;
+import dev.gushchin.taskmanager.exception.TaskTitleAlreadyExistsException;
 import dev.gushchin.taskmanager.exception.TeamInvitationNotFoundException;
 import dev.gushchin.taskmanager.exception.TeamInvitationNotPendingException;
 import dev.gushchin.taskmanager.model.Comment;
@@ -32,6 +34,7 @@ import dev.gushchin.taskmanager.view.TaskParticipantView;
 import dev.gushchin.taskmanager.view.TaskView;
 import dev.gushchin.taskmanager.view.TaskWithTeamView;
 import dev.gushchin.taskmanager.view.TeamTasksStats;
+import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,6 +62,7 @@ public class TaskPageController {
     private static final String REDIRECT_TEAMS_PREFIX = "redirect:/teams/";
     private static final String REDIRECT_TASKS = "redirect:/tasks";
     private static final String REDIRECT_TASKS_PREFIX = "redirect:/tasks/";
+    private static final String REDIRECT_NEW_TASK_WITH_TEAM = "redirect:/tasks/new?teamId=";
     private static final String RETURN_TO_TASK = "task";
     private static final String RETURN_TO_TASKS = "tasks";
     private static final String RETURN_TO_TASKS_ARCHIVE = "tasksArchive";
@@ -69,6 +73,9 @@ public class TaskPageController {
     private static final String PAGE_ATTRIBUTE = "page";
     private static final String TASKS_INDEX_VIEW = "tasks/index";
     private static final String SUCCESS_MESSAGE_ATTRIBUTE = "successMessage";
+    private static final String ERROR_MESSAGE_ATTRIBUTE = "errorMessage";
+    private static final String BLANK_TASK_DESCRIPTION_MESSAGE = "Описание задачи не может быть пустым";
+    private static final String TASK_TITLE_EXISTS_MESSAGE = "Задача с таким названием уже существует в этой команде";
     private static final String INVITATION_DECISION_ATTRIBUTE = "invitationDecision";
 
     private final TeamService teamService;
@@ -309,7 +316,15 @@ public class TaskPageController {
         teamMemberService.findById(task.getTeamId(), authUser.getId());
         teamMemberService.findById(task.getTeamId(), updatedAuthorId);
         teamMemberService.findById(task.getTeamId(), request.getAssigneeId());
-        taskService.updateDetails(id, update, authUser.getId());
+        try {
+            taskService.updateDetails(id, update, authUser.getId());
+        } catch (TaskTitleAlreadyExistsException ignored) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, TASK_TITLE_EXISTS_MESSAGE);
+            return buildRedirectAfterInlineUpdate(task, request, returnTo);
+        } catch (BlankTaskDescriptionException ignored) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, BLANK_TASK_DESCRIPTION_MESSAGE);
+            return buildRedirectAfterInlineUpdate(task, request, returnTo);
+        }
         redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Задача успешно изменена");
 
         return buildRedirectAfterInlineUpdate(task, request, returnTo);
@@ -358,18 +373,29 @@ public class TaskPageController {
     @PostMapping("/tasks")
     public String createTask(
             @AuthenticationPrincipal AuthUser authUser,
-            @RequestParam Long teamId,
-            @RequestParam UUID assigneeId,
-            @RequestParam String title,
-            @RequestParam String description,
-            @RequestParam LocalDate deadlineDate,
-            @RequestParam Long tagId) {
-        teamMemberService.findById(teamId, authUser.getId());
-        teamMemberService.findById(teamId, assigneeId);
+            @Valid TaskCreateRequest request,
+            RedirectAttributes redirectAttributes) {
+        teamMemberService.findById(request.getTeamId(), authUser.getId());
+        teamMemberService.findById(request.getTeamId(), request.getAssigneeId());
 
-        taskService.create(teamId, authUser.getId(), assigneeId, title, description, deadlineDate, tagId);
+        try {
+            taskService.create(
+                    request.getTeamId(),
+                    authUser.getId(),
+                    request.getAssigneeId(),
+                    request.getTitle(),
+                    request.getDescription(),
+                    request.getDeadlineDate(),
+                    request.getTagId());
+        } catch (TaskTitleAlreadyExistsException ignored) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, TASK_TITLE_EXISTS_MESSAGE);
+            return REDIRECT_NEW_TASK_WITH_TEAM + request.getTeamId();
+        } catch (BlankTaskDescriptionException ignored) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, BLANK_TASK_DESCRIPTION_MESSAGE);
+            return REDIRECT_NEW_TASK_WITH_TEAM + request.getTeamId();
+        }
 
-        return REDIRECT_TEAMS_PREFIX + teamId;
+        return REDIRECT_TEAMS_PREFIX + request.getTeamId();
     }
 
     @PostMapping("/tasks/{id}/status")

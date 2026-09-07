@@ -1,7 +1,9 @@
 package dev.gushchin.taskmanager.service;
 
 import dev.gushchin.taskmanager.exception.AccessDeniedForTaskException;
+import dev.gushchin.taskmanager.exception.BlankTaskDescriptionException;
 import dev.gushchin.taskmanager.exception.TaskNotFoundException;
+import dev.gushchin.taskmanager.exception.TaskTitleAlreadyExistsException;
 import dev.gushchin.taskmanager.model.Task;
 import dev.gushchin.taskmanager.model.TaskDetailsUpdate;
 import dev.gushchin.taskmanager.model.TaskRoleFilter;
@@ -15,6 +17,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.function.Predicate;
 import lombok.RequiredArgsConstructor;
@@ -78,18 +81,20 @@ public class TaskService {
         teamMemberService.findById(teamId, assigneeId);
         teamTagService.findByIdForTeam(tagId, teamId);
 
+        String preparedTitle = prepareTitle(teamId, title, null);
+
         Instant now = Instant.now();
 
         Instant deadlineAt =
                 deadlineDate == null ? null : deadlineDate.atStartOfDay().toInstant(ZoneOffset.UTC);
-        String preparedDescription = prepareDescription(description);
+        String preparedDescription = prepareRequiredDescription(description);
 
         Task task = new Task(
                 null,
                 teamId,
                 authorId,
                 assigneeId,
-                title,
+                preparedTitle,
                 preparedDescription,
                 deadlineAt,
                 TaskStatus.OPEN,
@@ -384,11 +389,13 @@ public class TaskService {
         teamMemberService.findById(task.getTeamId(), update.assigneeId());
         teamTagService.findByIdForTeam(update.tagId(), task.getTeamId());
 
+        String preparedTitle = prepareTitle(task.getTeamId(), update.title(), task.getId());
+
         Instant deadlineAt = update.deadlineDate() == null
                 ? null
                 : update.deadlineDate().atStartOfDay().toInstant(ZoneOffset.UTC);
 
-        task.setTitle(update.title());
+        task.setTitle(preparedTitle);
         task.setDescription(prepareDescription(update.description()));
         task.setDeadlineAt(deadlineAt);
         task.setStatus(update.status());
@@ -470,10 +477,33 @@ public class TaskService {
         String preparedDescription = description.stripTrailing();
 
         if (preparedDescription.isBlank()) {
-            throw new IllegalArgumentException("Task description must not be blank");
+            throw new BlankTaskDescriptionException();
         }
 
         return preparedDescription;
+    }
+
+    private String prepareRequiredDescription(String description) {
+        if (description == null) {
+            throw new BlankTaskDescriptionException();
+        }
+
+        return prepareDescription(description);
+    }
+
+    private String prepareTitle(Long teamId, String title, Long excludedTaskId) {
+        if (title == null || title.isBlank()) {
+            throw new IllegalArgumentException("Task title must not be blank");
+        }
+
+        String preparedTitle = title.trim();
+        String normalizedTitle = preparedTitle.toLowerCase(Locale.ROOT);
+
+        if (taskRepository.existsActiveByTeamIdAndNormalizedTitle(teamId, normalizedTitle, excludedTaskId)) {
+            throw new TaskTitleAlreadyExistsException(teamId, preparedTitle);
+        }
+
+        return preparedTitle;
     }
 
     private void publishDetailsChanges(Task before, Task after, UUID userId) {

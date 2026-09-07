@@ -13,6 +13,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -396,6 +397,9 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(content().string(containsString("class=\"task-create-form\"")))
                 .andExpect(content().string(containsString("name=\"teamId\"")))
                 .andExpect(content().string(containsString("maxlength=\"100\"")))
+                .andExpect(content().string(containsString("Описание <span class=\"required-marker\"")))
+                .andExpect(content().string(containsString("name=\"description\"")))
+                .andExpect(content().string(containsString("placeholder=\"Опишите, что нужно сделать…\"")))
                 .andExpect(content().string(containsString("0</span> / 100 символов")))
                 .andExpect(content().string(containsString("Выберите команду")))
                 .andExpect(content().string(containsString("Выберите исполнителя")))
@@ -572,6 +576,180 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
         Task updatedTask = taskService.findById(task.getId());
 
         assertEquals("Task page title", updatedTask.getTitle());
+        assertEquals("Task description", updatedTask.getDescription());
+    }
+
+    @Test
+    void taskPageTitleEditShouldSupportTaskWithoutDescription() throws Exception {
+        dsl.update(TASKS)
+                .setNull(TASKS.DESCRIPTION)
+                .where(TASKS.ID.eq(task.getId()))
+                .execute();
+
+        mockMvc.perform(post("/tasks/" + task.getId() + "/edit")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("title", "Renamed task without description")
+                        .param("assigneeId", secondUser.getId().toString())
+                        .param("deadlineDate", DEADLINE_DATE.toString())
+                        .param("tagId", kinopoiskTag.getId().toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks/" + task.getId()));
+
+        Task updatedTask = taskService.findById(task.getId());
+
+        assertEquals("Renamed task without description", updatedTask.getTitle());
+        assertNull(updatedTask.getDescription());
+    }
+
+    @Test
+    void updateTaskShouldRejectDuplicateNormalizedTitleAndStayOnTaskPage() throws Exception {
+        Task anotherTask = taskService.create(
+                team.getId(),
+                owner.getId(),
+                secondUser.getId(),
+                "Another task",
+                "Task description",
+                DEADLINE_DATE,
+                kinopoiskTag.getId());
+
+        mockMvc.perform(post("/tasks/" + anotherTask.getId() + "/edit")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("title", "  IMPORTANT TASK  ")
+                        .param("assigneeId", secondUser.getId().toString())
+                        .param("deadlineDate", DEADLINE_DATE.toString())
+                        .param("tagId", kinopoiskTag.getId().toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks/" + anotherTask.getId()))
+                .andExpect(flash().attribute("errorMessage", "Задача с таким названием уже существует в этой команде"));
+
+        assertEquals("Another task", taskService.findById(anotherTask.getId()).getTitle());
+    }
+
+    @Test
+    void updateTaskShouldRejectBlankDescriptionAndStayOnTaskPage() throws Exception {
+        mockMvc.perform(post("/tasks/" + task.getId() + "/edit")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("title", task.getTitle())
+                        .param("description", "   \n")
+                        .param("assigneeId", secondUser.getId().toString())
+                        .param("deadlineDate", DEADLINE_DATE.toString())
+                        .param("tagId", kinopoiskTag.getId().toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks/" + task.getId()))
+                .andExpect(flash().attribute("errorMessage", "Описание задачи не может быть пустым"));
+
+        assertEquals("Task description", taskService.findById(task.getId()).getDescription());
+    }
+
+    @Test
+    void updateTaskDescriptionShouldRedirectBackToTaskPage() throws Exception {
+        mockMvc.perform(post("/tasks/" + task.getId() + "/edit")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("title", task.getTitle())
+                        .param("description", "Updated task description")
+                        .param("assigneeId", secondUser.getId().toString())
+                        .param("deadlineDate", DEADLINE_DATE.toString())
+                        .param("tagId", kinopoiskTag.getId().toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks/" + task.getId()));
+
+        assertEquals(
+                "Updated task description", taskService.findById(task.getId()).getDescription());
+    }
+
+    @Test
+    void createTaskShouldRejectDuplicateNormalizedTitleAndStayOnCreationPage() throws Exception {
+        mockMvc.perform(post("/tasks")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("teamId", team.getId().toString())
+                        .param("assigneeId", owner.getId().toString())
+                        .param("title", " important task ")
+                        .param("description", "Description")
+                        .param("deadlineDate", DEADLINE_DATE.toString())
+                        .param("tagId", kinopoiskTag.getId().toString()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks/new?teamId=" + team.getId()))
+                .andExpect(flash().attribute("errorMessage", "Задача с таким названием уже существует в этой команде"));
+
+        assertEquals(1, dsl.fetchCount(TASKS));
+    }
+
+    @Test
+    void createTaskShouldRejectMissingOrBlankDescriptionAndStayOnCreationPage() throws Exception {
+        mockMvc.perform(post("/tasks")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("teamId", team.getId().toString())
+                        .param("assigneeId", owner.getId().toString())
+                        .param("title", "Task without description")
+                        .param("description", "   \n")
+                        .param("deadlineDate", DEADLINE_DATE.toString())
+                        .param("tagId", kinopoiskTag.getId().toString()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks/new?teamId=" + team.getId()))
+                .andExpect(flash().attribute("errorMessage", "Описание задачи не может быть пустым"));
+
+        mockMvc.perform(post("/tasks")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("teamId", team.getId().toString())
+                        .param("assigneeId", owner.getId().toString())
+                        .param("title", "Task with missing description")
+                        .param("deadlineDate", DEADLINE_DATE.toString())
+                        .param("tagId", kinopoiskTag.getId().toString()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks/new?teamId=" + team.getId()))
+                .andExpect(flash().attribute("errorMessage", "Описание задачи не может быть пустым"));
+
+        assertEquals(1, dsl.fetchCount(TASKS));
+    }
+
+    @Test
+    void createTaskShouldRejectTitleUsedByArchivedTask() throws Exception {
+        taskService.archive(task.getId(), owner.getId());
+
+        mockMvc.perform(post("/tasks")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("teamId", team.getId().toString())
+                        .param("assigneeId", owner.getId().toString())
+                        .param("title", task.getTitle())
+                        .param("description", "Description")
+                        .param("deadlineDate", DEADLINE_DATE.toString())
+                        .param("tagId", kinopoiskTag.getId().toString()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks/new?teamId=" + team.getId()))
+                .andExpect(flash().attribute("errorMessage", "Задача с таким названием уже существует в этой команде"));
+
+        assertEquals(1, dsl.fetchCount(TASKS));
+    }
+
+    @Test
+    void createTaskShouldAllowSameTitleInDifferentTeam() {
+        Team anotherTeam = teamService.create("Another team", owner.getId());
+        TeamTag anotherTeamTag = teamTagService.create(anotherTeam.getId(), "Tag");
+
+        Task createdTask = taskService.create(
+                anotherTeam.getId(),
+                owner.getId(),
+                owner.getId(),
+                task.getTitle(),
+                "Description",
+                DEADLINE_DATE,
+                anotherTeamTag.getId());
+
+        assertEquals(task.getTitle(), createdTask.getTitle());
+        assertEquals(anotherTeam.getId(), createdTask.getTeamId());
+        assertEquals(2, dsl.fetchCount(TASKS));
     }
 
     @Test
