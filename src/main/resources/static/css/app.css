@@ -4,6 +4,14 @@
     box-sizing: border-box;
 }
 
+@font-face {
+    font-family: "Mona Sans VF";
+    src: url("/fonts/mona-sans/mona-sans-variable.woff2") format("woff2");
+    font-weight: 200 900;
+    font-style: normal;
+    font-display: swap;
+}
+
 :root {
     --form-control-font-size: 14px;
     --form-control-line-height: 20px;
