@@ -60,7 +60,7 @@ class TeamEmailServiceTest {
                         htmlCaptor.capture(),
                         anyString());
 
-        String html = htmlCaptor.getValue();
+        String html = htmlCaptor.getValue().replace('\u00A0', ' ');
         assertAll(
                 () -> assertTrue(html.contains("Приглашение принято")),
                 () -> assertTrue(
@@ -84,11 +84,11 @@ class TeamEmailServiceTest {
                         htmlCaptor.capture(),
                         anyString());
 
-        String html = htmlCaptor.getValue();
+        String html = htmlCaptor.getValue().replace('\u00A0', ' ');
         assertAll(
                 () -> assertTrue(html.contains("Вас удалили из команды")),
-                () -> assertTrue(html.contains("Владелец удалил вас из команды «Креативный заводиксвс». "
-                        + "У вас больше нет доступа к задачам команды.")),
+                () -> assertTrue(html.contains("Владелец удалил вас из команды «Креативный заводиксвс».")),
+                () -> assertTrue(html.contains("У вас больше нет доступа к задачам команды.")),
                 () -> assertFalse(html.contains("bgcolor=\"#1f883d\"")));
     }
 
@@ -102,8 +102,14 @@ class TeamEmailServiceTest {
 
         teamEmailService.sendTeamDeleted(createTeam(), OWNER_ID);
 
+        ArgumentCaptor<String> htmlCaptor = ArgumentCaptor.forClass(String.class);
         verify(emailSender)
-                .send(eq("member@test.com"), eq("Команда «Креативный заводиксвс» удалена"), anyString(), anyString());
+                .send(
+                        eq("member@test.com"),
+                        eq("Команда «Креативный заводиксвс» удалена"),
+                        htmlCaptor.capture(),
+                        anyString());
+        assertTrue(htmlCaptor.getValue().contains("владельцем. У\u00A0вас"));
         verify(emailSender, never()).send(eq("owner@test.com"), anyString(), anyString(), anyString());
     }
 
@@ -133,6 +139,7 @@ class TeamEmailServiceTest {
 
         assertTrue(htmlCaptor
                 .getValue()
+                .replace('\u00A0', ' ')
                 .contains("Владелец ограничил видимость задач в команде «Креативный заводиксвс». "
                         + "Теперь вам видны только задачи, где вы автор или исполнитель."));
     }

@@ -1,5 +1,6 @@
 @import dev.gushchin.taskmanager.view.EmailContentView
 @import dev.gushchin.taskmanager.view.EmailParameterView
+@import dev.gushchin.taskmanager.service.EmailTextFormatter
 
 @param String serviceUrl
 @param EmailContentView content
@@ -35,7 +36,7 @@
           <table role="presentation" border="0" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
             <tr>
               <td align="center" style="padding-bottom:24px;">
-                <span translate="no" class="notranslate" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; font-size:17px; font-weight:600; letter-spacing:-0.02em; color:#1f2328;">TASKMEPLEASE</span>
+                <a href="${serviceUrl}" target="_blank" rel="noopener noreferrer" translate="no" class="notranslate" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; font-size:17px; font-weight:600; letter-spacing:-0.02em; color:#1f2328; text-decoration:none;">TASKMEPLEASE</a>
               </td>
             </tr>
             <tr>
@@ -50,7 +51,7 @@
             <tr>
               <td class="${content.hasNotes() ? "tmp-box-top" : "tmp-box-single"}" style="padding:${content.hasNotes() ? "24px 24px 20px" : "24px"};">
                 @for(int i = 0; i < content.getBodyParagraphs().size(); i++)
-                  <p style="margin:0 0 ${i == content.getBodyParagraphs().size() - 1 ? content.bodyMarginBottom() : "12px"}; font-size:14px; line-height:1.5; color:#1f2328;">${content.getBodyParagraphs().get(i)}</p>
+                  <p style="margin:0 0 ${i == content.getBodyParagraphs().size() - 1 ? content.bodyMarginBottom() : "12px"}; font-size:14px; line-height:1.5; color:#1f2328; white-space:pre-line;">${EmailTextFormatter.format(content.getBodyParagraphs().get(i))}</p>
                 @endfor
                 @if(content.hasParameters())
                 <p style="margin:0 0 ${content.parametersMarginBottom()}; font-size:14px; line-height:1.5; color:#1f2328;">
@@ -78,7 +79,7 @@
             <tr>
               <td class="tmp-box-bottom" style="padding:20px 24px 24px;">
                 @for(int i = 0; i < content.getNotes().size(); i++)
-                  <p style="margin:0 0 ${i == content.getNotes().size() - 1 ? "0" : "12px"}; font-size:12px; line-height:1.5; color:#59636e;">${content.getNotes().get(i)}</p>
+                  <p style="margin:0 0 ${i == content.getNotes().size() - 1 ? "0" : "12px"}; font-size:12px; line-height:1.5; color:#59636e;">${EmailTextFormatter.format(content.getNotes().get(i))}</p>
                 @endfor
               </td>
             </tr>

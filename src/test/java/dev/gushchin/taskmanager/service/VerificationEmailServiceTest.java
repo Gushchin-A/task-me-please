@@ -35,10 +35,11 @@ class VerificationEmailServiceTest {
                         htmlCaptor.capture(),
                         textCaptor.capture());
 
-        String html = htmlCaptor.getValue();
+        String html = htmlCaptor.getValue().replace('\u00A0', ' ');
         assertTrue(html.contains("Подтверждение регистрации"));
         assertTrue(html.contains("Привет, Мария!"));
-        assertTrue(html.contains("Чтобы завершить регистрацию в TaskMePlease, необходимо подтвердить email."));
+        assertTrue(html.contains("Чтобы завершить регистрацию в TaskMePlease, необходимо подтвердить почту."));
+        assertTrue(html.contains(">Подтвердить почту</a>"));
         assertTrue(
                 html.contains("https://task-me-please.test/verify-email/verification-token?invite=invitation-token"));
         assertTrue(html.contains("Ссылка действует 24 часа."));

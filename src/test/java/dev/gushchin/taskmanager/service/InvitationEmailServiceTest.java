@@ -54,7 +54,7 @@ class InvitationEmailServiceTest {
                         htmlCaptor.capture(),
                         textCaptor.capture());
 
-        String html = htmlCaptor.getValue();
+        String html = htmlCaptor.getValue().replace('\u00A0', ' ');
         assertTrue(html.contains("Новое приглашение в команду"));
         assertTrue(html.contains("owner@test.com пригласил вас в команду «Invite Team» в сервисе TaskMePlease."));
         assertTrue(html.contains("Открыть приглашение"));

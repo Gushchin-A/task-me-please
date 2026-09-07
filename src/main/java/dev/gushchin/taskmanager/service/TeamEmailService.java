@@ -129,7 +129,7 @@ public class TeamEmailService {
         EmailContentView content = EmailContentView.builder()
                 .heading(MEMBER_REMOVED_HEADING)
                 .bodyParagraph("Владелец удалил вас из команды «" + team.getName()
-                        + "». У вас больше нет доступа к задачам команды.")
+                        + "».\nУ вас больше нет доступа к задачам команды.")
                 .build();
 
         sendSafely(removed.getEmail(), "Вы удалены из команды «" + team.getName() + "»", content);

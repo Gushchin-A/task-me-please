@@ -25,7 +25,7 @@
     <link rel="stylesheet" href="/css/primer/functional/themes/dark.css">
     <link rel="stylesheet" href="/css/app.css">
 </head>
-<body>
+<body class="auth-document">
     <div class="flash-stack app-flash-stack" aria-live="polite" aria-atomic="false">
         @if(successMessage != null)
             @template.components.flash(message = successMessage, type = "success")
@@ -78,13 +78,16 @@
                     <a href="${loginUrl}">Назад на страницу входа</a>
                 </p>
             @elseif(!activeTab.equals("verification-pending")
-                    && !activeTab.equals("verification-limited"))
+                    && !activeTab.equals("verification-limited")
+                    && !activeTab.equals("reset-password-invalid"))
                 <a class="auth-back-link" href="${loginUrl}">
                     ← Вернуться назад
                 </a>
             @endif
         </div>
     </main>
+
+    @template.components.siteFooter()
 
     <script src="/js/app.js"></script>
 </body>

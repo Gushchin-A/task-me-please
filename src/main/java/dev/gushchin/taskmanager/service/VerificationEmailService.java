@@ -23,8 +23,8 @@ public class VerificationEmailService {
         EmailContentView content = EmailContentView.builder()
                 .heading(HEADING)
                 .bodyParagraph(greetingFormatter.format(user))
-                .bodyParagraph("Чтобы завершить регистрацию в TaskMePlease, необходимо подтвердить email.")
-                .action(new EmailActionView("Подтвердить", buildUrl(token, invite)))
+                .bodyParagraph("Чтобы завершить регистрацию в TaskMePlease, необходимо подтвердить почту.")
+                .action(new EmailActionView("Подтвердить почту", buildUrl(token, invite)))
                 .note("Ссылка действует " + lifetimeFormatter.formatHours(lifetime) + ".")
                 .note("Если вы не регистрировались в TaskMePlease, просто проигнорируйте это письмо.")
                 .build();

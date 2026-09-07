@@ -62,7 +62,7 @@ class TaskEmailServiceTest {
                         htmlCaptor.capture(),
                         anyString());
 
-        String html = htmlCaptor.getValue();
+        String html = htmlCaptor.getValue().replace('\u00A0', ' ');
         assertAll(
                 () -> assertTrue(html.contains("Новая задача")),
                 () -> assertTrue(html.contains("Андрей создал задачу и назначил вас исполнителем.")),
@@ -99,7 +99,7 @@ class TaskEmailServiceTest {
                         htmlCaptor.capture(),
                         anyString());
 
-        String html = htmlCaptor.getValue();
+        String html = htmlCaptor.getValue().replace('\u00A0', ' ');
         assertAll(
                 () -> assertTrue(html.contains("Андрей снял вас с роли исполнителя задачи.")),
                 () -> assertFalse(html.contains("У вас больше нет доступа к этой задаче")),
@@ -124,7 +124,7 @@ class TaskEmailServiceTest {
                         htmlCaptor.capture(),
                         anyString());
 
-        String html = htmlCaptor.getValue();
+        String html = htmlCaptor.getValue().replace('\u00A0', ' ');
         assertAll(
                 () -> assertTrue(html.contains(
                         "Андрей снял вас с роли исполнителя задачи. " + "У вас больше нет доступа к этой задаче.")),
