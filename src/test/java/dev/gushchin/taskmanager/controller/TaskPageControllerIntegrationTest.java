@@ -648,6 +648,61 @@ class TaskPageControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void updateTaskShouldRejectMissingDeadlineAndStayOnTaskPage() throws Exception {
+        Instant deadlineBefore = taskService.findById(task.getId()).getDeadlineAt();
+
+        mockMvc.perform(post("/tasks/" + task.getId() + "/edit")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("title", task.getTitle())
+                        .param("description", task.getDescription())
+                        .param("assigneeId", secondUser.getId().toString())
+                        .param("tagId", kinopoiskTag.getId().toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks/" + task.getId()))
+                .andExpect(flash().attribute("errorMessage", "Укажите дедлайн задачи"));
+
+        assertEquals(deadlineBefore, taskService.findById(task.getId()).getDeadlineAt());
+    }
+
+    @Test
+    void updateTaskShouldRejectTagDeletedWhileFormWasOpen() throws Exception {
+        teamTagService.delete(plusTag.getId(), team.getId(), owner.getId());
+
+        mockMvc.perform(post("/tasks/" + task.getId() + "/edit")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("title", task.getTitle())
+                        .param("description", task.getDescription())
+                        .param("assigneeId", secondUser.getId().toString())
+                        .param("deadlineDate", DEADLINE_DATE.toString())
+                        .param("tagId", plusTag.getId().toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks/" + task.getId()))
+                .andExpect(flash().attribute("errorMessage", "Выбранный тег больше не существует. Обновите страницу"));
+
+        assertEquals(kinopoiskTag.getId(), taskService.findById(task.getId()).getTagId());
+    }
+
+    @Test
+    void updateTaskTagShouldRejectTagDeletedWhileFormWasOpen() throws Exception {
+        teamTagService.delete(plusTag.getId(), team.getId(), owner.getId());
+
+        mockMvc.perform(post("/tasks/" + task.getId() + "/tag")
+                        .with(csrf())
+                        .with(user(new AuthUser(owner)))
+                        .param("tagId", plusTag.getId().toString())
+                        .param("returnTo", "task"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/tasks/" + task.getId()))
+                .andExpect(flash().attribute("errorMessage", "Выбранный тег больше не существует. Обновите страницу"));
+
+        assertEquals(kinopoiskTag.getId(), taskService.findById(task.getId()).getTagId());
+    }
+
+    @Test
     void updateTaskDescriptionShouldRedirectBackToTaskPage() throws Exception {
         mockMvc.perform(post("/tasks/" + task.getId() + "/edit")
                         .with(csrf())

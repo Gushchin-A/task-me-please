@@ -1,9 +1,11 @@
 package dev.gushchin.taskmanager.controller;
 
 import dev.gushchin.taskmanager.exception.BlankTaskDescriptionException;
+import dev.gushchin.taskmanager.exception.MissingTaskDeadlineException;
 import dev.gushchin.taskmanager.exception.TaskTitleAlreadyExistsException;
 import dev.gushchin.taskmanager.exception.TeamInvitationNotFoundException;
 import dev.gushchin.taskmanager.exception.TeamInvitationNotPendingException;
+import dev.gushchin.taskmanager.exception.TeamTagNotFoundException;
 import dev.gushchin.taskmanager.model.Comment;
 import dev.gushchin.taskmanager.model.Task;
 import dev.gushchin.taskmanager.model.TaskDetailsUpdate;
@@ -76,6 +78,8 @@ public class TaskPageController {
     private static final String SUCCESS_MESSAGE_ATTRIBUTE = "successMessage";
     private static final String ERROR_MESSAGE_ATTRIBUTE = "errorMessage";
     private static final String BLANK_TASK_DESCRIPTION_MESSAGE = "Описание задачи не может быть пустым";
+    private static final String MISSING_TASK_DEADLINE_MESSAGE = "Укажите дедлайн задачи";
+    private static final String TEAM_TAG_NOT_FOUND_MESSAGE = "Выбранный тег больше не существует. Обновите страницу";
     private static final String TASK_TITLE_EXISTS_MESSAGE = "Задача с таким названием уже существует в этой команде";
     private static final String INVITATION_DECISION_ATTRIBUTE = "invitationDecision";
     private static final String CHOOSE_ANOTHER_AUTHOR = "Выберите другого автора";
@@ -327,13 +331,20 @@ public class TaskPageController {
             return buildRedirectAfterInlineUpdate(task, request, returnTo);
         }
 
+        String errorMessage = null;
         try {
             taskService.updateDetails(id, update, authUser.getId());
         } catch (TaskTitleAlreadyExistsException ignored) {
-            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, TASK_TITLE_EXISTS_MESSAGE);
-            return buildRedirectAfterInlineUpdate(task, request, returnTo);
+            errorMessage = TASK_TITLE_EXISTS_MESSAGE;
         } catch (BlankTaskDescriptionException ignored) {
-            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, BLANK_TASK_DESCRIPTION_MESSAGE);
+            errorMessage = BLANK_TASK_DESCRIPTION_MESSAGE;
+        } catch (MissingTaskDeadlineException ignored) {
+            errorMessage = MISSING_TASK_DEADLINE_MESSAGE;
+        } catch (TeamTagNotFoundException ignored) {
+            errorMessage = TEAM_TAG_NOT_FOUND_MESSAGE;
+        }
+        if (errorMessage != null) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, errorMessage);
             return buildRedirectAfterInlineUpdate(task, request, returnTo);
         }
         redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Задача успешно изменена");
@@ -440,11 +451,16 @@ public class TaskPageController {
             @PathVariable Long id,
             @RequestParam Long tagId,
             InlineTaskUpdateRequest request,
-            @RequestParam(required = false) String returnTo) {
+            @RequestParam(required = false) String returnTo,
+            RedirectAttributes redirectAttributes) {
         Task task = taskService.findById(id);
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
-        taskService.updateTag(id, tagId, authUser.getId());
+        try {
+            taskService.updateTag(id, tagId, authUser.getId());
+        } catch (TeamTagNotFoundException ignored) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, TEAM_TAG_NOT_FOUND_MESSAGE);
+        }
 
         return buildRedirectAfterInlineUpdate(task, request, returnTo);
     }
