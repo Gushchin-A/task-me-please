@@ -195,6 +195,23 @@ class AccountSettingsControllerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void deleteAccountShouldAllowRegisteringWithSameEmailAgain() throws Exception {
+        mockMvc.perform(post("/settings/delete")
+                        .with(user(new AuthUser(currentUser)))
+                        .with(csrf())
+                        .param("confirmationText", "я хочу удалить аккаунт"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login"));
+
+        User registeredAgain = userService.create(currentUser.getEmail(), "Новое имя", PASSWORD);
+        User deletedUser = userRepository.findById(currentUser.getId());
+
+        assertEquals(currentUser.getEmail(), registeredAgain.getEmail());
+        assertTrue(deletedUser.isDeleted());
+        assertTrue(deletedUser.getEmail().endsWith("@deleted.taskmeplease.invalid"));
+    }
+
+    @Test
     void deleteAccountShouldRequireCsrf() throws Exception {
         mockMvc.perform(post("/settings/delete")
                         .with(user(new AuthUser(currentUser)))

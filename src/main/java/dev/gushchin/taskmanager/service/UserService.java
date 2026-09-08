@@ -16,6 +16,9 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class UserService {
+    private static final String DELETED_EMAIL_PREFIX = "deleted-";
+    private static final String DELETED_EMAIL_DOMAIN = "deleted.taskmeplease.invalid";
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final NotificationService notificationService;
@@ -76,6 +79,7 @@ public class UserService {
 
     public void deleteById(UUID id) {
         User user = findById(id);
+        user.setEmail(DELETED_EMAIL_PREFIX + user.getId() + "@" + DELETED_EMAIL_DOMAIN);
         user.setDeleted(true);
         user.setUpdatedAt(Instant.now());
         userRepository.update(user);
