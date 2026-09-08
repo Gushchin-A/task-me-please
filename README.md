@@ -1,42 +1,46 @@
-# Task Me Please 💻
+# Task Me Please
 
-**Personal task manager project currently in active development.**
+Task Me Please is a server-rendered task tracker for personal and team work. It supports teams, invitations,
+tasks, comments, dynamic team tags, task roles and archived work.
 
-Backend application for team task management with users, teams, invitations, tasks and comments.
+This is an educational project developed through hands-on work with assistance from coding agents. Product
+decisions, review and final integration remain human-directed.
 
-The project is focused on building a production-style REST architecture with Spring Boot, jOOQ, PostgreSQL and server-side rendering.
+## Features
 
-#### Current progress
-- user management
-- teams and team members
-- invitations
-- tasks and comments domain models
-- Flyway migrations
-- jOOQ repositories
-- service layer
-- Dockerized PostgreSQL environment
+- registration, email verification, login and password reset;
+- personal and team task lists;
+- teams, member roles, invitations and member removal or self-leave;
+- task author and assignee, status, deadline and dynamic team tags;
+- comments, archiving and restoring tasks;
+- transactional email notifications for account, team and task events.
 
-#### Backend Stack
-- Java 21
-- Spring Boot
-- Spring Security
-- PostgreSQL
-- jOOQ
-- Flyway
-- Docker
-- JTE
+## Stack
 
-#### Frontend Stack
-- HTML
-- Tailwind CSS
-- htmx
-- Alpine.js
+- Java 21 and Spring Boot;
+- Spring MVC and Spring Security;
+- PostgreSQL, jOOQ and Flyway;
+- JTE server-side templates;
+- HTML, Tailwind CSS, htmx and Alpine.js where they fit the existing interface;
+- Docker Compose for local PostgreSQL;
+- Brevo Transactional Email API over HTTPS.
 
----
+The visual language is based on [GitHub Primer Primitives](https://primer.style/). Primer assets are stored in
+the repository and served locally; the application does not fetch styles from GitHub, Primer or a CDN at runtime.
 
-### Project launch
+## Public deployment
 
-Create a local environment file and set a real Brevo API key only when email delivery needs to be tested:
+The application and PostgreSQL database are deployed on Render. The public instance uses Render's free tier, so
+the first request after inactivity may take a little longer while the service wakes up.
+
+## Run locally
+
+Requirements:
+
+- Java 21;
+- Docker and Docker Compose.
+
+Create a local environment file, start PostgreSQL and run the application:
 
 ```bash
 cp .env.example .env
@@ -47,15 +51,44 @@ set +a
 ./gradlew bootRun
 ```
 
-Transactional emails are sent through the Brevo API over HTTPS. The required production values are:
+The application is available at `http://localhost:8181` by default.
 
-- `BREVO_API_KEY` — Brevo API key; never commit the real value;
-- `MAIL_FROM` — verified Brevo sender, currently `no-reply@taskmeplease.online`;
-- `APP_BASE_URL` — public application URL used in verification, invitation and password reset links.
+To stop the local database:
 
-Optional settings are `BREVO_API_URL`, `BREVO_CONNECT_TIMEOUT` and `BREVO_READ_TIMEOUT`. SMTP variables are no
-longer used.
+```bash
+docker compose down
+```
 
-Automated tests use a mock HTTP server and never call Brevo. To verify real delivery locally, start the application
-with the environment above and complete registration, email verification and password reset flows with an address
-you can access.
+## Environment variables
+
+`.env` is ignored by Git and must never contain committed secrets. `.env.example` contains the complete set of
+variables used by the application with safe development values or placeholders.
+
+| Variable | Purpose |
+| --- | --- |
+| `SPRING_DATASOURCE_URL` | PostgreSQL JDBC URL. |
+| `SPRING_DATASOURCE_USERNAME` | PostgreSQL user. |
+| `SPRING_DATASOURCE_PASSWORD` | PostgreSQL password. |
+| `APP_BASE_URL` | Public base URL used in verification, invitation and password-reset links. Set it to the Render URL in production. |
+| `PORT` | HTTP port. Render provides it automatically; use `8181` locally. |
+| `BREVO_API_KEY` | Brevo API key for transactional email. Keep it empty when email delivery is not needed locally. |
+| `BREVO_API_URL` | Brevo Transactional Email API endpoint. |
+| `BREVO_CONNECT_TIMEOUT` | Connection timeout for the Brevo API. |
+| `BREVO_READ_TIMEOUT` | Response timeout for the Brevo API. |
+| `MAIL_FROM` | Sender address verified in Brevo. |
+| `REMEMBER_ME_KEY` | Long random secret for persistent login cookies. |
+| `JTE_DEVELOPMENT_MODE` | Enables JTE development mode locally. |
+
+For real local email testing, configure `BREVO_API_KEY`, `MAIL_FROM`, `APP_BASE_URL` and
+`REMEMBER_ME_KEY` in your untracked `.env`. Use a mailbox you can access and complete the relevant confirmation
+flow. Automated tests mock the HTTP boundary and do not send emails to Brevo.
+
+## Verification
+
+Run the full project checks:
+
+```bash
+./gradlew clean build
+```
+
+The build runs tests, Checkstyle, PMD and Spotless verification.
