@@ -32,6 +32,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class RegistrationController {
     private static final String CSRF_ATTRIBUTE = "_csrf";
     private static final String EMAIL_FORMAT_ERROR_MESSAGE = "Email имеет неправильный формат";
+    private static final String DELIVERY_FAILED_ATTRIBUTE = "deliveryFailed";
     private static final String ERROR_MESSAGE_ATTRIBUTE = "errorMessage";
     private static final String INVITE_PARAMETER = "invite";
     private static final String LOGIN_PATH = "/login";
@@ -47,6 +48,9 @@ public class RegistrationController {
     private static final String VERIFICATION_EMAIL_SESSION_ATTRIBUTE = "verificationEmail";
     private static final String VERIFICATION_INVITE_SESSION_ATTRIBUTE = "verificationInvite";
     private static final String VERIFICATION_PENDING_REDIRECT = "redirect:/verification-pending";
+    private static final String VERIFICATION_EMAIL_FAILED_MESSAGE =
+            "Не удалось отправить письмо с подтверждением регистрации. "
+                    + "Проблема на нашей стороне, мы уже работаем над этим. Попробуйте позже";
     private static final String VERIFICATION_REDIRECT_SESSION_ATTRIBUTE = "verificationRedirect";
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
@@ -102,11 +106,17 @@ public class RegistrationController {
             return REDIRECT_PREFIX + buildAuthUrl(REGISTRATION_PATH, redirect, invite);
         }
 
+        boolean emailDelivered;
         try {
-            emailVerificationService.register(email, name, password, getInvite(invite));
+            emailDelivered = emailVerificationService.register(email, name, password, getInvite(invite));
         } catch (UserAlreadyExistsException ex) {
             redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, USER_ALREADY_EXISTS_ERROR_MESSAGE);
             return REDIRECT_PREFIX + buildAuthUrl(REGISTRATION_PATH, redirect, invite);
+        }
+
+        if (!emailDelivered) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, VERIFICATION_EMAIL_FAILED_MESSAGE);
+            redirectAttributes.addFlashAttribute(DELIVERY_FAILED_ATTRIBUTE, true);
         }
 
         saveVerificationContext(request.getSession(), email, redirect, invite);

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jooq.DSLContext;
+import org.jooq.impl.DSL;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -27,6 +28,15 @@ public class TaskRepository {
         TasksRecord record = dsl.selectFrom(TASKS).where(TASKS.ID.eq(id)).fetchOne();
 
         return TaskMapper.toModel(record);
+    }
+
+    public boolean existsActiveByTeamIdAndNormalizedTitle(Long teamId, String normalizedTitle, Long excludedTaskId) {
+        return dsl.fetchExists(dsl.selectOne()
+                .from(TASKS)
+                .where(TASKS.TEAM_ID.eq(teamId))
+                .and(TASKS.IS_DELETED.isFalse())
+                .and(DSL.lower(DSL.trim(TASKS.TITLE)).eq(normalizedTitle))
+                .and(excludedTaskId == null ? DSL.trueCondition() : TASKS.ID.ne(excludedTaskId)));
     }
 
     public Task save(Task task) {

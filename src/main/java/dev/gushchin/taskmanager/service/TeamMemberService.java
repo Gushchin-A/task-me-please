@@ -22,6 +22,7 @@ public class TeamMemberService {
     private final TeamService teamService;
     private final UserService userService;
     private final NotificationPublisher notificationPublisher;
+    private final TeamEmailService teamEmailService;
 
     public List<TeamMember> findByTeamId(Long teamId) {
         teamService.findById(teamId);
@@ -94,6 +95,11 @@ public class TeamMemberService {
 
         TeamMember updatedMember = teamMemberRepository.updateTaskVisibility(teamId, userId, taskVisibility);
         notificationPublisher.taskVisibilityChanged(targetMember, updatedMember, currentUserId);
+        if (taskVisibility == TeamTaskVisibility.ALL_TASKS) {
+            teamEmailService.sendAllTasksVisible(userId, teamService.findById(teamId));
+        } else {
+            teamEmailService.sendOwnTasksVisibleOnly(userId, teamService.findById(teamId));
+        }
 
         return updatedMember;
     }
@@ -118,6 +124,7 @@ public class TeamMemberService {
 
         TeamMember removedMember = teamMemberRepository.softDelete(teamId, userId);
         notificationPublisher.teamMemberRemoved(removedMember, currentUserId);
+        teamEmailService.sendMemberRemoved(userId, teamService.findById(teamId));
 
         return removedMember;
     }
@@ -132,7 +139,19 @@ public class TeamMemberService {
 
         TeamMember removedMember = teamMemberRepository.softDelete(teamId, currentUserId);
         notificationPublisher.teamMemberLeft(removedMember);
+        teamEmailService.sendMemberLeft(
+                userService.findById(currentUserId), teamService.findById(teamId), findOwnerId(teamId));
 
         return removedMember;
+    }
+
+    private UUID findOwnerId(Long teamId) {
+        for (TeamMember member : teamMemberRepository.findByTeamId(teamId)) {
+            if (!member.isDeleted() && member.getRole() == TeamMemberRole.OWNER) {
+                return member.getUserId();
+            }
+        }
+
+        return null;
     }
 }

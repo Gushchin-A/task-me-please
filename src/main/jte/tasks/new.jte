@@ -58,7 +58,7 @@
                     </a>
                 </div>
             @else
-                <form class="task-create-form" method="post" action="/tasks">
+                <form class="task-create-form" method="post" action="/tasks" data-submit-loading>
                     <input
                         type="hidden"
                         name="${_csrf.getParameterName()}"
@@ -255,7 +255,9 @@
                         </div>
 
                         <div class="form-field task-create-field task-description-field">
-                            <label id="task-description-label">Описание</label>
+                            <label id="task-description-label">
+                                Описание <span class="required-marker" aria-hidden="true">*</span>
+                            </label>
 
                             <div
                                 class="task-description-editor"
@@ -333,6 +335,7 @@
                                     name="description"
                                     rows="8"
                                     placeholder="Опишите, что нужно сделать…"
+                                    required
                                 ></textarea>
 
                                 <div
@@ -453,7 +456,7 @@
                             <a class="button button-secondary" href="/tasks">
                                 Отменить
                             </a>
-                            <button class="button button-primary" type="submit">
+                            <button class="button button-primary" type="submit" data-loading-text="Создание...">
                                 Создать задачу
                             </button>
                         </div>

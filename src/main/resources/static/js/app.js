@@ -566,6 +566,12 @@ function setupTaskDetail() {
         }
 
         select.value.textContent = selectedOption.textContent;
+        select.value.classList.toggle(
+                'task-participant-former',
+                selectedOption.classList.contains('task-participant-former'));
+        select.trigger.dataset.tooltip = selectedOption.classList.contains('task-participant-former')
+                ? selectedOption.dataset.tooltip || selectedOption.title
+                : select.nativeSelect.dataset.tooltip;
         select.options.forEach(function (option) {
             option.setAttribute('aria-selected', String(option.dataset.value === selectedOption.value));
         });
@@ -641,6 +647,10 @@ function setupTaskDetail() {
             option.type = 'button';
             option.dataset.value = nativeOption.value;
             option.setAttribute('role', 'option');
+            if (nativeOption.classList.contains('task-participant-former')) {
+                option.classList.add('task-participant-former');
+                option.title = nativeOption.title;
+            }
             option.innerHTML = '<span class="primer-select-check" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 1 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path></svg></span>';
 
             if (avatar !== null) {
@@ -821,7 +831,7 @@ function setupTaskDetail() {
             window.location.reload();
         } catch (error) {
             save.disabled = false;
-            showFlashMessage('Не удалось изменить параметры задачи. Попробуйте ещё раз');
+            showFlashMessage('Не удалось изменить параметры задачи. Попробуйте еще раз', 'error');
         }
     });
 }
@@ -862,17 +872,28 @@ function setupTaskCards() {
         const originalValues = new URLSearchParams(new FormData(form)).toString();
         const authorWarningTrigger = dialog.querySelector('[data-author-change-warning]');
         const originalSelectValues = new Map();
+        const initialTooltips = new Map();
 
         selects.forEach(function (select) {
             const hiddenInput = select.parentElement.querySelector('input[type="hidden"]');
+            const trigger = select.querySelector(':scope > .primer-select-trigger');
 
             originalSelectValues.set(select, hiddenInput.value);
+            initialTooltips.set(select, trigger.dataset.tooltip);
         });
 
         function updateAuthorChangeWarning() {
             const assigneeInput = form.querySelector('input[name="assigneeId"]');
 
             if (authorWarningTrigger === null || assigneeInput === null) {
+                return;
+            }
+
+            const authorSelect = authorWarningTrigger.closest('[data-task-edit-select]');
+            const selectedAuthor = authorSelect.querySelector('.primer-select-option[aria-selected="true"]');
+
+            if (selectedAuthor?.dataset.formerMember !== undefined) {
+                authorWarningTrigger.dataset.tooltip = selectedAuthor.dataset.tooltip || selectedAuthor.title;
                 return;
             }
 
@@ -905,6 +926,9 @@ function setupTaskCards() {
 
             selects.forEach(function (select) {
                 const hiddenInput = select.parentElement.querySelector('input[type="hidden"]');
+                const trigger = select.querySelector(':scope > .primer-select-trigger');
+                const defaultTooltip = initialTooltips.get(select);
+                const formerTooltip = trigger.dataset.formerMemberTooltip;
 
                 hiddenInput.value = originalSelectValues.get(select);
                 const selectedOption = Array.from(select.querySelectorAll('.primer-select-option'))
@@ -920,6 +944,16 @@ function setupTaskCards() {
 
                 if (selectedOption) {
                     value.textContent = selectedOption.dataset.label;
+                    const formerMember = selectedOption.dataset.formerMember !== undefined;
+
+                    value.classList.toggle('task-participant-former', formerMember);
+                    if (formerMember) {
+                        trigger.dataset.tooltip = formerTooltip;
+                    } else if (defaultTooltip === undefined) {
+                        delete trigger.dataset.tooltip;
+                    } else {
+                        trigger.dataset.tooltip = defaultTooltip;
+                    }
 
                     if (selectedAvatar && selectedOption.dataset.avatar) {
                         selectedAvatar.textContent = selectedOption.dataset.avatar;
@@ -944,6 +978,7 @@ function setupTaskCards() {
         selects.forEach(function (select) {
             const trigger = select.querySelector(':scope > .primer-select-trigger');
             const panel = trigger.nextElementSibling;
+            const defaultTooltip = initialTooltips.get(select);
 
             trigger.addEventListener('click', function (event) {
                 event.stopPropagation();
@@ -969,6 +1004,18 @@ function setupTaskCards() {
 
                     hiddenInput.value = option.dataset.value;
                     value.textContent = option.dataset.label;
+                    const formerMember = option.dataset.formerMember !== undefined;
+
+                    value.classList.toggle('task-participant-former', formerMember);
+                    if (formerMember) {
+                        trigger.dataset.tooltip = option.dataset.tooltip
+                                || option.title
+                                || trigger.dataset.formerMemberTooltip;
+                    } else if (defaultTooltip === undefined) {
+                        delete trigger.dataset.tooltip;
+                    } else {
+                        trigger.dataset.tooltip = defaultTooltip;
+                    }
 
                     if (selectedAvatar && option.dataset.avatar) {
                         selectedAvatar.textContent = option.dataset.avatar;
@@ -1692,7 +1739,9 @@ function setupTooltips() {
         function scheduleTooltip() {
             window.clearTimeout(showTimer);
 
-            if (element.hasAttribute('data-tooltip-disabled')) {
+            if (element.hasAttribute('data-tooltip-disabled')
+                    || !element.dataset.tooltip
+                    || element.dataset.tooltip.trim() === '') {
                 hideTooltip();
                 return;
             }
@@ -1777,7 +1826,7 @@ function setupSubmitLoading() {
     });
 }
 
-function showFlashMessage(message) {
+function showFlashMessage(message, type) {
     let stack = document.querySelector('.flash-stack');
 
     if (stack === null) {
@@ -1793,10 +1842,12 @@ function showFlashMessage(message) {
     const closeIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     const closeIconPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 
-    flashMessage.className = 'flash-message flash-message-info';
+    const flashType = type === undefined ? 'success' : type;
+
+    flashMessage.className = 'flash-message flash-message-' + flashType;
     flashMessage.dataset.flashMessage = '';
     flashMessage.dataset.autoDismissMs = '10000';
-    flashMessage.setAttribute('role', 'status');
+    flashMessage.setAttribute('role', flashType === 'error' ? 'alert' : 'status');
     messageText.className = 'flash-message-text';
     messageText.textContent = message;
     closeButton.className = 'flash-close';

@@ -57,6 +57,7 @@ public class SecurityConfig {
                                 RESEND_VERIFICATION_PATH,
                                 VERIFICATION_PENDING_PATH,
                                 "/css/**",
+                                "/fonts/**",
                                 "/images/**",
                                 "/js/**",
                                 "/reset-password/*",

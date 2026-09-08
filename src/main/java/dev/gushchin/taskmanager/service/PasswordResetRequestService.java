@@ -46,11 +46,9 @@ public class PasswordResetRequestService {
             return PasswordResetRequestResult.LIMIT_REACHED;
         }
 
-        if (isCooldownFinished(tokens, now)) {
-            createAndSend(user);
-        }
+        boolean delivered = !isCooldownFinished(tokens, now) || createAndSend(user);
 
-        return PasswordResetRequestResult.SENT;
+        return delivered ? PasswordResetRequestResult.SENT : PasswordResetRequestResult.DELIVERY_FAILED;
     }
 
     private boolean isEligible(User user) {
@@ -68,15 +66,20 @@ public class PasswordResetRequestService {
                 || !tokens.getLast().getCreatedAt().plus(REQUEST_COOLDOWN).isAfter(now);
     }
 
-    private void createAndSend(User user) {
+    private boolean createAndSend(User user) {
         String token = accountTokenService.create(user.getId(), AccountTokenType.PASSWORD_RESET, TOKEN_LIFETIME);
 
         try {
             passwordResetEmailService.sendPasswordReset(user, token, TOKEN_LIFETIME);
+
+            return true;
         } catch (TransactionalEmailSendingException ex) {
             if (log.isWarnEnabled()) {
                 log.warn("Password reset email could not be sent for user {}", user.getId());
             }
+            accountTokenService.discard(token);
+
+            return false;
         }
     }
 }

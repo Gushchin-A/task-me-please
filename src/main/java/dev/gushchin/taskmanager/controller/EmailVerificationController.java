@@ -3,6 +3,7 @@ package dev.gushchin.taskmanager.controller;
 import dev.gushchin.taskmanager.exception.InvalidAccountTokenException;
 import dev.gushchin.taskmanager.exception.TeamInvitationNotFoundException;
 import dev.gushchin.taskmanager.exception.TeamInvitationNotPendingException;
+import dev.gushchin.taskmanager.model.EmailVerificationResendResult;
 import dev.gushchin.taskmanager.model.EmailVerificationResendState;
 import dev.gushchin.taskmanager.model.EmailVerificationResult;
 import dev.gushchin.taskmanager.model.User;
@@ -17,6 +18,7 @@ import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,11 +31,18 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Controller
 @RequiredArgsConstructor
 public class EmailVerificationController {
+    private static final String DELIVERY_FAILED_ATTRIBUTE = "deliveryFailed";
     private static final String ERROR_MESSAGE_ATTRIBUTE = "errorMessage";
     private static final String INVITATIONS_PATH_PREFIX = "/invitations/";
     private static final String INVITE_PARAMETER = "invite";
     private static final String LOGIN_PATH = "/login";
     private static final String NEUTRAL_RESEND_MESSAGE = "Отправили вам новое письмо с подтверждением почты";
+    private static final String RESEND_COOLDOWN_MESSAGE = "Письмо уже отправлено. Повторить можно через минуту";
+    private static final String RESEND_LIMIT_MESSAGE =
+            "Достигнут дневной лимит писем. Попробуйте запросить подтверждение завтра";
+    private static final String VERIFICATION_EMAIL_FAILED_MESSAGE =
+            "Не удалось отправить письмо с подтверждением регистрации. "
+                    + "Проблема на нашей стороне, мы уже работаем над этим. Попробуйте позже";
     private static final String REDIRECT_PREFIX = "redirect:";
     private static final String SUCCESS_MESSAGE_ATTRIBUTE = "successMessage";
     private static final String TASKS_PATH = "/tasks";
@@ -57,7 +66,7 @@ public class EmailVerificationController {
     private final TeamInvitationService teamInvitationService;
 
     @GetMapping(VERIFICATION_PENDING_PATH)
-    public String pending(HttpSession session, Model model) {
+    public String pending(HttpSession session, Model model, CsrfToken csrfToken) {
         String email = (String) session.getAttribute(VERIFICATION_EMAIL_SESSION_ATTRIBUTE);
         if (email == null || email.isBlank()) {
             return "redirect:/registration";
@@ -69,6 +78,11 @@ public class EmailVerificationController {
         model.addAttribute("loginUrl", buildLoginUrl(redirect, invite));
         model.addAttribute("registrationUrl", "/registration");
         model.addAttribute("limitReached", resendState.remainingAttempts() == 0);
+        model.addAttribute(
+                DELIVERY_FAILED_ATTRIBUTE, Boolean.TRUE.equals(getModelAttribute(model, DELIVERY_FAILED_ATTRIBUTE)));
+        model.addAttribute("_csrf", csrfToken);
+        model.addAttribute(SafeRedirectAuthenticationSuccessHandler.REDIRECT_PARAMETER, redirect);
+        model.addAttribute(INVITE_PARAMETER, invite);
         model.addAttribute(SUCCESS_MESSAGE_ATTRIBUTE, getModelAttribute(model, SUCCESS_MESSAGE_ATTRIBUTE));
         model.addAttribute(ERROR_MESSAGE_ATTRIBUTE, getModelAttribute(model, ERROR_MESSAGE_ATTRIBUTE));
 
@@ -77,21 +91,32 @@ public class EmailVerificationController {
 
     @PostMapping("/resend-verification")
     public String resend(
-            @RequestParam String email,
             @RequestParam(required = false) String redirect,
             @RequestParam(required = false) String invite,
             HttpSession session,
             RedirectAttributes redirectAttributes) {
         String safeRedirect = getSafeRedirect(redirect);
         String inviteValue = getValidInvite(invite);
+        String email = (String) session.getAttribute(VERIFICATION_EMAIL_SESSION_ATTRIBUTE);
 
-        emailVerificationService.resend(email, inviteValue);
-        session.setAttribute(VERIFICATION_EMAIL_SESSION_ATTRIBUTE, email);
         session.setAttribute(VERIFICATION_REDIRECT_SESSION_ATTRIBUTE, safeRedirect);
         session.setAttribute(VERIFICATION_INVITE_SESSION_ATTRIBUTE, inviteValue);
-        redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, NEUTRAL_RESEND_MESSAGE);
+
+        EmailVerificationResendResult resendResult = email == null || email.isBlank()
+                ? EmailVerificationResendResult.NOT_APPLICABLE
+                : emailVerificationService.resend(email, inviteValue);
+        addResendFlash(resendResult, redirectAttributes);
 
         return REDIRECT_PREFIX + VERIFICATION_PENDING_PATH;
+    }
+
+    private void addResendFlash(EmailVerificationResendResult result, RedirectAttributes redirectAttributes) {
+        if (result == EmailVerificationResendResult.DELIVERY_FAILED) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, VERIFICATION_EMAIL_FAILED_MESSAGE);
+            redirectAttributes.addFlashAttribute(DELIVERY_FAILED_ATTRIBUTE, true);
+            return;
+        }
+        redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, NEUTRAL_RESEND_MESSAGE);
     }
 
     @GetMapping("/verify-email/{token}")

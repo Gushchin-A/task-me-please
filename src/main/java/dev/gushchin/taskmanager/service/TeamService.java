@@ -35,6 +35,7 @@ public class TeamService {
     private final TeamMemberRepository teamMemberRepository;
     private final TeamTagRepository teamTagRepository;
     private final NotificationPublisher notificationPublisher;
+    private final TeamEmailService teamEmailService;
 
     public Team findById(Long id) {
         Team team = teamRepository.findById(id);
@@ -142,6 +143,7 @@ public class TeamService {
         team.setUpdatedAt(Instant.now());
         teamRepository.update(team);
         notificationPublisher.teamDeleted(team, currentUserId);
+        teamEmailService.sendTeamDeleted(team, currentUserId);
     }
 
     @Transactional

@@ -1,7 +1,11 @@
 package dev.gushchin.taskmanager.controller;
 
+import dev.gushchin.taskmanager.exception.BlankTaskDescriptionException;
+import dev.gushchin.taskmanager.exception.MissingTaskDeadlineException;
+import dev.gushchin.taskmanager.exception.TaskTitleAlreadyExistsException;
 import dev.gushchin.taskmanager.exception.TeamInvitationNotFoundException;
 import dev.gushchin.taskmanager.exception.TeamInvitationNotPendingException;
+import dev.gushchin.taskmanager.exception.TeamTagNotFoundException;
 import dev.gushchin.taskmanager.model.Comment;
 import dev.gushchin.taskmanager.model.Task;
 import dev.gushchin.taskmanager.model.TaskDetailsUpdate;
@@ -32,9 +36,11 @@ import dev.gushchin.taskmanager.view.TaskParticipantView;
 import dev.gushchin.taskmanager.view.TaskView;
 import dev.gushchin.taskmanager.view.TaskWithTeamView;
 import dev.gushchin.taskmanager.view.TeamTasksStats;
+import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -59,6 +65,7 @@ public class TaskPageController {
     private static final String REDIRECT_TEAMS_PREFIX = "redirect:/teams/";
     private static final String REDIRECT_TASKS = "redirect:/tasks";
     private static final String REDIRECT_TASKS_PREFIX = "redirect:/tasks/";
+    private static final String REDIRECT_NEW_TASK_WITH_TEAM = "redirect:/tasks/new?teamId=";
     private static final String RETURN_TO_TASK = "task";
     private static final String RETURN_TO_TASKS = "tasks";
     private static final String RETURN_TO_TASKS_ARCHIVE = "tasksArchive";
@@ -69,7 +76,17 @@ public class TaskPageController {
     private static final String PAGE_ATTRIBUTE = "page";
     private static final String TASKS_INDEX_VIEW = "tasks/index";
     private static final String SUCCESS_MESSAGE_ATTRIBUTE = "successMessage";
+    private static final String ERROR_MESSAGE_ATTRIBUTE = "errorMessage";
+    private static final String BLANK_TASK_DESCRIPTION_MESSAGE = "Описание задачи не может быть пустым";
+    private static final String MISSING_TASK_DEADLINE_MESSAGE = "Укажите дедлайн задачи";
+    private static final String TEAM_TAG_NOT_FOUND_MESSAGE = "Выбранный тег больше не существует. Обновите страницу";
+    private static final String TASK_TITLE_EXISTS_MESSAGE = "Задача с таким названием уже существует в этой команде";
     private static final String INVITATION_DECISION_ATTRIBUTE = "invitationDecision";
+    private static final String CHOOSE_ANOTHER_AUTHOR = "Выберите другого автора";
+    private static final String CHOOSE_ANOTHER_ASSIGNEE = "Выберите другого исполнителя";
+    private static final String CHOOSE_ANOTHER_AUTHOR_AND_ASSIGNEE = "Выберите другого автора и исполнителя";
+    private static final String LEFT_TEAM_SINGULAR = " больше не состоит в команде. ";
+    private static final String LEFT_TEAM_PLURAL = " больше не состоят в команде. ";
 
     private final TeamService teamService;
     private final TaskService taskService;
@@ -307,9 +324,29 @@ public class TaskPageController {
                 request.getAssigneeId());
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
-        teamMemberService.findById(task.getTeamId(), updatedAuthorId);
-        teamMemberService.findById(task.getTeamId(), request.getAssigneeId());
-        taskService.updateDetails(id, update, authUser.getId());
+
+        String formerMemberMessage = getFormerMemberMessage(task, updatedAuthorId, request.getAssigneeId());
+        if (formerMemberMessage != null) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, formerMemberMessage);
+            return buildRedirectAfterInlineUpdate(task, request, returnTo);
+        }
+
+        String errorMessage = null;
+        try {
+            taskService.updateDetails(id, update, authUser.getId());
+        } catch (TaskTitleAlreadyExistsException ignored) {
+            errorMessage = TASK_TITLE_EXISTS_MESSAGE;
+        } catch (BlankTaskDescriptionException ignored) {
+            errorMessage = BLANK_TASK_DESCRIPTION_MESSAGE;
+        } catch (MissingTaskDeadlineException ignored) {
+            errorMessage = MISSING_TASK_DEADLINE_MESSAGE;
+        } catch (TeamTagNotFoundException ignored) {
+            errorMessage = TEAM_TAG_NOT_FOUND_MESSAGE;
+        }
+        if (errorMessage != null) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, errorMessage);
+            return buildRedirectAfterInlineUpdate(task, request, returnTo);
+        }
         redirectAttributes.addFlashAttribute(SUCCESS_MESSAGE_ATTRIBUTE, "Задача успешно изменена");
 
         return buildRedirectAfterInlineUpdate(task, request, returnTo);
@@ -358,18 +395,39 @@ public class TaskPageController {
     @PostMapping("/tasks")
     public String createTask(
             @AuthenticationPrincipal AuthUser authUser,
-            @RequestParam Long teamId,
-            @RequestParam UUID assigneeId,
-            @RequestParam String title,
-            @RequestParam String description,
-            @RequestParam LocalDate deadlineDate,
-            @RequestParam Long tagId) {
-        teamMemberService.findById(teamId, authUser.getId());
-        teamMemberService.findById(teamId, assigneeId);
+            @Valid TaskCreateRequest request,
+            RedirectAttributes redirectAttributes) {
+        teamMemberService.findById(request.getTeamId(), authUser.getId());
 
-        taskService.create(teamId, authUser.getId(), assigneeId, title, description, deadlineDate, tagId);
+        if (!teamMemberService.isActiveMember(request.getTeamId(), request.getAssigneeId())) {
+            redirectAttributes.addFlashAttribute(
+                    ERROR_MESSAGE_ATTRIBUTE,
+                    buildFormerMemberMessage(
+                            request.getTeamId(),
+                            request.getAssigneeId(),
+                            request.getAssigneeId(),
+                            CHOOSE_ANOTHER_ASSIGNEE));
+            return REDIRECT_NEW_TASK_WITH_TEAM + request.getTeamId();
+        }
 
-        return REDIRECT_TEAMS_PREFIX + teamId;
+        try {
+            taskService.create(
+                    request.getTeamId(),
+                    authUser.getId(),
+                    request.getAssigneeId(),
+                    request.getTitle(),
+                    request.getDescription(),
+                    request.getDeadlineDate(),
+                    request.getTagId());
+        } catch (TaskTitleAlreadyExistsException ignored) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, TASK_TITLE_EXISTS_MESSAGE);
+            return REDIRECT_NEW_TASK_WITH_TEAM + request.getTeamId();
+        } catch (BlankTaskDescriptionException ignored) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, BLANK_TASK_DESCRIPTION_MESSAGE);
+            return REDIRECT_NEW_TASK_WITH_TEAM + request.getTeamId();
+        }
+
+        return REDIRECT_TEAMS_PREFIX + request.getTeamId();
     }
 
     @PostMapping("/tasks/{id}/status")
@@ -393,11 +451,16 @@ public class TaskPageController {
             @PathVariable Long id,
             @RequestParam Long tagId,
             InlineTaskUpdateRequest request,
-            @RequestParam(required = false) String returnTo) {
+            @RequestParam(required = false) String returnTo,
+            RedirectAttributes redirectAttributes) {
         Task task = taskService.findById(id);
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
-        taskService.updateTag(id, tagId, authUser.getId());
+        try {
+            taskService.updateTag(id, tagId, authUser.getId());
+        } catch (TeamTagNotFoundException ignored) {
+            redirectAttributes.addFlashAttribute(ERROR_MESSAGE_ATTRIBUTE, TEAM_TAG_NOT_FOUND_MESSAGE);
+        }
 
         return buildRedirectAfterInlineUpdate(task, request, returnTo);
     }
@@ -408,11 +471,18 @@ public class TaskPageController {
             @PathVariable Long id,
             @RequestParam UUID authorId,
             InlineTaskUpdateRequest request,
-            @RequestParam(required = false) String returnTo) {
+            @RequestParam(required = false) String returnTo,
+            RedirectAttributes redirectAttributes) {
         Task task = taskService.findById(id);
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
-        teamMemberService.findById(task.getTeamId(), authorId);
+        if (!isKeptOrActiveMember(task.getTeamId(), task.getAuthorId(), authorId)) {
+            redirectAttributes.addFlashAttribute(
+                    ERROR_MESSAGE_ATTRIBUTE,
+                    buildFormerMemberMessage(task.getTeamId(), authorId, authorId, CHOOSE_ANOTHER_AUTHOR));
+            return buildRedirectAfterInlineUpdate(task, request, returnTo);
+        }
+
         taskService.updateAuthor(id, authorId, authUser.getId());
 
         return buildRedirectAfterInlineUpdate(task, request, returnTo);
@@ -424,11 +494,18 @@ public class TaskPageController {
             @PathVariable Long id,
             @RequestParam UUID assigneeId,
             InlineTaskUpdateRequest request,
-            @RequestParam(required = false) String returnTo) {
+            @RequestParam(required = false) String returnTo,
+            RedirectAttributes redirectAttributes) {
         Task task = taskService.findById(id);
 
         teamMemberService.findById(task.getTeamId(), authUser.getId());
-        teamMemberService.findById(task.getTeamId(), assigneeId);
+        if (!isKeptOrActiveMember(task.getTeamId(), task.getAssigneeId(), assigneeId)) {
+            redirectAttributes.addFlashAttribute(
+                    ERROR_MESSAGE_ATTRIBUTE,
+                    buildFormerMemberMessage(task.getTeamId(), assigneeId, assigneeId, CHOOSE_ANOTHER_ASSIGNEE));
+            return buildRedirectAfterInlineUpdate(task, request, returnTo);
+        }
+
         taskService.updateAssignee(id, assigneeId, authUser.getId());
 
         return buildRedirectAfterInlineUpdate(task, request, returnTo);
@@ -438,7 +515,7 @@ public class TaskPageController {
     public String updateTaskDeadline(
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long id,
-            @RequestParam(required = false) LocalDate deadlineDate,
+            @RequestParam LocalDate deadlineDate,
             InlineTaskUpdateRequest request,
             @RequestParam(required = false) String returnTo) {
         Task task = taskService.findById(id);
@@ -508,6 +585,40 @@ public class TaskPageController {
                 task.isArchived(), canUpdateTask, canUpdateStatus, canArchive, canRestore, showAuthorChangeWarning);
 
         return TaskView.from(task, tag.getName(), author, assignee, state);
+    }
+
+    private String getFormerMemberMessage(Task task, UUID authorId, UUID assigneeId) {
+        boolean authorLeft = !isKeptOrActiveMember(task.getTeamId(), task.getAuthorId(), authorId);
+        boolean assigneeLeft = !isKeptOrActiveMember(task.getTeamId(), task.getAssigneeId(), assigneeId);
+
+        if (authorLeft && assigneeLeft) {
+            return buildFormerMemberMessage(task.getTeamId(), authorId, assigneeId, CHOOSE_ANOTHER_AUTHOR_AND_ASSIGNEE);
+        }
+
+        if (authorLeft) {
+            return buildFormerMemberMessage(task.getTeamId(), authorId, authorId, CHOOSE_ANOTHER_AUTHOR);
+        }
+
+        if (assigneeLeft) {
+            return buildFormerMemberMessage(task.getTeamId(), assigneeId, assigneeId, CHOOSE_ANOTHER_ASSIGNEE);
+        }
+
+        return null;
+    }
+
+    private String buildFormerMemberMessage(Long teamId, UUID firstUserId, UUID secondUserId, String action) {
+        String firstName = toTaskParticipant(teamId, firstUserId).displayName();
+        if (firstUserId.equals(secondUserId)) {
+            return firstName + LEFT_TEAM_SINGULAR + action;
+        }
+
+        String secondName = toTaskParticipant(teamId, secondUserId).displayName();
+
+        return firstName + " и " + secondName + LEFT_TEAM_PLURAL + action;
+    }
+
+    private boolean isKeptOrActiveMember(Long teamId, UUID currentUserId, UUID newUserId) {
+        return Objects.equals(newUserId, currentUserId) || teamMemberService.isActiveMember(teamId, newUserId);
     }
 
     private List<TaskParticipantView> getTeamUsers(Long teamId) {

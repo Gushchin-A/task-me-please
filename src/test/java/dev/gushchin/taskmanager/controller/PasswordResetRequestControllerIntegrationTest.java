@@ -105,7 +105,8 @@ class PasswordResetRequestControllerIntegrationTest extends IntegrationTestBase 
         verify(emailSender)
                 .send(
                         org.mockito.ArgumentMatchers.eq(EMAIL),
-                        org.mockito.ArgumentMatchers.eq("Восстановление password в Task Me Please"),
+                        org.mockito.ArgumentMatchers.eq("Восстановление пароля в TaskMePlease"),
+                        anyString(),
                         textCaptor.capture());
 
         assertNotNull(token);
@@ -148,16 +149,23 @@ class PasswordResetRequestControllerIntegrationTest extends IntegrationTestBase 
 
         mockMvc.perform(get("/forgot-password")
                         .flashAttr("requestResult", PasswordResetRequestResult.INVALID_ACCOUNT)
-                        .flashAttr("email", "unknown@test.com"))
+                        .flashAttr("email", "unknown@test.com")
+                        .flashAttr(
+                                "errorMessage",
+                                "Этот адрес электронной почты недействителен, "
+                                        + "не подтвержден или не привязан к учетной записи"))
                 .andExpect(status().isOk())
+                .andExpect(content().string(containsString("app-flash-stack")))
+                .andExpect(content().string(containsString("flash-message-error")))
                 .andExpect(content()
                         .string(containsString(
-                                "Этот адрес электронной почты недействителен, не подтверждён или не привязан")))
+                                "Этот адрес электронной почты недействителен, не подтвержден или не привязан")))
                 .andExpect(content().string(containsString("value=\"unknown@test.com\"")))
-                .andExpect(content().string(containsString("auth-inline-error")));
+                .andExpect(content().string(containsString("Введите адрес электронной почты вашей учетной записи")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("auth-inline-error"))));
 
         assertEquals(0, dsl.fetchCount(ACCOUNT_TOKENS));
-        verify(emailSender, never()).send(anyString(), anyString(), anyString());
+        verify(emailSender, never()).send(anyString(), anyString(), anyString(), anyString());
     }
 
     @Test
@@ -169,7 +177,7 @@ class PasswordResetRequestControllerIntegrationTest extends IntegrationTestBase 
         requestPasswordReset(EMAIL);
 
         assertEquals(1, dsl.fetchCount(ACCOUNT_TOKENS));
-        verify(emailSender, never()).send(anyString(), anyString(), anyString());
+        verify(emailSender, never()).send(anyString(), anyString(), anyString(), anyString());
 
         dsl.update(ACCOUNT_TOKENS)
                 .set(ACCOUNT_TOKENS.CREATED_AT, OffsetDateTime.now().minusMinutes(2))
@@ -185,7 +193,8 @@ class PasswordResetRequestControllerIntegrationTest extends IntegrationTestBase 
         verify(emailSender)
                 .send(
                         org.mockito.ArgumentMatchers.eq(EMAIL),
-                        org.mockito.ArgumentMatchers.eq("Восстановление password в Task Me Please"),
+                        org.mockito.ArgumentMatchers.eq("Восстановление пароля в TaskMePlease"),
+                        anyString(),
                         anyString());
     }
 
@@ -215,19 +224,42 @@ class PasswordResetRequestControllerIntegrationTest extends IntegrationTestBase 
     }
 
     @Test
-    void smtpFailureShouldKeepTokenAndNeutralResponse() throws Exception {
+    void smtpFailureShouldDiscardTokenAndReportDeliveryFailure() throws Exception {
         User user = createVerifiedUser(EMAIL);
         doThrow(new TransactionalEmailSendingException(new RuntimeException()))
                 .when(emailSender)
-                .send(anyString(), anyString(), anyString());
+                .send(anyString(), anyString(), anyString(), anyString());
 
-        requestPasswordReset(EMAIL);
+        mockMvc.perform(post("/forgot-password").with(csrf()).param("email", EMAIL))
+                .andExpect(status().isFound())
+                .andExpect(redirectedUrl("/forgot-password"))
+                .andExpect(flash().attribute("requestResult", PasswordResetRequestResult.DELIVERY_FAILED))
+                .andExpect(flash().attribute("email", EMAIL))
+                .andExpect(flash().attribute(
+                                "errorMessage",
+                                "Не удалось отправить письмо. Проблема на нашей стороне, "
+                                        + "мы уже работаем над этим. Попробуйте позже"));
 
         AccountTokensRecord token = dsl.selectFrom(ACCOUNT_TOKENS)
                 .where(ACCOUNT_TOKENS.USER_ID.eq(user.getId()))
                 .fetchOne();
 
-        assertNotNull(token);
+        assertNull(token);
+    }
+
+    @Test
+    void deliveryFailureShouldShowTopFlashAndKeepFormDescription() throws Exception {
+        mockMvc.perform(get("/forgot-password")
+                        .flashAttr("requestResult", PasswordResetRequestResult.DELIVERY_FAILED)
+                        .flashAttr("email", EMAIL)
+                        .flashAttr("errorMessage", "Не удалось отправить письмо"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("app-flash-stack")))
+                .andExpect(content().string(containsString("flash-message-error")))
+                .andExpect(content().string(containsString("Не удалось отправить письмо")))
+                .andExpect(content().string(containsString("Введите адрес электронной почты вашей учетной записи")))
+                .andExpect(content().string(containsString("value=\"" + EMAIL + "\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("auth-inline-error"))));
     }
 
     @Test

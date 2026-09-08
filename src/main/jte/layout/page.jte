@@ -148,6 +148,8 @@
         <main class="app-content app-content-wide" id="main-content">
             ${content}
         </main>
+
+        @template.components.siteFooter()
     </div>
 
     <script>

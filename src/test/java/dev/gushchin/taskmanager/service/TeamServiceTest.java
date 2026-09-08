@@ -35,9 +35,15 @@ class TeamServiceTest {
     private final TeamMemberRepository teamMemberRepository = mock(TeamMemberRepository.class);
     private final TeamTagRepository teamTagRepository = mock(TeamTagRepository.class);
     private final NotificationPublisher notificationPublisher = mock(NotificationPublisher.class);
+    private final TeamEmailService teamEmailService = mock(TeamEmailService.class);
 
     private final TeamService teamService = new TeamService(
-            teamRepository, userService, teamMemberRepository, teamTagRepository, notificationPublisher);
+            teamRepository,
+            userService,
+            teamMemberRepository,
+            teamTagRepository,
+            notificationPublisher,
+            teamEmailService);
 
     @Test
     void createShouldReturnSavedTeam() {

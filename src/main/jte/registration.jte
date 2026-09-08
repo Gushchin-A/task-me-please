@@ -52,7 +52,7 @@
                 >
             </div>
 
-            <button class="auth-submit" type="submit" data-loading-text="Создаём аккаунт…">
+            <button class="auth-submit" type="submit" data-loading-text="Создаем аккаунт…">
                 Создать аккаунт
             </button>
         </form>

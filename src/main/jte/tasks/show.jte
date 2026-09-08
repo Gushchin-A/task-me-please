@@ -73,6 +73,7 @@
                     hidden
                     data-task-title-edit-form
                     data-keyboard-action-group
+                    data-submit-loading
                 >
                     <input
                         type="hidden"
@@ -102,11 +103,6 @@
                         >
                     @endif
 
-                    <textarea
-                        name="description"
-                        style="display: none;"
-                    >@if(task.description() != null)${task.description()}@endif</textarea>
-
                     <input
                         id="task-detail-title-${task.id()}"
                         type="text"
@@ -120,7 +116,13 @@
                     >
                     <button class="button button-secondary" type="button" data-task-title-edit-cancel>Отменить</button>
                     <span class="team-settings-action-tooltip" data-tooltip="Начните редактировать название">
-                        <button class="button button-primary" type="submit" disabled data-task-title-edit-submit>Сохранить</button>
+                        <button
+                            class="button button-primary"
+                            type="submit"
+                            disabled
+                            data-task-title-edit-submit
+                            data-loading-text="Сохранение..."
+                        >Сохранить</button>
                     </span>
                     <p class="form-help task-title-count" id="task-detail-title-count">
                         <span data-task-detail-title-length>${task.title().length()}</span> / 100 символов
@@ -231,7 +233,12 @@
                             : null}"
                         disabled="${!task.canUpdateTask()}"
                     >
-                        <option value="${task.authorId().toString()}" selected>${task.authorName()}</option>
+                        <option
+                            value="${task.authorId().toString()}"
+                            class="${task.authorRemovedFromTeam() ? "task-participant-former" : ""}"
+                            title="${task.participants().author().removedFromTeamTitle()}"
+                            selected
+                        >${task.authorName()}</option>
                         @for(TaskParticipantView member : members)
                             @if(!member.id().equals(task.authorId()))
                                 <option value="${member.id().toString()}">${member.name()}</option>
@@ -256,7 +263,12 @@
                     <input type="hidden" name="${_csrf.getParameterName()}" value="${_csrf.getToken()}">
                     <input type="hidden" name="returnTo" value="task">
                     <select name="assigneeId" data-original-value="${task.assigneeId().toString()}" data-participant-select disabled="${!task.canUpdateTask()}">
-                        <option value="${task.assigneeId().toString()}" selected>${task.assigneeName()}</option>
+                        <option
+                            value="${task.assigneeId().toString()}"
+                            class="${task.assigneeRemovedFromTeam() ? "task-participant-former" : ""}"
+                            title="${task.participants().assignee().removedFromTeamTitle()}"
+                            selected
+                        >${task.assigneeName()}</option>
                         @for(TaskParticipantView member : members)
                             @if(!member.id().equals(task.assigneeId()))
                                 <option value="${member.id().toString()}">${member.name()}</option>
@@ -349,6 +361,7 @@
                             <input type="hidden" name="title" value="${task.title()}">
                             <input type="hidden" name="tagId" value="${task.tagId()}">
                             <input type="hidden" name="assigneeId" value="${task.assigneeId().toString()}">
+                            <input type="hidden" name="returnTo" value="task">
 
                             @if(task.deadlineAt() != null)
                                 <input type="hidden" name="deadlineDate" value="${task.deadlineAt().toString().substring(0, 10)}">
